@@ -1,3 +1,4 @@
+using System;
 using ArknightsACT.Gameplay.Input;
 using UnityEngine;
 
@@ -9,6 +10,7 @@ namespace ArknightsACT.Gameplay.Abilities
         private IPlayerSkill _skill;
 
         public IPlayerSkill Skill => _skill;
+        public event Action SkillCastSucceeded;
 
         private void Awake()
         {
@@ -26,8 +28,11 @@ namespace ArknightsACT.Gameplay.Abilities
 
         private void Update()
         {
-            if (_input != null && _input.SkillPressedThisFrame)
-                _skill?.TryCast();
+            if (_input == null || !_input.SkillPressedThisFrame || _skill == null)
+                return;
+
+            if (_skill.TryCast())
+                SkillCastSucceeded?.Invoke();
         }
     }
 }
