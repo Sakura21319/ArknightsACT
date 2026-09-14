@@ -128,7 +128,7 @@ Generated presentation prefabs: 8/8
 ArknightsACT → Build Prototype Scene
 ```
 
-`PrototypeRun.unity` is generated locally and is ignored by Git.
+`PrototypeRun.unity` is generated locally and is ignored by Git, because it can reference local-only generated PRTS prefabs.
 
 ---
 
