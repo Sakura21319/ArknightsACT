@@ -22,11 +22,9 @@ Gameplay assemblies do **not** reference Spine assemblies at compile time.
 
 ---
 
-## Spine runtime
+## Runtime
 
-Arknights chibi battle models are Spine 3.8 binary assets.
-
-The project currently pins the optional multi-version runtime fork:
+Arknights operator battle assets are legacy Spine data. The prototype uses a pinned multi-version-compatible runtime fork:
 
 `ZeroFlyFly/WaifuSpineRuntime`
 
@@ -34,105 +32,186 @@ Pinned commit:
 
 `f569ce2e8f5cbe5aed2c6023d6569efc5abc44af`
 
-The dependency is recorded in `Packages/manifest.json` and `Packages/packages-lock.json` so another checkout can restore the same runtime revision.
+`Packages/manifest.json` and `Packages/packages-lock.json` are committed so another checkout can restore the same dependency.
 
-Review Spine runtime licensing before distributing builds containing a Spine runtime.
+Review Spine runtime licensing before distributing builds that contain a Spine runtime.
 
 ---
 
-## Local setup order
+## Local setup
 
 After switching to the Phase 3 branch:
 
-```text
-1. ArknightsACT > Assets > PRTS > Download Full Prototype Pack
-2. ArknightsACT > Assets > PRTS > 3. Build Presentation Prefabs
-3. ArknightsACT > Assets > PRTS > 4. Validate Presentation Setup
-4. ArknightsACT > Build Prototype Scene
-```
-
-If the Spine runtime is not already restored through Package Manager, run:
+### 1. Runtime
 
 ```text
-ArknightsACT > Assets > PRTS > 1. Install Spine 3.8-Compatible Runtime
+ArknightsACT
+→ Assets
+→ PRTS
+→ 1. Install Spine 3.8-Compatible Runtime
 ```
 
-Generated PRTS prefabs remain local-only. Re-run `3. Build Presentation Prefabs` after pulling presentation changes.
+If the package is already restored through `manifest.json`, this is not needed again.
+
+### 2. Download PRTS models
+
+```text
+ArknightsACT
+→ Assets
+→ PRTS
+→ Download Full Prototype Pack
+```
+
+The current full pack contains 8 local-only skeleton sources:
+
+- Texas combat model
+- Texas base/dorm model used only as a Move motion source
+- Originium Slug
+- Soldier
+- Crossbowman
+- Hound
+- Yokai Drone
+- Heavy Defender
+
+If the original 7-model pack was already downloaded, only run:
+
+```text
+ArknightsACT
+→ Assets
+→ PRTS
+→ Download Texas Base Motion Source
+```
+
+PRTS binary assets remain local and are ignored by Git.
+
+### 3. Generate / regenerate presentation prefabs
+
+```text
+ArknightsACT
+→ Assets
+→ PRTS
+→ 3. Build Presentation Prefabs
+```
+
+Run this again after pulling presentation changes because generated PRTS prefabs are local-only.
+
+The builder:
+
+1. locates imported `SkeletonDataAsset` objects through reflection;
+2. creates `SkeletonAnimation` instances without a compile-time Spine dependency;
+3. scans the real animation list;
+4. resolves Idle / Move / Attack / Skill / Hit / Die candidates;
+5. starts from a conservative visible scale;
+6. lets `SpineVisualAutoLayout2D` perform bounded runtime correction after meshes exist;
+7. writes local generated prefabs to `Assets/_Game/Generated/PRTS/Prefabs/`.
+
+### 4. Validate
+
+```text
+ArknightsACT
+→ Assets
+→ PRTS
+→ 4. Validate Presentation Setup
+```
+
+Expected current result:
+
+```text
+Spine runtime: OK
+PRTS source models: 8/8
+Generated presentation prefabs: 8/8
+```
+
+### 5. Rebuild prototype scene
+
+```text
+ArknightsACT → Build Prototype Scene
+```
+
+`PrototypeRun.unity` is generated locally and is ignored by Git.
 
 ---
 
-## Visual scale and alignment
+## Texas attack presentation
 
-PRTS raw Spine scale is not trusted as gameplay world scale.
-
-Generated presentation prefabs start from conservative known-safe scales. During Play, `SpineVisualAutoLayout2D` waits for the Spine mesh to become valid, measures runtime renderer bounds and only applies a bounded correction. Invalid or extreme measurements keep the safe scale instead of hiding the character.
-
-Target visual heights are approximately:
-
-```text
-Texas          1.62 world units
-Soldier        1.50
-Crossbowman    1.48
-Hound          0.92
-Originium Slug 0.72
-Yokai Drone    1.05
-Heavy Defender 1.72
-```
-
-Physics roots remain scale `1,1,1`; only the presentation child is scaled or flipped.
-
----
-
-## Animation policy
-
-### Texas battle model
-
-Observed battle-model animation set:
+The combat skeleton contains:
 
 ```text
 Attack_Start
 Attack_Loop
 Attack_End
-Default
-Die
-Idle
-Skill
-Start
 ```
 
-`Attack_Start / Attack_Loop / Attack_End` are phases of **one attack state**. They are not treated as three combo attacks.
+These are phases of one attack state, not three different combo attacks.
 
-The ACT prototype therefore uses:
+The authoritative gameplay attack is one repeatable `Texas_Basic`. Current prototype timing is intentionally faster than the earlier build:
 
 ```text
-Basic attack gameplay definition: Texas_Basic
-Basic attack Spine animation: Attack_Loop
-Repeated presses: repeat Texas_Basic
-Attack streak / proc counters: tracked independently from animation variety
+startup  0.045 s
+active   0.035 s
+recovery 0.105 s
 ```
 
-This keeps Swift Blade and future effects such as "every N attacks" without inventing unsupported four-hit character animation.
-
-### Texas movement
-
-The combat model does not contain a weapon-preserving Move clip. The Base/Dorm model contains movement animation, but switching to that model removes the combat weapon and can introduce skeleton/attachment mismatches.
-
-For Phase 3:
+The Spine playback is now decoupled from damage pulses:
 
 ```text
-Moving Texas
-→ keep combat model
-→ keep Idle animation and combat weapons
-→ add subtle procedural bob/tilt as a locomotion cue
+first J
+→ start/enter attack presentation
+→ Attack_Loop keeps running
+
+more J presses
+→ refresh attack-chain grace
+→ DO NOT restart Attack_Loop
+→ gameplay continues producing individual hits
+
+stop attacking
+→ Attack_End
+→ Idle
 ```
 
-Do **not** swap the whole character to the Base/Dorm model during combat movement.
+This prevents rapid J input from repeatedly resetting the animation to its first one or two frames.
 
-A later improvement can test bone-compatible animation retargeting from the Base/Dorm Move clip onto the combat skeleton. That should only be enabled after skeleton/bone compatibility is verified.
+Hit timing remains owned by `AttackDefinition`; Spine does not decide authoritative damage frames.
 
-### Enemy locomotion
+---
 
-Persistent locomotion resolution now prioritizes:
+## Texas movement and weapon preservation
+
+PRTS provides Texas as separate model groups:
+
+```text
+combat front: char_102_texas
+base/dorm:    build_char_102_texas
+```
+
+The combat model has weapons but no Move clip. The base/dorm model has Move but does not render the combat weapons.
+
+The prototype therefore does **not** swap rendered models while moving.
+
+Instead:
+
+1. the visible object is always the combat skeleton;
+2. `build_char_102_texas` is instantiated as a hidden motion source;
+3. the source plays `Move`;
+4. `SpineBoneMotionRetarget2D` matches bones by name;
+5. it copies animation deltas relative to each skeleton's own setup pose;
+6. slots/attachments still come from the combat skeleton, so weapons stay visible.
+
+The retargeter requires at least 60% source-bone coverage. If compatibility is too low or the source asset is missing, it automatically falls back to the existing combat-Idle + procedural bob/lean locomotion rather than breaking the character.
+
+Expected runtime log when it works:
+
+```text
+[ArknightsACT/Spine] motion retarget ready: move='Move', matchedBones=..., coverage=...%
+```
+
+If compatibility is insufficient, the Console reports the coverage and the fallback remains active.
+
+---
+
+## Enemy animation mapping
+
+Persistent locomotion prefers loop clips and avoids transition clips:
 
 ```text
 Move
@@ -141,7 +220,7 @@ Run_Loop
 Walk_Loop
 ```
 
-Transition/directional clips such as these are not selected as persistent locomotion:
+Clips such as the following are not used as persistent movement:
 
 ```text
 Move_Begin
@@ -152,31 +231,19 @@ Run_Begin
 Run_End
 ```
 
-### Current Texas wiring
-
-Gameplay event | Presentation
----|---
-Standing | Idle (Default only as fallback)
-Horizontal movement | persistent Move/Run/Walk if available; otherwise combat Idle + procedural motion
-Basic attack | one repeatable attack clip, preferring Attack_Loop, then Attack/Combat
-Sword Rain cast | Skill / Ability / Special
-Receive damage | Hit / Hurt / Stun / Damage candidate if available
-Death | Die / Death / Dead
-Facing | presentation child X scale only
-
-Animation names are resolved twice: during local prefab generation and again at runtime from live `SkeletonData`.
-
-Authoritative hit timing remains in `AttackDefinition`; Spine animation does **not** decide damage frames.
+This is why Soldier/Hound/Crossbowman should now bind to their loop locomotion instead of a transition pose.
 
 ---
 
-## Architecture rule
+## Important architecture rule
+
+Do not move gameplay rules into Spine animation events.
 
 Correct:
 
 ```text
 PlayerAttackController
-→ authoritative damage timing
+→ authoritative timing / damage
 → presentation event
 → Spine animation
 ```
@@ -185,10 +252,10 @@ Incorrect:
 
 ```text
 Spine animation event
-→ authoritative gameplay damage
+→ decides game damage
 ```
 
-Animation events may later drive optional VFX/SFX markers, but gameplay authority stays in Gameplay/Combat.
+Animation may later provide optional VFX/SFX markers, but gameplay remains authoritative.
 
 ---
 
@@ -202,4 +269,4 @@ Assets/_Game/Generated/PRTS/
 Assets/_Game/Scenes/PrototypeRun.unity
 ```
 
-The generated scene and PRTS binary/generated presentation files are reproducible local outputs, not source assets.
+This prevents third-party PRTS binaries and generated references from entering the repository.
