@@ -21,6 +21,8 @@ namespace ArknightsACT.Gameplay.Presentation
     [DefaultExecutionOrder(1000)]
     public sealed class SpineBoneMotionRetarget2D : MonoBehaviour
     {
+        private const int MaxBindAttempts = 120;
+
         [SerializeField] private Transform targetPresentationRoot;
         [SerializeField] private Transform sourceMotionRoot;
         [SerializeField] private string preferredMoveAnimation = "Move";
@@ -37,13 +39,13 @@ namespace ArknightsACT.Gameplay.Presentation
         private MethodInfo _targetUpdateWorldTransformOneArg;
         private bool _moving;
         private bool _bound;
-        private bool _bindAttempted;
         private bool _logged;
+        private int _bindAttempts;
         private string _resolvedMoveAnimation = string.Empty;
         private BoneAccessors _boneAccessors;
         private BoneAccessors _dataAccessors;
 
-        public bool IsCompatible => _bound && _pairs.Count > 0;
+        public bool IsCompatible => TryBind();
         public float BoneCoverage { get; private set; }
         public string ResolvedMoveAnimation => _resolvedMoveAnimation;
 
@@ -86,20 +88,17 @@ namespace ArknightsACT.Gameplay.Presentation
         {
             if (_bound)
                 return true;
-            if (_bindAttempted)
+            if (_bindAttempts >= MaxBindAttempts)
                 return false;
 
-            _bindAttempted = true;
+            _bindAttempts++;
             if (targetPresentationRoot == null || sourceMotionRoot == null)
                 return false;
 
             _targetSkeletonAnimation = FindSkeletonAnimation(targetPresentationRoot);
             _sourceSkeletonAnimation = FindSkeletonAnimation(sourceMotionRoot);
             if (_targetSkeletonAnimation == null || _sourceSkeletonAnimation == null)
-            {
-                LogOnce("motion retarget unavailable: target/source SkeletonAnimation missing");
                 return false;
-            }
 
             TryInitialize(_targetSkeletonAnimation);
             TryInitialize(_sourceSkeletonAnimation);
@@ -107,10 +106,7 @@ namespace ArknightsACT.Gameplay.Presentation
             _targetSkeleton = GetPropertyValue(_targetSkeletonAnimation, "Skeleton");
             _sourceSkeleton = GetPropertyValue(_sourceSkeletonAnimation, "Skeleton");
             if (_targetSkeleton == null || _sourceSkeleton == null)
-            {
-                LogOnce("motion retarget unavailable: target/source Skeleton not initialized");
                 return false;
-            }
 
             _sourceAnimationState = GetPropertyValue(_sourceSkeletonAnimation, "AnimationState");
             if (_sourceAnimationState == null)
@@ -131,11 +127,17 @@ namespace ArknightsACT.Gameplay.Presentation
                 return false;
 
             if (!BuildBonePairs())
+            {
+                // Once actual initialized skeletons were compared, low bone coverage is a
+                // structural incompatibility rather than an initialization race.
+                _bindAttempts = MaxBindAttempts;
                 return false;
+            }
 
             ResolveMoveAnimation();
             if (string.IsNullOrWhiteSpace(_resolvedMoveAnimation))
             {
+                _bindAttempts = MaxBindAttempts;
                 LogOnce("motion retarget unavailable: source skeleton has no Move/Move_Loop/Run_Loop animation");
                 return false;
             }
@@ -158,11 +160,13 @@ namespace ArknightsACT.Gameplay.Presentation
             var sourceByName = sourceBones
                 .Select(bone => (bone, name: GetBoneName(bone)))
                 .Where(x => !string.IsNullOrWhiteSpace(x.name))
-                .ToDictionary(x => x.name, x => x.bone, StringComparer.OrdinalIgnoreCase);
+                .GroupBy(x => x.name, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => group.First().bone, StringComparer.OrdinalIgnoreCase);
             var targetByName = targetBones
                 .Select(bone => (bone, name: GetBoneName(bone)))
                 .Where(x => !string.IsNullOrWhiteSpace(x.name))
-                .ToDictionary(x => x.name, x => x.bone, StringComparer.OrdinalIgnoreCase);
+                .GroupBy(x => x.name, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => group.First().bone, StringComparer.OrdinalIgnoreCase);
 
             _pairs.Clear();
             foreach (var item in sourceByName)
