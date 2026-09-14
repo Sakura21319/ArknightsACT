@@ -38,15 +38,36 @@ namespace ArknightsACT.Editor
             if (!hasCombatPresentation)
             {
                 go.AddComponent<TexasPlaceholderRig2D>();
+                Debug.LogWarning(
+                    "[ArknightsACT/Spine] Texas combat presentation prefab is missing; using placeholder. " +
+                    "Run PRTS prefab generation before rebuilding the prototype scene.");
             }
-            else if (PrtsGeneratedPresentation.TryAttach(
-                         PrtsPrototypeAssetCatalog.TexasBaseMotion.BaseName,
-                         go.transform,
-                         out var motionSource))
+            else
             {
-                motionSource.name = "MotionSource_Texas_Base";
-                var retarget = go.AddComponent<SpineBoneMotionRetarget2D>();
-                retarget.Configure(combatPresentation.transform, motionSource.transform, "Move");
+                var hasMotionSource = PrtsGeneratedPresentation.TryAttach(
+                    PrtsPrototypeAssetCatalog.TexasBaseMotion.BaseName,
+                    go.transform,
+                    out var motionSource);
+
+                if (hasMotionSource)
+                {
+                    motionSource.name = "MotionSource_Texas_Base";
+                    var retarget = go.AddComponent<SpineBoneMotionRetarget2D>();
+                    retarget.Configure(combatPresentation.transform, motionSource.transform, "Move");
+                    Debug.Log(
+                        "[ArknightsACT/Spine] Texas motion source attached. " +
+                        "Runtime retarget will validate bone compatibility when Play starts.",
+                        go);
+                }
+                else
+                {
+                    Debug.LogWarning(
+                        "[ArknightsACT/Spine] Texas base motion source prefab is MISSING. " +
+                        "Walking retarget cannot run, so Texas will fall back to procedural movement. " +
+                        "Run 'ArknightsACT > Assets > PRTS > Download Texas Base Motion Source', then " +
+                        "'3. Build Presentation Prefabs', and rebuild Prototype Scene.",
+                        go);
+                }
             }
 
             var body = go.AddComponent<Rigidbody2D>();
