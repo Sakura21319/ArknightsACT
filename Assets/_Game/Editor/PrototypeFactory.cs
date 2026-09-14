@@ -154,6 +154,10 @@ namespace ArknightsACT.Editor
             entity.SetTeam(Team.Enemy);
             go.AddComponent<StatusIndicator2D>();
             go.AddComponent<DummyEnemy>();
+
+            var brain = go.AddComponent<PrototypeEnemyCombatBrain2D>();
+            brain.Configure(ResolvePrototypeArchetype(descriptor));
+            go.AddComponent<EnemyHitReaction2D>();
             go.AddComponent<EnemyPresentationDriver2D>();
         }
 
@@ -175,6 +179,19 @@ namespace ArknightsACT.Editor
             camera.backgroundColor = new Color(0.055f, 0.065f, 0.085f);
             go.AddComponent<AudioListener>();
             go.AddComponent<CameraShake2D>();
+        }
+
+        private static PrototypeEnemyArchetype ResolvePrototypeArchetype(PrtsAssetDescriptor descriptor)
+        {
+            if (descriptor == null)
+                return PrototypeEnemyArchetype.Melee;
+
+            switch (descriptor.Role)
+            {
+                case "FastMelee": return PrototypeEnemyArchetype.FastMelee;
+                case "Ranged": return PrototypeEnemyArchetype.Ranged;
+                default: return PrototypeEnemyArchetype.Melee;
+            }
         }
 
         private static GameObject CreateVisualChild(Transform parent, string name, Vector2 size, Color color, int sortingOrder, bool addHitFlash)
