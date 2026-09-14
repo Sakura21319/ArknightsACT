@@ -16,6 +16,7 @@ namespace ArknightsACT.Editor
         [MenuItem("ArknightsACT/Build Prototype Scene")]
         public static void Build()
         {
+            PrototypePlayerSettings.Apply();
             EnsureFolder(DataDir);
             EnsureFolder(SceneDir);
             var attacks = BuildTexasAttackDefinitions();
@@ -26,8 +27,8 @@ namespace ArknightsACT.Editor
             PrototypeFactory.CreateFloor();
             PrototypeFactory.CreatePlatform(new Vector2(5f, 1.5f), new Vector2(4f, 0.35f));
             PrototypeFactory.CreatePlatform(new Vector2(11f, 2.6f), new Vector2(3f, 0.35f));
-            PrototypeFactory.CreateDummy(new Vector2(4f, 1f));
-            PrototypeFactory.CreateDummy(new Vector2(8f, 1f));
+            PrototypeFactory.CreateDummy(new Vector2(4f, 0f));
+            PrototypeFactory.CreateDummy(new Vector2(8f, 0f));
             PrototypeFactory.CreateCamera(player.transform);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -35,7 +36,7 @@ namespace ArknightsACT.Editor
             AssetDatabase.Refresh();
             Selection.activeGameObject = player;
             EditorGUIUtility.PingObject(player);
-            Debug.Log($"ArknightsACT prototype scene generated: {ScenePath}");
+            Debug.Log($"ArknightsACT prototype scene generated: {ScenePath}. Standalone default: Windowed 1280x720.");
         }
 
         private static AttackDefinition[] BuildTexasAttackDefinitions()
