@@ -16,18 +16,19 @@ namespace ArknightsACT.Gameplay.Combat
         [SerializeField] private AttackDefinition[] combo;
         [SerializeField] private float baseAttack = 10f;
         [SerializeField] private float comboResetSeconds = 0.55f;
-        [SerializeField] private float inputBufferSeconds = 0.18f;
 
         private CombatEntity _entity;
         private PlayerMotor2D _motor;
         private IPlayerInputSource _input;
+        private IAttackTimingProvider _timingProvider;
         private AttackSlashPresentation2D _presentation;
         private Coroutine _attackRoutine;
         private int _comboIndex;
         private float _lastAttackFinishedAt = -999f;
-        private float _bufferUntil = -999f;
         private float _attackStartedAt;
+        private float _currentCycleSeconds;
         private AttackDefinition _currentDefinition;
+        private bool _attackQueued;
 
         public bool IsAttacking => _attackRoutine != null;
         public event Action<int> AttackStarted;
@@ -37,9 +38,11 @@ namespace ArknightsACT.Gameplay.Combat
         {
             get
             {
-                if (!IsAttacking || _currentDefinition == null) return true;
+                if (!IsAttacking || _currentDefinition == null)
+                    return true;
                 var elapsed = Time.time - _attackStartedAt;
-                var normalized = _currentDefinition.TotalDuration <= 0f ? 1f : Mathf.Clamp01(elapsed / _currentDefinition.TotalDuration);
+                var duration = _currentCycleSeconds > 0f ? _currentCycleSeconds : _currentDefinition.TotalDuration;
+                var normalized = duration <= 0f ? 1f : Mathf.Clamp01(elapsed / duration);
                 return normalized >= _currentDefinition.dashCancelNormalizedTime;
             }
         }
@@ -50,16 +53,46 @@ namespace ArknightsACT.Gameplay.Combat
             _motor = GetComponent<PlayerMotor2D>();
             _input = GetComponent<IPlayerInputSource>();
             _presentation = GetComponentInChildren<AttackSlashPresentation2D>();
+
+            var behaviours = GetComponents<MonoBehaviour>();
+            for (var i = 0; i < behaviours.Length; i++)
+            {
+                if (behaviours[i] is IAttackTimingProvider provider)
+                {
+                    _timingProvider = provider;
+                    break;
+                }
+            }
+        }
+
+        private void OnEnable()
+        {
+            if (_entity != null && _entity.Health != null)
+                _entity.Health.Died += OnDied;
+        }
+
+        private void OnDisable()
+        {
+            if (_entity != null && _entity.Health != null)
+                _entity.Health.Died -= OnDied;
         }
 
         private void Update()
         {
-            if (_input == null || !_input.AttackPressedThisFrame) return;
+            if (_entity == null || _entity.Health == null || _entity.Health.IsDead || _input == null)
+                return;
+
+            if (!_input.AttackPressedThisFrame)
+                return;
+
             if (IsAttacking)
             {
-                _bufferUntil = Time.time + inputBufferSeconds;
+                // One-slot input queue. Mashing J cannot create invisible extra damage pulses;
+                // it can only request the next complete swing.
+                _attackQueued = true;
                 return;
             }
+
             TryBeginAttack();
         }
 
@@ -71,16 +104,28 @@ namespace ArknightsACT.Gameplay.Combat
 
         public void CancelCurrentAttack()
         {
-            if (_attackRoutine == null) return;
-            StopCoroutine(_attackRoutine);
+            if (_attackRoutine != null)
+                StopCoroutine(_attackRoutine);
             _attackRoutine = null;
             _currentDefinition = null;
+            _currentCycleSeconds = 0f;
+            _attackQueued = false;
+        }
+
+        private void OnDied()
+        {
+            CancelCurrentAttack();
         }
 
         private void TryBeginAttack()
         {
-            if (combo == null || combo.Length == 0) return;
-            if (Time.time - _lastAttackFinishedAt > comboResetSeconds) _comboIndex = 0;
+            if (combo == null || combo.Length == 0 ||
+                _entity == null || _entity.Health == null || _entity.Health.IsDead)
+                return;
+
+            if (Time.time - _lastAttackFinishedAt > comboResetSeconds)
+                _comboIndex = 0;
+
             var index = _comboIndex;
             _attackRoutine = StartCoroutine(AttackRoutine(combo[index], index));
         }
@@ -89,20 +134,48 @@ namespace ArknightsACT.Gameplay.Combat
         {
             _currentDefinition = definition;
             _attackStartedAt = Time.time;
-            _bufferUntil = -999f;
+            _attackQueued = false;
+
+            ResolveTiming(definition, out var impactSeconds, out var cycleSeconds);
+            _currentCycleSeconds = cycleSeconds;
+
             AttackStarted?.Invoke(comboIndex);
             _presentation?.PlayBasic(comboIndex, _motor.FacingSign);
 
-            yield return WaitScaled(definition.startup);
-            PerformHit(definition);
-            yield return WaitScaled(definition.active);
-            yield return WaitScaled(definition.recovery);
+            yield return WaitScaled(impactSeconds);
+
+            if (_entity != null && _entity.Health != null && !_entity.Health.IsDead)
+                PerformHit(definition);
+
+            yield return WaitScaled(Mathf.Max(0f, cycleSeconds - impactSeconds));
 
             _lastAttackFinishedAt = Time.time;
             _comboIndex = (_comboIndex + 1) % combo.Length;
             _attackRoutine = null;
             _currentDefinition = null;
-            if (Time.time <= _bufferUntil) TryBeginAttack();
+            _currentCycleSeconds = 0f;
+
+            var continueChain = _attackQueued &&
+                                _entity != null &&
+                                _entity.Health != null &&
+                                !_entity.Health.IsDead;
+            _attackQueued = false;
+            if (continueChain)
+                TryBeginAttack();
+        }
+
+        private void ResolveTiming(AttackDefinition definition, out float impactSeconds, out float cycleSeconds)
+        {
+            impactSeconds = Mathf.Max(0f, definition.startup);
+            cycleSeconds = Mathf.Max(0.01f, definition.TotalDuration);
+
+            if (_timingProvider != null &&
+                _timingProvider.TryGetBasicAttackTiming(out var providedImpact, out var providedCycle) &&
+                providedCycle > 0.01f)
+            {
+                cycleSeconds = providedCycle;
+                impactSeconds = Mathf.Clamp(providedImpact, 0f, cycleSeconds);
+            }
         }
 
         private void PerformHit(AttackDefinition definition)
@@ -117,22 +190,34 @@ namespace ArknightsACT.Gameplay.Combat
 
             foreach (var hit in hits)
             {
-                if (hit == null) continue;
+                if (hit == null)
+                    continue;
                 var target = hit.GetComponentInParent<CombatEntity>();
-                if (target == null || target == _entity || target.Team == _entity.Team || !processed.Add(target)) continue;
+                if (target == null || target == _entity || target.Team == _entity.Team || !processed.Add(target))
+                    continue;
 
                 var knockback = definition.knockback;
                 knockback.x *= facing;
-                var context = new DamageContext(_entity, _entity, target, baseAttack * definition.damageMultiplier, DamageType.Physical, knockback, sourceId: definition.name);
+                var context = new DamageContext(
+                    _entity,
+                    _entity,
+                    target,
+                    baseAttack * definition.damageMultiplier,
+                    DamageType.Physical,
+                    knockback,
+                    sourceId: definition.name);
                 var result = DamageSystem.Apply(context);
-                if (!result.Applied) continue;
+                if (!result.Applied)
+                    continue;
 
                 hitAny = true;
                 target.GetComponentInChildren<HitFlash2D>()?.Flash();
                 AttackHit?.Invoke(target);
             }
 
-            if (!hitAny) return;
+            if (!hitAny)
+                return;
+
             HitStopService.Instance?.Request(definition.hitStopSeconds);
             CameraShake2D.Instance?.Shake(definition.cameraShakeAmplitude, 0.08f);
         }
@@ -150,7 +235,8 @@ namespace ArknightsACT.Gameplay.Combat
 #if UNITY_EDITOR
         private void OnDrawGizmosSelected()
         {
-            if (_currentDefinition == null) return;
+            if (_currentDefinition == null)
+                return;
             var facing = Application.isPlaying && _motor != null ? _motor.FacingSign : 1;
             var offset = _currentDefinition.hitboxOffset;
             offset.x *= facing;
