@@ -81,7 +81,7 @@ namespace ArknightsACT.Editor.PRTS
                 visual.transform.SetParent(root.transform, false);
                 visual.transform.localPosition = Vector3.zero;
                 visual.transform.localRotation = Quaternion.identity;
-                visual.transform.localScale = Vector3.one;
+                visual.transform.localScale = Vector3.one * descriptor.SafeInitialScale;
 
                 var skeletonComponent = visual.AddComponent(skeletonAnimationType);
                 if (!AssignSkeletonDataAsset(skeletonComponent, skeletonDataAsset))
@@ -91,7 +91,6 @@ namespace ArknightsACT.Editor.PRTS
                 }
 
                 InvokeInitialize(skeletonComponent);
-                ForceSkeletonMeshRefresh(skeletonComponent);
 
                 var animationNames = ReadAnimationNames(skeletonDataAsset);
                 var resolved = PrtsAnimationResolver.Resolve(animationNames);
@@ -106,7 +105,15 @@ namespace ArknightsACT.Editor.PRTS
                     resolved.Hit,
                     resolved.Die);
 
-                NormalizeVisualBounds(descriptor, visual.transform, skeletonComponent, skeletonDataAsset);
+                // Do not measure Renderer.bounds in the editor. Spine mesh bounds are not stable
+                // until the runtime has actually rendered frames, and using them here previously
+                // allowed a bad measurement to shrink/move every character out of view.
+                var layout = root.AddComponent<SpineVisualAutoLayout2D>();
+                layout.Configure(
+                    visual.transform,
+                    descriptor.TargetWorldHeight,
+                    descriptor.FeetLocalY,
+                    descriptor.SafeInitialScale);
                 presentation.SetVisualRoot(visual.transform);
 
                 var renderer = visual.GetComponent<Renderer>() ?? visual.GetComponentInChildren<Renderer>(true);
@@ -121,7 +128,7 @@ namespace ArknightsACT.Editor.PRTS
                     : "<none discovered>";
                 Debug.Log(
                     $"[ArknightsACT/PRTS] Built {descriptor.DisplayName} ({descriptor.BaseName}) -> {path}\n" +
-                    $"Target height: {descriptor.TargetWorldHeight:0.00}; visual scale: {visual.transform.localScale.x:0.0000}\n" +
+                    $"Safe scale: {descriptor.SafeInitialScale:0.###}; target height: {descriptor.TargetWorldHeight:0.00}\n" +
                     $"Animations: {animationSummary}");
                 return true;
             }
@@ -143,86 +150,6 @@ namespace ArknightsACT.Editor.PRTS
             return GeneratedPrefabDirectory + "/" + baseName + ".prefab";
         }
 
-        private static void NormalizeVisualBounds(
-            PrtsAssetDescriptor descriptor,
-            Transform visual,
-            Component skeletonComponent,
-            UnityEngine.Object skeletonDataAsset)
-        {
-            ForceSkeletonMeshRefresh(skeletonComponent);
-            var renderer = visual.GetComponent<Renderer>() ?? visual.GetComponentInChildren<Renderer>(true);
-
-            var sourceHeight = renderer != null ? renderer.bounds.size.y : 0f;
-            if (sourceHeight < 0.001f)
-                sourceHeight = ReadSkeletonDataHeight(skeletonDataAsset);
-
-            if (sourceHeight < 0.001f)
-            {
-                Debug.LogWarning($"[ArknightsACT/PRTS] Could not measure {descriptor.DisplayName}; leaving visual scale at 1.");
-                return;
-            }
-
-            var scale = Mathf.Clamp(descriptor.TargetWorldHeight / sourceHeight, 0.001f, 10f);
-            visual.localScale = Vector3.one * scale;
-            visual.localPosition = Vector3.zero;
-            ForceSkeletonMeshRefresh(skeletonComponent);
-
-            if (renderer == null)
-                return;
-
-            // Center the rendered body on the gameplay collider, then put its lowest rendered point
-            // on the descriptor's desired local foot line. Physics roots always stay at scale=1.
-            var bounds = renderer.bounds;
-            visual.localPosition += new Vector3(-bounds.center.x, descriptor.FeetLocalY - bounds.min.y, 0f);
-            ForceSkeletonMeshRefresh(skeletonComponent);
-        }
-
-        private static float ReadSkeletonDataHeight(UnityEngine.Object skeletonDataAsset)
-        {
-            var method = skeletonDataAsset.GetType().GetMethod(
-                "GetSkeletonData",
-                BindingFlags.Instance | BindingFlags.Public,
-                null,
-                new[] { typeof(bool) },
-                null);
-            var skeletonData = method?.Invoke(skeletonDataAsset, new object[] { false });
-            if (skeletonData == null)
-                return 0f;
-
-            var property = skeletonData.GetType().GetProperty("Height", BindingFlags.Instance | BindingFlags.Public);
-            if (property?.GetValue(skeletonData) is float value)
-                return Mathf.Abs(value);
-            return 0f;
-        }
-
-        private static void ForceSkeletonMeshRefresh(Component skeletonComponent)
-        {
-            if (skeletonComponent == null)
-                return;
-
-            InvokeNoArgIfPresent(skeletonComponent, "Update");
-            InvokeNoArgIfPresent(skeletonComponent, "LateUpdate");
-        }
-
-        private static void InvokeNoArgIfPresent(Component component, string methodName)
-        {
-            try
-            {
-                var method = component.GetType().GetMethod(
-                    methodName,
-                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-                    null,
-                    Type.EmptyTypes,
-                    null);
-                method?.Invoke(component, null);
-            }
-            catch
-            {
-                // Mesh measurement has additional fallbacks. A runtime-specific editor callback
-                // should never stop prefab generation.
-            }
-        }
-
         private static UnityEngine.Object FindSkeletonDataAsset(PrtsAssetDescriptor descriptor)
         {
             if (!AssetDatabase.IsValidFolder(descriptor.TargetDirectory))
@@ -237,6 +164,7 @@ namespace ArknightsACT.Editor.PRTS
                     return asset;
             }
 
+            // Some Spine importers generate asset names that do not preserve the original base name.
             guids = AssetDatabase.FindAssets(string.Empty, new[] { descriptor.TargetDirectory });
             foreach (var guid in guids)
             {
