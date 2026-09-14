@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using ArknightsACT.Combat;
 using ArknightsACT.Gameplay.Characters;
 using ArknightsACT.Gameplay.Feedback;
@@ -36,9 +37,7 @@ namespace ArknightsACT.Gameplay.Combat
         {
             get
             {
-                if (!IsAttacking || _currentDefinition == null)
-                    return true;
-
+                if (!IsAttacking || _currentDefinition == null) return true;
                 var elapsed = Time.time - _attackStartedAt;
                 var normalized = _currentDefinition.TotalDuration <= 0f ? 1f : Mathf.Clamp01(elapsed / _currentDefinition.TotalDuration);
                 return normalized >= _currentDefinition.dashCancelNormalizedTime;
@@ -55,15 +54,12 @@ namespace ArknightsACT.Gameplay.Combat
 
         private void Update()
         {
-            if (_input == null || !_input.AttackPressedThisFrame)
-                return;
-
+            if (_input == null || !_input.AttackPressedThisFrame) return;
             if (IsAttacking)
             {
                 _bufferUntil = Time.time + inputBufferSeconds;
                 return;
             }
-
             TryBeginAttack();
         }
 
@@ -75,9 +71,7 @@ namespace ArknightsACT.Gameplay.Combat
 
         public void CancelCurrentAttack()
         {
-            if (_attackRoutine == null)
-                return;
-
+            if (_attackRoutine == null) return;
             StopCoroutine(_attackRoutine);
             _attackRoutine = null;
             _currentDefinition = null;
@@ -85,12 +79,8 @@ namespace ArknightsACT.Gameplay.Combat
 
         private void TryBeginAttack()
         {
-            if (combo == null || combo.Length == 0)
-                return;
-
-            if (Time.time - _lastAttackFinishedAt > comboResetSeconds)
-                _comboIndex = 0;
-
+            if (combo == null || combo.Length == 0) return;
+            if (Time.time - _lastAttackFinishedAt > comboResetSeconds) _comboIndex = 0;
             var index = _comboIndex;
             _attackRoutine = StartCoroutine(AttackRoutine(combo[index], index));
         }
@@ -112,9 +102,7 @@ namespace ArknightsACT.Gameplay.Combat
             _comboIndex = (_comboIndex + 1) % combo.Length;
             _attackRoutine = null;
             _currentDefinition = null;
-
-            if (Time.time <= _bufferUntil)
-                TryBeginAttack();
+            if (Time.time <= _bufferUntil) TryBeginAttack();
         }
 
         private void PerformHit(AttackDefinition definition)
@@ -124,13 +112,14 @@ namespace ArknightsACT.Gameplay.Combat
             localOffset.x *= facing;
             var center = (Vector2)transform.position + localOffset;
             var hits = Physics2D.OverlapBoxAll(center, definition.hitboxSize, 0f);
+            var processed = new HashSet<CombatEntity>();
             var hitAny = false;
 
             foreach (var hit in hits)
             {
                 if (hit == null) continue;
                 var target = hit.GetComponentInParent<CombatEntity>();
-                if (target == null || target == _entity || target.Team == _entity.Team) continue;
+                if (target == null || target == _entity || target.Team == _entity.Team || !processed.Add(target)) continue;
 
                 var knockback = definition.knockback;
                 knockback.x *= facing;

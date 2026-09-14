@@ -20,18 +20,14 @@ namespace ArknightsACT.Editor
         private const float FloorCenterY = -1.35f;
         private const float FloorTopY = -1.10f;
 
-        public static void CreateServices()
-        {
-            new GameObject("[Services]").AddComponent<HitStopService>();
-        }
+        public static void CreateServices() => new GameObject("[Services]").AddComponent<HitStopService>();
 
         public static GameObject CreatePlayer(AttackDefinition[] attacks)
         {
             var go = new GameObject("Player_Texas_Graybox");
             go.transform.position = new Vector3(0f, FloorTopY + 0.76f, 0f);
             go.transform.localScale = Vector3.one;
-
-            CreateVisualChild(go.transform, "Visual", new Vector2(0.8f, 1.5f), new Color(0.05f, 0.72f, 1.00f), 20, addHitFlash: false);
+            CreateVisualChild(go.transform, "Visual", new Vector2(0.8f, 1.5f), new Color(0.05f, 0.72f, 1.00f), 20, false);
 
             var body = go.AddComponent<Rigidbody2D>();
             body.freezeRotation = true;
@@ -42,7 +38,6 @@ namespace ArknightsACT.Editor
             var collider = go.AddComponent<CapsuleCollider2D>();
             collider.direction = CapsuleDirection2D.Vertical;
             collider.size = new Vector2(0.72f, 1.45f);
-            collider.isTrigger = false;
 
             go.AddComponent<Health>().SetMaxHealth(100f);
             var entity = go.AddComponent<CombatEntity>();
@@ -59,32 +54,23 @@ namespace ArknightsACT.Editor
             go.AddComponent<PlayerSkillController>();
             go.AddComponent<TexasBuildRuntime>();
             go.AddComponent<TexasPrototypeHud>();
-
             return go;
         }
 
-        public static void CreateFloor()
-        {
-            CreateStaticBlock("Floor", new Vector2(6f, FloorCenterY), FloorSize, new Color(0.20f, 0.21f, 0.24f));
-        }
-
-        public static void CreatePlatform(Vector2 position, Vector2 size)
-        {
-            CreateStaticBlock("Platform", position, size, new Color(0.34f, 0.37f, 0.43f));
-        }
+        public static void CreateFloor() => CreateStaticBlock("Floor", new Vector2(6f, FloorCenterY), FloorSize, new Color(0.20f, 0.21f, 0.24f));
+        public static void CreatePlatform(Vector2 position, Vector2 size) => CreateStaticBlock("Platform", position, size, new Color(0.34f, 0.37f, 0.43f));
 
         private static void CreateStaticBlock(string name, Vector2 position, Vector2 size, Color color)
         {
             var go = new GameObject(name);
             go.transform.position = position;
             go.transform.localScale = Vector3.one;
-            CreateVisualChild(go.transform, "Visual", size, color, 0, addHitFlash: false);
+            CreateVisualChild(go.transform, "Visual", size, color, 0, false);
             var body = go.AddComponent<Rigidbody2D>();
             body.bodyType = RigidbodyType2D.Static;
             body.simulated = true;
             var collider = go.AddComponent<BoxCollider2D>();
             collider.size = size;
-            collider.isTrigger = false;
         }
 
         public static void CreateDummy(Vector2 position)
@@ -92,7 +78,7 @@ namespace ArknightsACT.Editor
             var go = new GameObject("DummyEnemy");
             go.transform.position = new Vector3(position.x, FloorTopY + 0.73f, 0f);
             go.transform.localScale = Vector3.one;
-            CreateVisualChild(go.transform, "Visual", new Vector2(0.8f, 1.45f), new Color(1.00f, 0.18f, 0.22f), 15, addHitFlash: true);
+            CreateVisualChild(go.transform, "Visual", new Vector2(0.8f, 1.45f), new Color(1.00f, 0.18f, 0.22f), 15, true);
 
             var body = go.AddComponent<Rigidbody2D>();
             body.freezeRotation = true;
@@ -103,11 +89,11 @@ namespace ArknightsACT.Editor
             var collider = go.AddComponent<CapsuleCollider2D>();
             collider.direction = CapsuleDirection2D.Vertical;
             collider.size = new Vector2(0.72f, 1.40f);
-            collider.isTrigger = false;
 
             go.AddComponent<Health>().SetMaxHealth(180f);
             var entity = go.AddComponent<CombatEntity>();
             entity.SetTeam(Team.Enemy);
+            go.AddComponent<StatusIndicator2D>();
             go.AddComponent<DummyEnemy>();
         }
 
@@ -116,7 +102,6 @@ namespace ArknightsACT.Editor
             var rig = new GameObject("CameraRig");
             rig.transform.position = new Vector3(1.5f, 0.6f, 0f);
             rig.AddComponent<CameraFollow2D>().SetTarget(target);
-
             var go = new GameObject("Main Camera");
             go.tag = "MainCamera";
             go.transform.SetParent(rig.transform, false);
