@@ -4,12 +4,27 @@ namespace ArknightsACT.Editor.PRTS
     internal static class PrtsPrototypeAssetCatalog
     {
         public static readonly PrtsAssetDescriptor Texas = new(
-            "德克萨斯",
+            "德克萨斯·战斗",
             "https://prts.wiki/w/%E5%BE%B7%E5%85%8B%E8%90%A8%E6%96%AF/spine",
             "https://static.prts.wiki/spine/char/char_102_texas/char_102_texas/",
             "char_102_texas",
             "Assets/_Game/Art/Characters/Texas/PRTS/Spine",
             "Player",
+            1.62f,
+            -0.72f,
+            0.38f);
+
+        // PRTS exposes the base/dorm model as a separate Spine file. It contains Move,
+        // but its attachments omit the combat weapons. We import it as a hidden motion source
+        // and retarget matching bone deltas onto the visible combat skeleton instead of
+        // swapping rendered models at runtime.
+        public static readonly PrtsAssetDescriptor TexasBaseMotion = new(
+            "德克萨斯·基建动作源",
+            "https://prts.wiki/w/%E5%BE%B7%E5%85%8B%E8%90%A8%E6%96%AF/spine",
+            "https://static.prts.wiki/spine/char/char_102_texas/build_char_102_texas/",
+            "build_char_102_texas",
+            "Assets/_Game/Art/Characters/Texas/PRTS/BaseMotion",
+            "MotionSource",
             1.62f,
             -0.72f,
             0.38f);
@@ -80,10 +95,11 @@ namespace ArknightsACT.Editor.PRTS
 
         public static PrtsAssetDescriptor[] GetFullPrototypePack()
         {
-            var result = new PrtsAssetDescriptor[PrototypeEnemies.Length + 1];
+            var result = new PrtsAssetDescriptor[PrototypeEnemies.Length + 2];
             result[0] = Texas;
+            result[1] = TexasBaseMotion;
             for (var i = 0; i < PrototypeEnemies.Length; i++)
-                result[i + 1] = PrototypeEnemies[i];
+                result[i + 2] = PrototypeEnemies[i];
             return result;
         }
     }
