@@ -20,13 +20,17 @@ namespace ArknightsACT.Gameplay.Debugging
 
         private void OnGUI()
         {
+            var currentHealth = _health != null ? _health.CurrentHealth : 0f;
+            var maxHealth = _health != null ? _health.MaxHealth : 0f;
+            var skill = _skillController != null ? _skillController.Skill : null;
+            var cooldown = skill != null ? skill.CooldownRemaining : 0f;
+
             GUI.Box(new Rect(12, 12, 350, 132), "Texas Combat Lab");
-            GUI.Label(new Rect(24, 38, 320, 22), $"HP: {_health?.CurrentHealth:0}/{_health?.MaxHealth:0}");
-            var skill = _skillController?.Skill;
-            GUI.Label(new Rect(24, 60, 320, 22), $"L / RMB  Sword Rain   CD: {skill?.CooldownRemaining ?? 0f:0.0}s");
-            GUI.Label(new Rect(24, 82, 320, 22), $"[1] Swift Blade: {OnOff(_buildLab?.SwiftBlade ?? false)}");
-            GUI.Label(new Rect(24, 102, 320, 22), $"[2] Residual Thunder: {OnOff(_buildLab?.ResidualThunder ?? false)}");
-            GUI.Label(new Rect(24, 122, 320, 22), $"[3] Conductive: {OnOff(_buildLab?.Conductive ?? false)}");
+            GUI.Label(new Rect(24, 38, 320, 22), $"HP: {currentHealth:0}/{maxHealth:0}");
+            GUI.Label(new Rect(24, 60, 320, 22), $"L / RMB  Sword Rain   CD: {cooldown:0.0}s");
+            GUI.Label(new Rect(24, 82, 320, 22), $"[1] Swift Blade: {OnOff(_buildLab != null && _buildLab.SwiftBlade)}");
+            GUI.Label(new Rect(24, 102, 320, 22), $"[2] Residual Thunder: {OnOff(_buildLab != null && _buildLab.ResidualThunder)}");
+            GUI.Label(new Rect(24, 122, 320, 22), $"[3] Conductive: {OnOff(_buildLab != null && _buildLab.Conductive)}");
         }
 
         private static string OnOff(bool value) => value ? "ON" : "OFF";
