@@ -11,6 +11,7 @@ namespace ArknightsACT.Editor.PRTS
         public string Role { get; }
         public float TargetWorldHeight { get; }
         public float FeetLocalY { get; }
+        public float SafeInitialScale { get; }
 
         public PrtsAssetDescriptor(
             string displayName,
@@ -20,7 +21,8 @@ namespace ArknightsACT.Editor.PRTS
             string targetDirectory,
             string role,
             float targetWorldHeight,
-            float feetLocalY)
+            float feetLocalY,
+            float safeInitialScale)
         {
             DisplayName = displayName;
             SourcePage = sourcePage;
@@ -30,6 +32,7 @@ namespace ArknightsACT.Editor.PRTS
             Role = role;
             TargetWorldHeight = targetWorldHeight;
             FeetLocalY = feetLocalY;
+            SafeInitialScale = safeInitialScale;
         }
     }
 }
