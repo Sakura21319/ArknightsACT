@@ -79,7 +79,7 @@ namespace ArknightsACT.Gameplay.Presentation
             return true;
         }
 
-        private void OnAttackStarted(int _)
+        private void OnAttackStarted(int comboIndex)
         {
             if (!TryBind())
                 return;
@@ -88,7 +88,7 @@ namespace ArknightsACT.Gameplay.Presentation
             _boosted = true;
 
             var hold = chainGraceSeconds;
-            if (TryGetBasicAttackTiming(out _, out var cycle))
+            if (TryGetBasicAttackTiming(out var ignoredImpact, out var cycle))
                 hold = Mathf.Max(hold, cycle + 0.04f);
             _boostUntil = Time.time + hold;
         }
