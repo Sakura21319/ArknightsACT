@@ -1,0 +1,7 @@
+{
+  "name": "Game.Editor",
+  "rootNamespace": "ArknightsACT.Editor",
+  "references": ["Game.Core", "Game.Combat", "Game.Gameplay"],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": true
+}

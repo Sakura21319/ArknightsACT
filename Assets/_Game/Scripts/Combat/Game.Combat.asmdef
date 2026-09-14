@@ -1,0 +1,6 @@
+{
+  "name": "Game.Combat",
+  "rootNamespace": "ArknightsACT.Combat",
+  "references": ["Game.Core"],
+  "autoReferenced": true
+}
