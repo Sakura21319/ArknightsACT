@@ -41,14 +41,16 @@ namespace ArknightsACT.Editor
             AssetDatabase.Refresh();
             Selection.activeGameObject = player;
             EditorGUIUtility.PingObject(player);
-            Debug.Log($"ArknightsACT prototype scene generated: {ScenePath}. Texas impact timing is shifted later into the visible swing; enemies now move/attack through their PRTS loops and use a generic hit-reaction fallback when no Hit clip exists.");
+            Debug.Log(
+                $"ArknightsACT prototype scene generated: {ScenePath}. Texas uses one buffered attack per visible Spine swing; " +
+                "actual runtime cadence/impact is supplied by the 2x Spine Attack_Loop timing provider when available. " +
+                "Fatal hits no longer add corpse knockback, and presentation quality diagnostics will print at Play start.");
         }
 
         private static AttackDefinition[] BuildTexasAttackDefinitions()
         {
-            // Keep the overall cadence near the previous fast 0.185s attack, but move the actual
-            // impact later so the enemy reacts when Texas' blade has visibly travelled forward.
-            // This preserves responsiveness without making the sword hit before it has swung.
+            // Fallback timings only. When the PRTS Spine presentation is available,
+            // IAttackTimingProvider replaces these timing values with Attack_Loop duration / speed.
             return new[]
             {
                 GetOrCreateAttack(
