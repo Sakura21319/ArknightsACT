@@ -1,33 +1,30 @@
-# Texas PRTS Asset Pipeline
+# PRTS Asset Pipeline
 
-PRTS exposes Texas's default front-facing battle Spine source under internal id `char_102_texas`.
+本项目已从单独的德克萨斯下载器升级为通用 PRTS 原型素材管线。
 
-Source page:
+请优先查看：
 
-`https://prts.wiki/w/德克萨斯/spine`
+- `Docs/PRTS_PROTOTYPE_ASSET_PACK.md`
 
-PRTS data on that page points to:
+Unity 菜单：
 
-`https://static.prts.wiki/spine/char/char_102_texas/char_102_texas/char_102_texas`
+```text
+ArknightsACT
+→ Assets
+→ PRTS
+→ Download Full Prototype Pack
+```
 
-## Local download
+当前一键包包含：
 
-In Unity run:
+- 德克萨斯
+- 源石虫
+- 士兵
+- 弩手
+- 猎狗
+- 妖怪
+- 重装防御者
 
-`ArknightsACT > Assets > Download Texas PRTS Spine Source`
+下载后的 PRTS 图像/Spine 源文件只保存在本地，并被 `.gitignore` 排除；Combat / Gameplay 不允许直接引用 PRTS 路径或 Spine 类型。
 
-The editor utility downloads the atlas, atlas texture pages and skeleton source into:
-
-`Assets/_Game/Art/Characters/Texas/PRTS/Spine/`
-
-The binary game assets are intentionally not committed to Git. This keeps the repository lightweight and keeps third-party art separate from gameplay code.
-
-## Runtime rendering
-
-The current prototype does **not** add a Spine runtime dependency. Until a compatible runtime or an offline frame-baking pipeline is selected, `TexasPlaceholderRig2D` remains the fallback presentation.
-
-When Spine rendering is added, it must replace Presentation only. Physics, `CombatEntity`, attacks, skills, statuses and builds must not reference PRTS paths or Spine types.
-
-## Distribution
-
-PRTS states that game images, animations, audio and original game text belong to Hypergryph and affiliates. Treat downloaded files as prototype/reference assets unless you have the rights required for the intended distribution.
+运行时表现后续通过 Presentation Adapter 接入兼容 Spine Runtime，或使用离线烘帧方案。
