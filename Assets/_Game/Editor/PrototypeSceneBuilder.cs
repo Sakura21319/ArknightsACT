@@ -41,24 +41,24 @@ namespace ArknightsACT.Editor
             AssetDatabase.Refresh();
             Selection.activeGameObject = player;
             EditorGUIUtility.PingObject(player);
-            Debug.Log($"ArknightsACT prototype scene generated: {ScenePath}. Texas uses a fast repeatable basic attack; the Spine attack loop is not restarted on every hit. PRTS generated prefabs are used when available; otherwise graybox visuals remain.");
+            Debug.Log($"ArknightsACT prototype scene generated: {ScenePath}. Texas impact timing is shifted later into the visible swing; enemies now move/attack through their PRTS loops and use a generic hit-reaction fallback when no Hit clip exists.");
         }
 
         private static AttackDefinition[] BuildTexasAttackDefinitions()
         {
-            // PRTS Texas exposes Attack_Start / Attack_Loop / Attack_End as phases of ONE
-            // normal attack state, not distinct combo attacks. Gameplay damage cadence is kept
-            // independent from the Spine loop so repeated input never resets the swing animation.
+            // Keep the overall cadence near the previous fast 0.185s attack, but move the actual
+            // impact later so the enemy reacts when Texas' blade has visibly travelled forward.
+            // This preserves responsiveness without making the sword hit before it has swung.
             return new[]
             {
                 GetOrCreateAttack(
                     "Texas_Basic",
-                    startup: 0.045f,
-                    active: 0.035f,
-                    recovery: 0.105f,
+                    startup: 0.095f,
+                    active: 0.030f,
+                    recovery: 0.060f,
                     damageMultiplier: 1.0f,
                     knockback: new Vector2(3.0f, 0.85f),
-                    dashCancel: 0.24f,
+                    dashCancel: 0.38f,
                     hitStop: 0.025f,
                     shake: 0.065f)
             };
