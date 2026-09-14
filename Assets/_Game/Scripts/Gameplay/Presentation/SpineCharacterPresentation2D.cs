@@ -39,6 +39,7 @@ namespace ArknightsACT.Gameplay.Presentation
         private string _currentLoop;
         private bool _bindingAttempted;
         private bool _warned;
+        private bool _bindingLogged;
 
         public bool IsBound => _skeletonAnimation != null && _animationState != null && _setAnimationMethod != null;
         public IReadOnlyList<string> AvailableAnimations => _availableAnimations;
@@ -125,6 +126,7 @@ namespace ArknightsACT.Gameplay.Presentation
 
             DiscoverAnimations(type);
             ResolveConfiguredNames();
+            LogBindingOnce();
             return true;
         }
 
@@ -304,6 +306,21 @@ namespace ArknightsACT.Gameplay.Presentation
             skillAnimation = ResolveRole(skillAnimation, "skill", "ability", "special") ?? attackAnimations[0];
             hitAnimation = ResolveRole(hitAnimation, "hit", "hurt", "stun", "damage") ?? string.Empty;
             dieAnimation = ResolveRole(dieAnimation, "die", "death", "dead") ?? idleAnimation;
+        }
+
+        private void LogBindingOnce()
+        {
+            if (_bindingLogged)
+                return;
+
+            _bindingLogged = true;
+            Debug.Log(
+                $"[ArknightsACT/Spine] Bound {name}: " +
+                $"Idle='{idleAnimation}', Move='{moveAnimation}', " +
+                $"Attack=[{string.Join(", ", attackAnimations ?? Array.Empty<string>())}], " +
+                $"Skill='{skillAnimation}', Hit='{hitAnimation}', Die='{dieAnimation}'. " +
+                $"Available=[{string.Join(", ", _availableAnimations)}]",
+                this);
         }
 
         private string ResolveRole(string configured, params string[] prefixes)
