@@ -7,9 +7,10 @@ using UnityEngine;
 namespace ArknightsACT.Editor.PRTS
 {
     /// <summary>
-    /// Applies crisp import settings to locally downloaded PRTS chibi atlases.
-    /// The source textures are small; Point filtering avoids the obvious blur introduced by
-    /// bilinear enlargement. This cannot invent missing detail, but it preserves source pixels.
+    /// Applies prototype texture import settings to locally downloaded PRTS atlas pages.
+    /// Original low-resolution pages use Point to avoid bilinear blur. Locally generated
+    /// 2x HD pages use Bilinear because the upscaled source has already been sharpened and
+    /// benefits from smoother sub-pixel motion.
     /// </summary>
     internal static class PrtsTextureQualityUtility
     {
@@ -19,7 +20,7 @@ namespace ArknightsACT.Editor.PRTS
             var changed = ApplyToPack(PrtsPrototypeAssetCatalog.GetFullPrototypePack());
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log($"[ArknightsACT/PRTS] Crisp texture settings applied to {changed} atlas texture(s). Point filtering, no mipmaps, no compression.");
+            Debug.Log($"[ArknightsACT/PRTS] Texture settings applied to {changed} atlas texture(s). Original=Point; local 2x HD=Bilinear; mipmaps/compression disabled.");
         }
 
         public static int ApplyToPack(PrtsAssetDescriptor[] descriptors)
@@ -33,6 +34,7 @@ namespace ArknightsACT.Editor.PRTS
                 if (descriptor == null || !Directory.Exists(descriptor.TargetDirectory))
                     continue;
 
+                var isHd = File.Exists(Path.Combine(descriptor.TargetDirectory, PrtsHdAtlasUpscaler.MarkerFileName));
                 var pngFiles = Directory.GetFiles(descriptor.TargetDirectory, "*.png", SearchOption.AllDirectories);
                 foreach (var file in pngFiles)
                 {
@@ -50,7 +52,7 @@ namespace ArknightsACT.Editor.PRTS
                     importer.crunchedCompression = false;
                     importer.maxTextureSize = 8192;
                     importer.npotScale = TextureImporterNPOTScale.None;
-                    importer.filterMode = FilterMode.Point;
+                    importer.filterMode = isHd ? FilterMode.Bilinear : FilterMode.Point;
                     importer.wrapMode = TextureWrapMode.Clamp;
                     importer.anisoLevel = 1;
                     importer.SaveAndReimport();
