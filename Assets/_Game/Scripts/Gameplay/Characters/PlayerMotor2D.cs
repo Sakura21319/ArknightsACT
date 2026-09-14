@@ -10,8 +10,9 @@ namespace ArknightsACT.Gameplay.Characters
         [SerializeField] private float moveSpeed = 7f;
         [SerializeField] private float acceleration = 55f;
         [SerializeField] private float deceleration = 70f;
-        [SerializeField] private float jumpVelocity = 7.0f;
-        [SerializeField] private float fallGravityMultiplier = 2.0f;
+        [SerializeField] private float jumpVelocity = 9.6f;
+        [SerializeField] private float riseGravityMultiplier = 2.0f;
+        [SerializeField] private float fallGravityMultiplier = 3.2f;
 
         [Header("Ground")]
         [SerializeField] private float groundCastDistance = 0.08f;
@@ -63,8 +64,11 @@ namespace ArknightsACT.Gameplay.Characters
             var rate = Mathf.Abs(targetX) > Mathf.Abs(current.x) ? acceleration : deceleration;
             current.x = Mathf.MoveTowards(current.x, targetX, rate * Time.fixedDeltaTime);
 
-            var gravityScale = current.y < 0f ? fallGravityMultiplier : 1f;
-            _body.gravityScale = gravityScale;
+            // The previous prototype only increased gravity while falling. That preserved height
+            // but made the ascent float for too long. Apply strong gravity on both halves of the
+            // jump and compensate with a slightly higher launch velocity: similar peak height,
+            // noticeably shorter airtime and a snappier ACT feel.
+            _body.gravityScale = current.y > 0.05f ? riseGravityMultiplier : fallGravityMultiplier;
             _body.linearVelocity = current;
         }
 
