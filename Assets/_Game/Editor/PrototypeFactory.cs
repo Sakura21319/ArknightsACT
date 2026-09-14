@@ -95,6 +95,7 @@ namespace ArknightsACT.Editor
             go.AddComponent<PlayerSkillController>();
             go.AddComponent<PlayerPresentationDriver2D>();
             go.AddComponent<SpineAttackPlaybackSpeed2D>();
+            go.AddComponent<DamageTintFlash2D>();
 
             var swiftBlade = go.AddComponent<TexasSwiftBladeEffect>();
             var residualThunder = go.AddComponent<TexasResidualThunderEffect>();
@@ -158,6 +159,7 @@ namespace ArknightsACT.Editor
             var brain = go.AddComponent<PrototypeEnemyCombatBrain2D>();
             brain.Configure(ResolvePrototypeArchetype(descriptor));
             go.AddComponent<EnemyHitReaction2D>();
+            go.AddComponent<DamageTintFlash2D>();
             go.AddComponent<EnemyPresentationDriver2D>();
         }
 
