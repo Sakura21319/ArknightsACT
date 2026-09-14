@@ -22,3 +22,6 @@ Recordings/
 *.opendb
 *.VC.db
 .DS_Store
+
+# Local prototype assets downloaded from PRTS. Do not redistribute through this repository.
+Assets/_Game/Art/**/PRTS/
