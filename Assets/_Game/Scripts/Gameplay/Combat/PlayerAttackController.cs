@@ -147,7 +147,7 @@ namespace ArknightsACT.Gameplay.Combat
                     continue;
 
                 hitAny = true;
-                target.GetComponent<HitFlash2D>()?.Flash();
+                target.GetComponentInChildren<HitFlash2D>()?.Flash();
             }
 
             if (!hitAny)
