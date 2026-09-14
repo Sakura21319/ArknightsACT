@@ -8,22 +8,26 @@ using UnityEngine;
 namespace ArknightsACT.Gameplay.Presentation
 {
     /// <summary>
-    /// Arknights-style hit readability: briefly tints the whole character red on damage.
-    /// Supports ordinary Renderers through MaterialPropertyBlock and Spine Skeleton.Color
-    /// through reflection, so gameplay remains independent from a specific Spine runtime.
+    /// Arknights-style damage readability: briefly tint the whole combat entity red.
+    ///
+    /// Different Spine runtime generations expose skeleton tint differently. Spine 3.8-style
+    /// runtimes commonly expose R/G/B/A directly on Skeleton, while newer/forked runtimes may
+    /// expose a Color object. Support both layouts through reflection so Gameplay stays
+    /// independent from the concrete Spine package.
     /// </summary>
     [RequireComponent(typeof(CombatEntity))]
     public sealed class DamageTintFlash2D : MonoBehaviour
     {
-        [SerializeField, Min(0.02f)] private float duration = 0.10f;
-        [SerializeField] private Color hitColor = new(1f, 0.16f, 0.16f, 1f);
+        [SerializeField, Min(0.02f)] private float duration = 0.16f;
+        [SerializeField] private Color hitColor = new(1f, 0.06f, 0.06f, 1f);
 
         private static readonly int ColorId = Shader.PropertyToID("_Color");
 
         private readonly List<RendererState> _rendererStates = new();
-        private readonly List<SkeletonState> _skeletonStates = new();
+        private readonly List<SpineTintState> _spineStates = new();
         private CombatEntity _entity;
         private Coroutine _routine;
+        private bool _warnedNoTargets;
 
         private void Awake()
         {
@@ -46,6 +50,7 @@ namespace ArknightsACT.Gameplay.Presentation
 
         private void OnDamaged(DamageContext _, DamageResult __)
         {
+            // Skeletons can initialize after this component's Awake, so refresh on every hit.
             CacheTargets();
             if (_routine != null)
                 StopCoroutine(_routine);
@@ -72,6 +77,7 @@ namespace ArknightsACT.Gameplay.Presentation
             {
                 if (renderer == null || !renderer.enabled)
                     continue;
+
                 var baseColor = Color.white;
                 var material = renderer.sharedMaterial;
                 if (material != null && material.HasProperty(ColorId))
@@ -79,22 +85,37 @@ namespace ArknightsACT.Gameplay.Presentation
                 _rendererStates.Add(new RendererState(renderer, baseColor));
             }
 
-            _skeletonStates.Clear();
+            _spineStates.Clear();
             foreach (var behaviour in GetComponentsInChildren<MonoBehaviour>(true))
             {
                 if (behaviour == null || behaviour.GetType().FullName != "Spine.Unity.SkeletonAnimation")
                     continue;
 
-                var skeleton = behaviour.GetType().GetProperty("Skeleton", BindingFlags.Instance | BindingFlags.Public)?.GetValue(behaviour);
+                var skeleton = behaviour.GetType()
+                    .GetProperty("Skeleton", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                    ?.GetValue(behaviour);
                 if (skeleton == null)
                     continue;
 
-                var colorObject = skeleton.GetType().GetProperty("Color", BindingFlags.Instance | BindingFlags.Public)?.GetValue(skeleton);
-                if (colorObject == null)
+                // Spine 3.8 and many forks keep tint directly on Skeleton.R/G/B/A.
+                if (TryReadColor(skeleton, out var directColor))
+                {
+                    _spineStates.Add(new SpineTintState(skeleton, directColor));
                     continue;
+                }
 
-                if (TryReadColor(colorObject, out var baseColor))
-                    _skeletonStates.Add(new SkeletonState(colorObject, baseColor));
+                // Some newer/forked runtimes expose Skeleton.Color instead.
+                var colorObject = skeleton.GetType()
+                    .GetProperty("Color", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                    ?.GetValue(skeleton);
+                if (colorObject != null && TryReadColor(colorObject, out var nestedColor))
+                    _spineStates.Add(new SpineTintState(colorObject, nestedColor));
+            }
+
+            if (_rendererStates.Count == 0 && _spineStates.Count == 0 && !_warnedNoTargets)
+            {
+                _warnedNoTargets = true;
+                Debug.LogWarning($"[ArknightsACT/HitTint] No tintable Renderer or Spine Skeleton found under {name}.", this);
             }
         }
 
@@ -104,14 +125,15 @@ namespace ArknightsACT.Gameplay.Presentation
             {
                 if (state.Renderer == null)
                     continue;
+
                 var block = new MaterialPropertyBlock();
                 state.Renderer.GetPropertyBlock(block);
                 block.SetColor(ColorId, hitColor);
                 state.Renderer.SetPropertyBlock(block);
             }
 
-            foreach (var state in _skeletonStates)
-                WriteColor(state.ColorObject, hitColor);
+            foreach (var state in _spineStates)
+                WriteColor(state.Target, hitColor);
         }
 
         private void Restore()
@@ -120,64 +142,74 @@ namespace ArknightsACT.Gameplay.Presentation
             {
                 if (state.Renderer == null)
                     continue;
+
                 var block = new MaterialPropertyBlock();
                 state.Renderer.GetPropertyBlock(block);
                 block.SetColor(ColorId, state.BaseColor);
                 state.Renderer.SetPropertyBlock(block);
             }
 
-            foreach (var state in _skeletonStates)
-                WriteColor(state.ColorObject, state.BaseColor);
+            foreach (var state in _spineStates)
+                WriteColor(state.Target, state.BaseColor);
         }
 
-        private static bool TryReadColor(object colorObject, out Color color)
+        private static bool TryReadColor(object target, out Color color)
         {
             color = Color.white;
-            if (!TryReadFloat(colorObject, "R", "r", out var r) ||
-                !TryReadFloat(colorObject, "G", "g", out var g) ||
-                !TryReadFloat(colorObject, "B", "b", out var b))
+            if (target == null ||
+                !TryReadFloat(target, "R", "r", out var r) ||
+                !TryReadFloat(target, "G", "g", out var g) ||
+                !TryReadFloat(target, "B", "b", out var b))
                 return false;
-            TryReadFloat(colorObject, "A", "a", out var a);
-            if (a <= 0f) a = 1f;
+
+            if (!TryReadFloat(target, "A", "a", out var a) || a <= 0f)
+                a = 1f;
+
             color = new Color(r, g, b, a);
             return true;
         }
 
-        private static void WriteColor(object colorObject, Color color)
+        private static void WriteColor(object target, Color color)
         {
-            if (colorObject == null)
+            if (target == null)
                 return;
-            TryWriteFloat(colorObject, "R", "r", color.r);
-            TryWriteFloat(colorObject, "G", "g", color.g);
-            TryWriteFloat(colorObject, "B", "b", color.b);
-            TryWriteFloat(colorObject, "A", "a", color.a);
+
+            TryWriteFloat(target, "R", "r", color.r);
+            TryWriteFloat(target, "G", "g", color.g);
+            TryWriteFloat(target, "B", "b", color.b);
+            TryWriteFloat(target, "A", "a", color.a);
         }
 
         private static bool TryReadFloat(object target, string propertyName, string fieldName, out float value)
         {
             value = 0f;
+            if (target == null)
+                return false;
+
             var type = target.GetType();
             var property = type.GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            if (property != null && property.CanRead)
+            if (property != null && property.CanRead && property.GetValue(target) is float propertyValue)
             {
-                var raw = property.GetValue(target);
-                if (raw is float f)
-                {
-                    value = f;
-                    return true;
-                }
-            }
-            var field = type.GetField(fieldName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            if (field != null && field.GetValue(target) is float ff)
-            {
-                value = ff;
+                value = propertyValue;
                 return true;
             }
+
+            var field = type.GetField(fieldName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                        ?? type.GetField(propertyName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (field != null && field.GetValue(target) is float fieldValue)
+            {
+                value = fieldValue;
+                return true;
+            }
+
             return false;
         }
 
         private static void TryWriteFloat(object target, string propertyName, string fieldName, float value)
         {
+            if (target == null)
+                return;
+
             var type = target.GetType();
             var property = type.GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             if (property != null && property.CanWrite && property.PropertyType == typeof(float))
@@ -185,7 +217,9 @@ namespace ArknightsACT.Gameplay.Presentation
                 property.SetValue(target, value);
                 return;
             }
-            var field = type.GetField(fieldName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+            var field = type.GetField(fieldName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                        ?? type.GetField(propertyName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             if (field != null && field.FieldType == typeof(float))
                 field.SetValue(target, value);
         }
@@ -194,6 +228,7 @@ namespace ArknightsACT.Gameplay.Presentation
         {
             public readonly Renderer Renderer;
             public readonly Color BaseColor;
+
             public RendererState(Renderer renderer, Color baseColor)
             {
                 Renderer = renderer;
@@ -201,13 +236,14 @@ namespace ArknightsACT.Gameplay.Presentation
             }
         }
 
-        private readonly struct SkeletonState
+        private readonly struct SpineTintState
         {
-            public readonly object ColorObject;
+            public readonly object Target;
             public readonly Color BaseColor;
-            public SkeletonState(object colorObject, Color baseColor)
+
+            public SpineTintState(object target, Color baseColor)
             {
-                ColorObject = colorObject;
+                Target = target;
                 BaseColor = baseColor;
             }
         }
