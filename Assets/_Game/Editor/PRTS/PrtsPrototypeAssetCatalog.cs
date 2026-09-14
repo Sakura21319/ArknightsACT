@@ -9,7 +9,9 @@ namespace ArknightsACT.Editor.PRTS
             "https://static.prts.wiki/spine/char/char_102_texas/char_102_texas/",
             "char_102_texas",
             "Assets/_Game/Art/Characters/Texas/PRTS/Spine",
-            "Player");
+            "Player",
+            1.62f,
+            -0.72f);
 
         public static readonly PrtsAssetDescriptor[] PrototypeEnemies =
         {
@@ -19,42 +21,54 @@ namespace ArknightsACT.Editor.PRTS
                 "https://torappu.prts.wiki/assets/enemy_spine/enemy_1007_slime/",
                 "enemy_1007_slime",
                 "Assets/_Game/Art/Enemies/PRTS/OriginiumSlug/Spine",
-                "Fodder"),
+                "Fodder",
+                0.72f,
+                -0.68f),
             new(
                 "士兵",
                 "https://prts.wiki/w/%E5%A3%AB%E5%85%B5",
                 "https://torappu.prts.wiki/assets/enemy_spine/enemy_1002_nsabr/",
                 "enemy_1002_nsabr",
                 "Assets/_Game/Art/Enemies/PRTS/Soldier/Spine",
-                "Melee"),
+                "Melee",
+                1.50f,
+                -0.70f),
             new(
                 "弩手",
                 "https://prts.wiki/w/%E5%BC%A9%E6%89%8B",
                 "https://torappu.prts.wiki/assets/enemy_spine/enemy_1003_ncbow/",
                 "enemy_1003_ncbow",
                 "Assets/_Game/Art/Enemies/PRTS/Crossbowman/Spine",
-                "Ranged"),
+                "Ranged",
+                1.48f,
+                -0.70f),
             new(
                 "猎狗",
                 "https://prts.wiki/w/%E7%8C%8E%E7%8B%97",
                 "https://torappu.prts.wiki/assets/enemy_spine/enemy_1000_gopro/",
                 "enemy_1000_gopro",
                 "Assets/_Game/Art/Enemies/PRTS/Hound/Spine",
-                "FastMelee"),
+                "FastMelee",
+                0.92f,
+                -0.66f),
             new(
                 "妖怪",
                 "https://prts.wiki/w/%E5%A6%96%E6%80%AA",
                 "https://torappu.prts.wiki/assets/enemy_spine/enemy_1005_yokai/",
                 "enemy_1005_yokai",
                 "Assets/_Game/Art/Enemies/PRTS/YokaiDrone/Spine",
-                "Flying"),
+                "Flying",
+                1.05f,
+                -0.05f),
             new(
                 "重装防御者",
                 "https://prts.wiki/w/%E9%87%8D%E8%A3%85%E9%98%B2%E5%BE%A1%E8%80%85",
                 "https://torappu.prts.wiki/assets/enemy_spine/enemy_1006_shield/",
                 "enemy_1006_shield",
                 "Assets/_Game/Art/Enemies/PRTS/HeavyDefender/Spine",
-                "EliteMelee")
+                "EliteMelee",
+                1.72f,
+                -0.71f)
         };
 
         public static PrtsAssetDescriptor[] GetFullPrototypePack()

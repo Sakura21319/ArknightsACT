@@ -9,6 +9,8 @@ namespace ArknightsACT.Editor.PRTS
         public string BaseName { get; }
         public string TargetDirectory { get; }
         public string Role { get; }
+        public float TargetWorldHeight { get; }
+        public float FeetLocalY { get; }
 
         public PrtsAssetDescriptor(
             string displayName,
@@ -16,7 +18,9 @@ namespace ArknightsACT.Editor.PRTS
             string remoteDirectory,
             string baseName,
             string targetDirectory,
-            string role)
+            string role,
+            float targetWorldHeight,
+            float feetLocalY)
         {
             DisplayName = displayName;
             SourcePage = sourcePage;
@@ -24,6 +28,8 @@ namespace ArknightsACT.Editor.PRTS
             BaseName = baseName;
             TargetDirectory = targetDirectory;
             Role = role;
+            TargetWorldHeight = targetWorldHeight;
+            FeetLocalY = feetLocalY;
         }
     }
 }

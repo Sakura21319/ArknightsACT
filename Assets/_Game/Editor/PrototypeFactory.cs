@@ -121,7 +121,7 @@ namespace ArknightsACT.Editor
         public static void CreateCamera(Transform target)
         {
             var rig = new GameObject("CameraRig");
-            rig.transform.position = new Vector3(1.5f, 0.6f, 0f);
+            rig.transform.position = new Vector3(1.8f, 0.45f, 0f);
             rig.AddComponent<CameraFollow2D>().SetTarget(target);
 
             var go = new GameObject("Main Camera");
@@ -131,7 +131,7 @@ namespace ArknightsACT.Editor
 
             var camera = go.AddComponent<Camera>();
             camera.orthographic = true;
-            camera.orthographicSize = 3.7f;
+            camera.orthographicSize = 4.25f;
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = new Color(0.055f, 0.065f, 0.085f);
             go.AddComponent<AudioListener>();

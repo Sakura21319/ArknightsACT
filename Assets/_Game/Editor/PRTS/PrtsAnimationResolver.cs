@@ -2,19 +2,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 
 namespace ArknightsACT.Editor.PRTS
 {
     internal static class PrtsAnimationResolver
     {
-        private static readonly Regex Idle = new("^((Id.?le)|(Relax)|(Default)).{0,2}$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-        private static readonly Regex Move = new("^Move.{0,2}$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-        private static readonly Regex Attack = new("^((Attack)|(Combat)).{0,2}$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-        private static readonly Regex Skill = new("^Skill.{0,2}$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-        private static readonly Regex Hit = new("^((Hit)|(Hurt)|(Stun)).*", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-        private static readonly Regex Die = new("^Die.{0,2}$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-
         public readonly struct ResolvedAnimations
         {
             public readonly string Idle;
@@ -43,26 +35,48 @@ namespace ArknightsACT.Editor.PRTS
                 .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
                 .ToArray() ?? Array.Empty<string>();
 
-            var idle = First(names, Idle) ?? names.FirstOrDefault() ?? string.Empty;
-            var move = First(names, Move) ?? idle;
-            var attacks = names.Where(name => Attack.IsMatch(name)).Take(6).ToArray();
+            var idle = FirstByPrefixes(names, "idle", "relax", "default", "stand")
+                       ?? names.FirstOrDefault()
+                       ?? string.Empty;
+
+            var move = FirstByPrefixes(names, "move", "run", "walk") ?? idle;
+
+            var attacks = names
+                .Where(name => StartsWithAny(name, "attack", "combat", "atk"))
+                .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+                .Take(8)
+                .ToArray();
             if (attacks.Length == 0)
                 attacks = new[] { idle };
 
-            var skill = First(names, Skill) ?? attacks[0];
-            var hit = First(names, Hit) ?? string.Empty;
-            var die = First(names, Die) ?? idle;
+            var skill = FirstByPrefixes(names, "skill", "ability", "special") ?? attacks[0];
+            var hit = FirstByPrefixes(names, "hit", "hurt", "stun", "damage") ?? string.Empty;
+            var die = FirstByPrefixes(names, "die", "death", "dead") ?? idle;
             return new ResolvedAnimations(idle, move, attacks, skill, hit, die);
         }
 
-        private static string First(IEnumerable<string> names, Regex regex)
+        private static string FirstByPrefixes(IEnumerable<string> names, params string[] prefixes)
         {
             foreach (var name in names)
             {
-                if (regex.IsMatch(name))
+                if (StartsWithAny(name, prefixes))
                     return name;
             }
             return null;
+        }
+
+        private static bool StartsWithAny(string name, params string[] prefixes)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return false;
+
+            var normalized = name.Trim().Replace('-', '_');
+            for (var i = 0; i < prefixes.Length; i++)
+            {
+                if (normalized.StartsWith(prefixes[i], StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            return false;
         }
     }
 }

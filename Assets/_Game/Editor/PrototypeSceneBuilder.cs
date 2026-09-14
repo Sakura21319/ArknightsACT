@@ -24,6 +24,7 @@ namespace ArknightsACT.Editor
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             PrototypeFactory.CreateServices();
+            PrototypeBackdropFactory.Create();
             var player = PrototypeFactory.CreatePlayer(attacks);
             PrototypeFactory.CreateFloor();
             PrototypeFactory.CreatePlatform(new Vector2(5f, 1.5f), new Vector2(4f, 0.35f));
