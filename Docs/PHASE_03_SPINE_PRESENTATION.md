@@ -70,7 +70,7 @@ ArknightsACT
 
 The downloaded third-party assets remain local and are ignored by Git.
 
-### 3. Generate presentation prefabs
+### 3. Generate / regenerate presentation prefabs
 
 ```text
 ArknightsACT
@@ -79,20 +79,39 @@ ArknightsACT
 → 3. Build Presentation Prefabs
 ```
 
+Run this again after pulling any Phase 3 presentation changes because generated PRTS prefabs are local-only and are not replaced by Git pull.
+
 The builder:
 
 1. locates imported `SkeletonDataAsset` objects through reflection;
 2. creates `SkeletonAnimation` instances without a compile-time Spine dependency;
-3. scans available Arknights animation names;
-4. resolves Idle / Move / Attack / Skill / Hit / Die;
-5. adds `SpineCharacterPresentation2D`;
-6. writes local generated prefabs to:
+3. scans all real animation names contained in the skeleton;
+4. resolves Idle / Move / Run / Attack / Combat / Skill / Hit / Die candidates;
+5. measures the rendered model bounds;
+6. scales the Spine visual child to a configured ACT world height;
+7. centers the model horizontally and aligns its rendered lowest point to the gameplay foot line;
+8. adds `SpineCharacterPresentation2D`;
+9. writes local generated prefabs to:
 
 ```text
 Assets/_Game/Generated/PRTS/Prefabs/
 ```
 
 Generated prefabs are also ignored by Git because they reference local PRTS files.
+
+Current target visual heights are approximately:
+
+```text
+Texas          1.62 world units
+Soldier        1.50
+Crossbowman    1.48
+Hound          0.92
+Originium Slug 0.72
+Yokai Drone    1.05
+Heavy Defender 1.72
+```
+
+Physics roots remain scale `1,1,1`; only the presentation child is scaled/flipped.
 
 ### 4. Validate
 
@@ -119,6 +138,8 @@ ArknightsACT → Build Prototype Scene
 
 `PrototypeFactory` automatically uses generated PRTS prefabs when present and falls back to graybox visuals otherwise.
 
+The Phase 3 prototype camera is deliberately wider than the earlier combat lab and now includes a simple graybox environment backdrop so character scale can be judged against the room instead of against an empty screen.
+
 ---
 
 ## Current animation wiring
@@ -127,13 +148,20 @@ ArknightsACT → Build Prototype Scene
 
 Gameplay event | Presentation
 ---|---
-Standing | Idle / Default
-Horizontal movement | Move
-Attack 1–4 | matching Attack/Combat animation candidates
-Sword Rain cast | Skill animation
-Receive damage | Hit/Hurt/Stun candidate if available
-Death | Die
-Facing | presentation root X scale only
+Standing | Idle / Relax / Default / Stand
+Horizontal movement | Move / Run / Walk
+Attack 1–4 | available Attack / Combat / Atk animations
+Sword Rain cast | Skill / Ability / Special
+Receive damage | Hit / Hurt / Stun / Damage candidate if available
+Death | Die / Death / Dead
+Facing | presentation child X scale only
+
+Animation names are resolved twice:
+
+1. in the editor when the local prefab is generated;
+2. again at runtime from the live `SkeletonData` before playback.
+
+The second pass prevents a stale or imperfect editor mapping from leaving a character frozen in setup pose. The adapter also verifies a requested animation exists before calling `SetAnimation`.
 
 The ACT hitbox timing is still controlled by `AttackDefinition`; Spine animation does **not** own damage frames.
 
