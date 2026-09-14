@@ -7,14 +7,16 @@ namespace ArknightsACT.Gameplay.Presentation
     /// <summary>
     /// Generic fallback hit reaction for enemies that do not ship a dedicated Hit animation.
     /// Works by punching the presentation child only; gameplay/physics roots stay untouched.
+    /// Red tint is handled separately by DamageTintFlash2D so both player and enemies share
+    /// the same Arknights-style damage readability.
     /// </summary>
     [RequireComponent(typeof(CombatEntity))]
     public sealed class EnemyHitReaction2D : MonoBehaviour
     {
-        [SerializeField, Min(0.01f)] private float duration = 0.11f;
-        [SerializeField, Min(0f)] private float kickDistance = 0.12f;
-        [SerializeField, Min(0f)] private float squashAmount = 0.055f;
-        [SerializeField, Min(0f)] private float tiltDegrees = 5f;
+        [SerializeField, Min(0.01f)] private float duration = 0.16f;
+        [SerializeField, Min(0f)] private float kickDistance = 0.18f;
+        [SerializeField, Min(0f)] private float squashAmount = 0.09f;
+        [SerializeField, Min(0f)] private float tiltDegrees = 8f;
 
         private CombatEntity _entity;
         private Transform _presentationRoot;
@@ -39,6 +41,7 @@ namespace ArknightsACT.Gameplay.Presentation
         {
             if (_entity != null)
                 _entity.Damaged -= OnDamaged;
+            ResetPose();
         }
 
         private void OnDamaged(DamageContext context, DamageResult _)
@@ -64,7 +67,7 @@ namespace ArknightsACT.Gameplay.Presentation
                 var t = Mathf.Clamp01(elapsed / duration);
                 var punch = Mathf.Sin(t * Mathf.PI);
 
-                _presentationRoot.localPosition = _baseLocalPosition + new Vector3(awaySign * kickDistance * punch, 0.025f * punch, 0f);
+                _presentationRoot.localPosition = _baseLocalPosition + new Vector3(awaySign * kickDistance * punch, 0.035f * punch, 0f);
                 _presentationRoot.localRotation = _baseLocalRotation * Quaternion.Euler(0f, 0f, -awaySign * tiltDegrees * punch);
                 _presentationRoot.localScale = new Vector3(
                     _baseLocalScale.x * (1f + squashAmount * punch),
@@ -84,13 +87,9 @@ namespace ArknightsACT.Gameplay.Presentation
 
             var spine = GetComponentInChildren<SpineCharacterPresentation2D>(true);
             if (spine != null)
-            {
                 _presentationRoot = spine.transform;
-            }
             else if (transform.childCount > 0)
-            {
                 _presentationRoot = transform.GetChild(0);
-            }
 
             if (_presentationRoot == null)
                 return;
