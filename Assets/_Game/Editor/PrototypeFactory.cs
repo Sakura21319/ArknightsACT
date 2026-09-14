@@ -73,6 +73,7 @@ namespace ArknightsACT.Editor
             go.AddComponent<TexasSwordRainSkill>();
             go.AddComponent<PlayerSkillController>();
             go.AddComponent<PlayerPresentationDriver2D>();
+            go.AddComponent<SpineAttackPlaybackSpeed2D>();
 
             var swiftBlade = go.AddComponent<TexasSwiftBladeEffect>();
             var residualThunder = go.AddComponent<TexasResidualThunderEffect>();
