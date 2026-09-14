@@ -41,26 +41,26 @@ namespace ArknightsACT.Editor
             AssetDatabase.Refresh();
             Selection.activeGameObject = player;
             EditorGUIUtility.PingObject(player);
-            Debug.Log($"ArknightsACT prototype scene generated: {ScenePath}. Texas uses a single repeatable basic attack that matches the PRTS combat animation. PRTS generated prefabs are used when available; otherwise graybox visuals remain.");
+            Debug.Log($"ArknightsACT prototype scene generated: {ScenePath}. Texas uses a fast repeatable basic attack; the Spine attack loop is not restarted on every hit. PRTS generated prefabs are used when available; otherwise graybox visuals remain.");
         }
 
         private static AttackDefinition[] BuildTexasAttackDefinitions()
         {
             // PRTS Texas exposes Attack_Start / Attack_Loop / Attack_End as phases of ONE
-            // normal attack state, not four distinct combo attacks. Keep one authoritative ACT
-            // attack definition and let repeated presses build streaks/upgrades independently.
+            // normal attack state, not distinct combo attacks. Gameplay damage cadence is kept
+            // independent from the Spine loop so repeated input never resets the swing animation.
             return new[]
             {
                 GetOrCreateAttack(
                     "Texas_Basic",
-                    startup: 0.075f,
-                    active: 0.055f,
-                    recovery: 0.145f,
+                    startup: 0.045f,
+                    active: 0.035f,
+                    recovery: 0.105f,
                     damageMultiplier: 1.0f,
                     knockback: new Vector2(3.0f, 0.85f),
-                    dashCancel: 0.30f,
-                    hitStop: 0.038f,
-                    shake: 0.075f)
+                    dashCancel: 0.24f,
+                    hitStop: 0.025f,
+                    shake: 0.065f)
             };
         }
 
