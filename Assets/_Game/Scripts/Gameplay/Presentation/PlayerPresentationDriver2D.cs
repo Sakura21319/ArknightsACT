@@ -31,7 +31,7 @@ namespace ArknightsACT.Gameplay.Presentation
             _skill = GetComponent<PlayerSkillController>();
             _body = GetComponent<Rigidbody2D>();
             _entity = GetComponent<CombatEntity>();
-            _spine = GetComponentInChildren<SpineCharacterPresentation2D>(true);
+            _spine = FindEnabledPresentation();
             _motionRetarget = GetComponent<SpineBoneMotionRetarget2D>();
         }
 
@@ -69,8 +69,8 @@ namespace ArknightsACT.Gameplay.Presentation
 
         private void Update()
         {
-            if (_spine == null)
-                _spine = GetComponentInChildren<SpineCharacterPresentation2D>(true);
+            if (_spine == null || !_spine.enabled)
+                _spine = FindEnabledPresentation();
             if (_motionRetarget == null)
                 _motionRetarget = GetComponent<SpineBoneMotionRetarget2D>();
 
@@ -120,6 +120,17 @@ namespace ArknightsACT.Gameplay.Presentation
             _motionRetarget?.SetMoving(false);
             _spine?.SetExternalLocomotionActive(false);
             _spine?.PlayDie();
+        }
+
+        private SpineCharacterPresentation2D FindEnabledPresentation()
+        {
+            var presentations = GetComponentsInChildren<SpineCharacterPresentation2D>(true);
+            for (var i = 0; i < presentations.Length; i++)
+            {
+                if (presentations[i] != null && presentations[i].enabled)
+                    return presentations[i];
+            }
+            return null;
         }
     }
 }
