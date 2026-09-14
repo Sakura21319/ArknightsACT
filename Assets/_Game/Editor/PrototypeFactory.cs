@@ -29,8 +29,25 @@ namespace ArknightsACT.Editor
             go.transform.position = new Vector3(0f, FloorTopY + 0.76f, 0f);
             go.transform.localScale = Vector3.one;
 
-            if (!PrtsGeneratedPresentation.TryAttach(PrtsPrototypeAssetCatalog.Texas.BaseName, go.transform, out _))
+            GameObject combatPresentation = null;
+            var hasCombatPresentation = PrtsGeneratedPresentation.TryAttach(
+                PrtsPrototypeAssetCatalog.Texas.BaseName,
+                go.transform,
+                out combatPresentation);
+
+            if (!hasCombatPresentation)
+            {
                 go.AddComponent<TexasPlaceholderRig2D>();
+            }
+            else if (PrtsGeneratedPresentation.TryAttach(
+                         PrtsPrototypeAssetCatalog.TexasBaseMotion.BaseName,
+                         go.transform,
+                         out var motionSource))
+            {
+                motionSource.name = "MotionSource_Texas_Base";
+                var retarget = go.AddComponent<SpineBoneMotionRetarget2D>();
+                retarget.Configure(combatPresentation.transform, motionSource.transform, "Move");
+            }
 
             var body = go.AddComponent<Rigidbody2D>();
             body.freezeRotation = true;
