@@ -10,6 +10,11 @@ namespace ArknightsACT.Gameplay.Presentation
     /// <summary>
     /// Runtime-facing animation adapter for a Spine SkeletonAnimation component.
     /// Reflection keeps gameplay independent from a specific Spine runtime fork/version.
+    ///
+    /// Important: gameplay attack cadence and Spine playback are intentionally decoupled.
+    /// Arknights operators such as Texas expose Attack_Start / Attack_Loop / Attack_End as
+    /// phases of one attack state. Repeated gameplay hits therefore sustain Attack_Loop
+    /// instead of restarting it every time the player presses Attack.
     /// </summary>
     public sealed class SpineCharacterPresentation2D : MonoBehaviour
     {
@@ -21,15 +26,16 @@ namespace ArknightsACT.Gameplay.Presentation
         [SerializeField] private string hitAnimation = string.Empty;
         [SerializeField] private string dieAnimation = "Die";
 
-        [Header("One-shot locks")]
-        [SerializeField, Min(0f)] private float attackLockSeconds = 0.24f;
+        [Header("Attack presentation")]
+        [SerializeField, Min(0.05f)] private float phasedAttackGraceSeconds = 0.28f;
+        [SerializeField, Min(0f)] private float attackLockSeconds = 0.18f;
         [SerializeField, Min(0f)] private float skillLockSeconds = 0.55f;
         [SerializeField, Min(0f)] private float hitLockSeconds = 0.14f;
 
         [Header("Combat locomotion fallback")]
-        [SerializeField, Min(0f)] private float proceduralMoveBob = 0.035f;
-        [SerializeField, Min(0f)] private float proceduralMoveTiltDegrees = 1.5f;
-        [SerializeField, Min(0.1f)] private float proceduralMoveFrequency = 10f;
+        [SerializeField, Min(0f)] private float proceduralMoveBob = 0.045f;
+        [SerializeField, Min(0f)] private float proceduralMoveTiltDegrees = 3.0f;
+        [SerializeField, Min(0.1f)] private float proceduralMoveFrequency = 12f;
 
         [Header("Visual transform")]
         [SerializeField] private Transform visualRoot;
@@ -48,9 +54,19 @@ namespace ArknightsACT.Gameplay.Presentation
         private bool _warned;
         private bool _bindingLogged;
         private bool _hasDedicatedMoveAnimation;
+        private bool _externalLocomotionActive;
+
+        private string _attackStartAnimation = string.Empty;
+        private string _attackLoopAnimation = string.Empty;
+        private string _attackEndAnimation = string.Empty;
+        private bool _hasPhasedBasicAttack;
+        private bool _attackSequenceActive;
+        private float _attackSequenceExpiresAt;
 
         public bool IsBound => _skeletonAnimation != null && _animationState != null && _setAnimationMethod != null;
         public IReadOnlyList<string> AvailableAnimations => _availableAnimations;
+        public bool HasDedicatedMoveAnimation => _hasDedicatedMoveAnimation;
+        public bool HasPhasedBasicAttack => _hasPhasedBasicAttack;
 
         private void Awake()
         {
@@ -65,6 +81,12 @@ namespace ArknightsACT.Gameplay.Presentation
         {
             if (TryBind() && !string.IsNullOrWhiteSpace(idleAnimation))
                 PlayLoop(idleAnimation);
+        }
+
+        private void Update()
+        {
+            if (_attackSequenceActive && Time.time >= _attackSequenceExpiresAt)
+                EndAttackSequence();
         }
 
         public void Configure(
@@ -87,6 +109,18 @@ namespace ArknightsACT.Gameplay.Presentation
         {
             visualRoot = root != null ? root : transform;
             CaptureVisualBasePose();
+        }
+
+        /// <summary>
+        /// When an external motion source is driving the visible battle skeleton (for example
+        /// a dorm/base Move clip retargeted onto the combat skeleton), disable the local
+        /// procedural locomotion fallback but keep facing and combat animation control here.
+        /// </summary>
+        public void SetExternalLocomotionActive(bool active)
+        {
+            _externalLocomotionActive = active;
+            if (active)
+                ResetProceduralLocomotion();
         }
 
         public bool TryBind()
@@ -141,12 +175,27 @@ namespace ArknightsACT.Gameplay.Presentation
         public void SetLocomotion(bool moving, int facing)
         {
             SetFacing(facing);
+
+            // A sustained Attack_Loop is a visual state, not one frame per gameplay hit.
+            // Locomotion must not overwrite it until the chain grace window expires.
+            if (_attackSequenceActive)
+                return;
+
             if (Time.time < _lockedUntil)
                 return;
 
             if (!moving)
             {
                 ResetProceduralLocomotion();
+                PlayLoop(idleAnimation);
+                return;
+            }
+
+            if (_externalLocomotionActive)
+            {
+                ResetProceduralLocomotion();
+                // The retargeter will overwrite matching bones after animation update.
+                // Keep the combat skeleton on Idle so weapon-only bones remain valid.
                 PlayLoop(idleAnimation);
                 return;
             }
@@ -158,17 +207,37 @@ namespace ArknightsACT.Gameplay.Presentation
                 return;
             }
 
-            // Combat operator skeletons such as Texas do not ship a weapon-preserving Move clip.
-            // Keep the combat Idle skeleton (and its weapons) and add a subtle world-motion cue
-            // rather than swapping to the Base/Dorm model where the weapon disappears.
+            // Some operator combat skeletons do not ship a weapon-preserving Move clip.
+            // Keep their combat Idle and add a small motion cue rather than swapping to a
+            // base/dorm model where weapons disappear.
             PlayLoop(idleAnimation);
-            ApplyProceduralLocomotion();
+            ApplyProceduralLocomotion(facing);
         }
 
         public void PlayAttack(int comboIndex, int facing)
         {
             SetFacing(facing);
             ResetProceduralLocomotion();
+
+            if (_hasPhasedBasicAttack && !string.IsNullOrWhiteSpace(_attackLoopAnimation))
+            {
+                // Every gameplay attack pulse only extends the chain. Crucially, repeated
+                // inputs do NOT call SetAnimation again, so Attack_Loop can finish its swing.
+                _attackSequenceExpiresAt = Time.time + phasedAttackGraceSeconds;
+                if (_attackSequenceActive)
+                    return;
+
+                _attackSequenceActive = true;
+                _currentLoop = string.Empty;
+                _lockedUntil = 0f;
+
+                // For ACT responsiveness start directly from the loop. Attack_Start is kept
+                // as metadata/debug information but is intentionally skipped for normal taps.
+                Play(_attackLoopAnimation, true, true);
+                _currentLoop = _attackLoopAnimation;
+                return;
+            }
+
             if (attackAnimations == null || attackAnimations.Length == 0)
                 return;
 
@@ -181,6 +250,7 @@ namespace ArknightsACT.Gameplay.Presentation
 
         public void PlaySkill(int facing)
         {
+            InterruptAttackSequence();
             SetFacing(facing);
             ResetProceduralLocomotion();
             PlayOneShot(skillAnimation, Mathf.Max(skillLockSeconds, DurationOrZero(skillAnimation) * 0.72f));
@@ -188,6 +258,7 @@ namespace ArknightsACT.Gameplay.Presentation
 
         public void PlayHit()
         {
+            InterruptAttackSequence();
             ResetProceduralLocomotion();
             if (!string.IsNullOrWhiteSpace(hitAnimation))
                 PlayOneShot(hitAnimation, Mathf.Max(hitLockSeconds, DurationOrZero(hitAnimation) * 0.55f));
@@ -195,9 +266,44 @@ namespace ArknightsACT.Gameplay.Presentation
 
         public void PlayDie()
         {
+            InterruptAttackSequence();
             ResetProceduralLocomotion();
             _lockedUntil = float.PositiveInfinity;
             Play(dieAnimation, false, true);
+        }
+
+        public void CancelBasicAttackPresentation()
+        {
+            InterruptAttackSequence();
+            _lockedUntil = 0f;
+            _currentLoop = string.Empty;
+        }
+
+        private void EndAttackSequence()
+        {
+            if (!_attackSequenceActive)
+                return;
+
+            _attackSequenceActive = false;
+            _currentLoop = string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(_attackEndAnimation))
+            {
+                var duration = DurationOrZero(_attackEndAnimation);
+                _lockedUntil = Time.time + Mathf.Clamp(duration * 0.72f, 0.05f, 0.18f);
+                Play(_attackEndAnimation, false, true);
+            }
+            else
+            {
+                _lockedUntil = 0f;
+            }
+        }
+
+        private void InterruptAttackSequence()
+        {
+            _attackSequenceActive = false;
+            _attackSequenceExpiresAt = 0f;
+            _currentLoop = string.Empty;
         }
 
         private void PlayLoop(string animation)
@@ -320,6 +426,11 @@ namespace ArknightsACT.Gameplay.Presentation
             _hasDedicatedMoveAnimation = !string.IsNullOrWhiteSpace(persistentMove);
             moveAnimation = _hasDedicatedMoveAnimation ? persistentMove : idleAnimation;
 
+            _attackStartAnimation = ResolveExact("Attack_Start") ?? string.Empty;
+            _attackLoopAnimation = ResolveExact("Attack_Loop") ?? string.Empty;
+            _attackEndAnimation = ResolveExact("Attack_End") ?? string.Empty;
+            _hasPhasedBasicAttack = !string.IsNullOrWhiteSpace(_attackLoopAnimation);
+
             attackAnimations = ResolveBasicAttacks();
             if (attackAnimations.Length == 0)
                 attackAnimations = new[] { idleAnimation };
@@ -346,6 +457,7 @@ namespace ArknightsACT.Gameplay.Presentation
 
         private string ResolvePersistentMove()
         {
+            // Prefer persistent loop clips over directional/transition clips.
             return ResolveExact("Move")
                    ?? ResolveExact("Move_Loop")
                    ?? ResolveExact("Run_Loop")
@@ -360,9 +472,8 @@ namespace ArknightsACT.Gameplay.Presentation
         {
             // Attack_Start / Attack_Loop / Attack_End are one phased attack state in
             // Arknights operator data, not three different combo attacks.
-            var loop = ResolveExact("Attack_Loop");
-            if (!string.IsNullOrWhiteSpace(loop))
-                return new[] { loop };
+            if (!string.IsNullOrWhiteSpace(_attackLoopAnimation))
+                return new[] { _attackLoopAnimation };
 
             var exact = ResolveExact("Attack") ?? ResolveExact("Combat");
             if (!string.IsNullOrWhiteSpace(exact))
@@ -395,6 +506,8 @@ namespace ArknightsACT.Gameplay.Presentation
                 $"[ArknightsACT/Spine] Bound {name}: " +
                 $"Idle='{idleAnimation}', Move='{moveAnimation}', DedicatedMove={_hasDedicatedMoveAnimation}, " +
                 $"Attack=[{string.Join(", ", attackAnimations ?? Array.Empty<string>())}], " +
+                $"PhasedAttack={_hasPhasedBasicAttack} " +
+                $"(Start='{_attackStartAnimation}', Loop='{_attackLoopAnimation}', End='{_attackEndAnimation}'), " +
                 $"Skill='{skillAnimation}', Hit='{hitAnimation}', Die='{dieAnimation}'. " +
                 $"Available=[{string.Join(", ", _availableAnimations)}]",
                 this);
@@ -480,16 +593,17 @@ namespace ArknightsACT.Gameplay.Presentation
             _baseLocalRotation = visualRoot.localRotation;
         }
 
-        private void ApplyProceduralLocomotion()
+        private void ApplyProceduralLocomotion(int facing)
         {
             if (visualRoot == null)
                 return;
 
             var phase = Time.time * proceduralMoveFrequency;
             var bob = Mathf.Abs(Mathf.Sin(phase)) * proceduralMoveBob;
-            var tilt = Mathf.Sin(phase * 0.5f) * proceduralMoveTiltDegrees;
+            var cadenceTilt = Mathf.Sin(phase * 0.5f) * 1.0f;
+            var forwardLean = -Mathf.Sign(facing == 0 ? 1 : facing) * proceduralMoveTiltDegrees;
             visualRoot.localPosition = _baseLocalPosition + new Vector3(0f, bob, 0f);
-            visualRoot.localRotation = _baseLocalRotation * Quaternion.Euler(0f, 0f, tilt);
+            visualRoot.localRotation = _baseLocalRotation * Quaternion.Euler(0f, 0f, forwardLean + cadenceTilt);
         }
 
         private void ResetProceduralLocomotion()
