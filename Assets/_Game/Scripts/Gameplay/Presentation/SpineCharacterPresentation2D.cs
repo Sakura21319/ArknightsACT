@@ -26,6 +26,11 @@ namespace ArknightsACT.Gameplay.Presentation
         [SerializeField, Min(0f)] private float skillLockSeconds = 0.55f;
         [SerializeField, Min(0f)] private float hitLockSeconds = 0.14f;
 
+        [Header("Combat locomotion fallback")]
+        [SerializeField, Min(0f)] private float proceduralMoveBob = 0.035f;
+        [SerializeField, Min(0f)] private float proceduralMoveTiltDegrees = 1.5f;
+        [SerializeField, Min(0.1f)] private float proceduralMoveFrequency = 10f;
+
         [Header("Visual transform")]
         [SerializeField] private Transform visualRoot;
 
@@ -35,11 +40,14 @@ namespace ArknightsACT.Gameplay.Presentation
         private object _animationState;
         private MethodInfo _setAnimationMethod;
         private Vector3 _baseScale = Vector3.one;
+        private Vector3 _baseLocalPosition = Vector3.zero;
+        private Quaternion _baseLocalRotation = Quaternion.identity;
         private float _lockedUntil;
         private string _currentLoop;
         private bool _bindingAttempted;
         private bool _warned;
         private bool _bindingLogged;
+        private bool _hasDedicatedMoveAnimation;
 
         public bool IsBound => _skeletonAnimation != null && _animationState != null && _setAnimationMethod != null;
         public IReadOnlyList<string> AvailableAnimations => _availableAnimations;
@@ -49,7 +57,7 @@ namespace ArknightsACT.Gameplay.Presentation
             if (visualRoot == null)
                 visualRoot = transform;
 
-            _baseScale = visualRoot.localScale;
+            CaptureVisualBasePose();
             TryBind();
         }
 
@@ -78,7 +86,7 @@ namespace ArknightsACT.Gameplay.Presentation
         public void SetVisualRoot(Transform root)
         {
             visualRoot = root != null ? root : transform;
-            _baseScale = visualRoot.localScale;
+            CaptureVisualBasePose();
         }
 
         public bool TryBind()
@@ -136,20 +144,37 @@ namespace ArknightsACT.Gameplay.Presentation
             if (Time.time < _lockedUntil)
                 return;
 
-            var next = moving && !string.IsNullOrWhiteSpace(moveAnimation)
-                ? moveAnimation
-                : idleAnimation;
+            if (!moving)
+            {
+                ResetProceduralLocomotion();
+                PlayLoop(idleAnimation);
+                return;
+            }
 
-            PlayLoop(next);
+            if (_hasDedicatedMoveAnimation)
+            {
+                ResetProceduralLocomotion();
+                PlayLoop(moveAnimation);
+                return;
+            }
+
+            // Combat operator skeletons such as Texas do not ship a weapon-preserving Move clip.
+            // Keep the combat Idle skeleton (and its weapons) and add a subtle world-motion cue
+            // rather than swapping to the Base/Dorm model where the weapon disappears.
+            PlayLoop(idleAnimation);
+            ApplyProceduralLocomotion();
         }
 
         public void PlayAttack(int comboIndex, int facing)
         {
             SetFacing(facing);
+            ResetProceduralLocomotion();
             if (attackAnimations == null || attackAnimations.Length == 0)
                 return;
 
-            var index = Mathf.Abs(comboIndex) % attackAnimations.Length;
+            var index = attackAnimations.Length == 1
+                ? 0
+                : Mathf.Abs(comboIndex) % attackAnimations.Length;
             var animation = attackAnimations[index];
             PlayOneShot(animation, Mathf.Max(attackLockSeconds, DurationOrZero(animation) * 0.72f));
         }
@@ -157,17 +182,20 @@ namespace ArknightsACT.Gameplay.Presentation
         public void PlaySkill(int facing)
         {
             SetFacing(facing);
+            ResetProceduralLocomotion();
             PlayOneShot(skillAnimation, Mathf.Max(skillLockSeconds, DurationOrZero(skillAnimation) * 0.72f));
         }
 
         public void PlayHit()
         {
+            ResetProceduralLocomotion();
             if (!string.IsNullOrWhiteSpace(hitAnimation))
                 PlayOneShot(hitAnimation, Mathf.Max(hitLockSeconds, DurationOrZero(hitAnimation) * 0.55f));
         }
 
         public void PlayDie()
         {
+            ResetProceduralLocomotion();
             _lockedUntil = float.PositiveInfinity;
             Play(dieAnimation, false, true);
         }
@@ -284,28 +312,77 @@ namespace ArknightsACT.Gameplay.Presentation
             if (_availableAnimations.Count == 0)
                 return;
 
-            idleAnimation = ResolveRole(idleAnimation, "idle", "relax", "default", "stand") ?? _availableAnimations[0];
-            moveAnimation = ResolveRole(moveAnimation, "move", "run", "walk") ?? idleAnimation;
+            idleAnimation = ResolveIdle()
+                            ?? ResolveExact(idleAnimation)
+                            ?? _availableAnimations[0];
 
-            var runtimeAttacks = _availableAnimations
-                .Where(x => StartsWithAny(x, "attack", "combat", "atk"))
-                .ToArray();
+            var persistentMove = ResolvePersistentMove();
+            _hasDedicatedMoveAnimation = !string.IsNullOrWhiteSpace(persistentMove);
+            moveAnimation = _hasDedicatedMoveAnimation ? persistentMove : idleAnimation;
 
-            var validConfiguredAttacks = attackAnimations?
+            attackAnimations = ResolveBasicAttacks();
+            if (attackAnimations.Length == 0)
+                attackAnimations = new[] { idleAnimation };
+
+            skillAnimation = ResolveExact("Skill")
+                             ?? ResolveRole(skillAnimation, "skill", "ability", "special")
+                             ?? attackAnimations[0];
+            hitAnimation = ResolveExact("Hit")
+                           ?? ResolveRole(hitAnimation, "hit", "hurt", "stun", "damage")
+                           ?? string.Empty;
+            dieAnimation = ResolveExact("Die")
+                           ?? ResolveRole(dieAnimation, "die", "death", "dead")
+                           ?? idleAnimation;
+        }
+
+        private string ResolveIdle()
+        {
+            return ResolveExact("Idle")
+                   ?? _availableAnimations.FirstOrDefault(name => StartsWithAny(name, "idle") && IsLoopLike(name))
+                   ?? _availableAnimations.FirstOrDefault(name => StartsWithAny(name, "idle", "relax"))
+                   ?? ResolveExact("Default")
+                   ?? _availableAnimations.FirstOrDefault(name => StartsWithAny(name, "default", "stand"));
+        }
+
+        private string ResolvePersistentMove()
+        {
+            return ResolveExact("Move")
+                   ?? ResolveExact("Move_Loop")
+                   ?? ResolveExact("Run_Loop")
+                   ?? ResolveExact("Walk_Loop")
+                   ?? _availableAnimations.FirstOrDefault(name =>
+                       StartsWithAny(name, "move", "run", "walk") && IsLoopLike(name))
+                   ?? _availableAnimations.FirstOrDefault(name =>
+                       StartsWithAny(name, "move", "run", "walk") && !IsTransitionClip(name));
+        }
+
+        private string[] ResolveBasicAttacks()
+        {
+            // Attack_Start / Attack_Loop / Attack_End are one phased attack state in
+            // Arknights operator data, not three different combo attacks.
+            var loop = ResolveExact("Attack_Loop");
+            if (!string.IsNullOrWhiteSpace(loop))
+                return new[] { loop };
+
+            var exact = ResolveExact("Attack") ?? ResolveExact("Combat");
+            if (!string.IsNullOrWhiteSpace(exact))
+                return new[] { exact };
+
+            var configured = attackAnimations?
                 .Select(ResolveExact)
-                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Where(name => !string.IsNullOrWhiteSpace(name) && !IsTransitionClip(name))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToArray() ?? Array.Empty<string>();
+            if (configured.Length > 0)
+                return configured;
 
-            attackAnimations = runtimeAttacks.Length > 0
-                ? runtimeAttacks
-                : validConfiguredAttacks.Length > 0
-                    ? validConfiguredAttacks
-                    : new[] { idleAnimation };
-
-            skillAnimation = ResolveRole(skillAnimation, "skill", "ability", "special") ?? attackAnimations[0];
-            hitAnimation = ResolveRole(hitAnimation, "hit", "hurt", "stun", "damage") ?? string.Empty;
-            dieAnimation = ResolveRole(dieAnimation, "die", "death", "dead") ?? idleAnimation;
+            return _availableAnimations
+                .Where(name => StartsWithAny(name, "attack", "combat", "atk"))
+                .Where(name => !IsTransitionClip(name))
+                .OrderByDescending(IsLoopLike)
+                .ThenBy(name => name, StringComparer.OrdinalIgnoreCase)
+                .Take(4)
+                .ToArray();
         }
 
         private void LogBindingOnce()
@@ -316,7 +393,7 @@ namespace ArknightsACT.Gameplay.Presentation
             _bindingLogged = true;
             Debug.Log(
                 $"[ArknightsACT/Spine] Bound {name}: " +
-                $"Idle='{idleAnimation}', Move='{moveAnimation}', " +
+                $"Idle='{idleAnimation}', Move='{moveAnimation}', DedicatedMove={_hasDedicatedMoveAnimation}, " +
                 $"Attack=[{string.Join(", ", attackAnimations ?? Array.Empty<string>())}], " +
                 $"Skill='{skillAnimation}', Hit='{hitAnimation}', Die='{dieAnimation}'. " +
                 $"Available=[{string.Join(", ", _availableAnimations)}]",
@@ -354,6 +431,23 @@ namespace ArknightsACT.Gameplay.Presentation
             return false;
         }
 
+        private static bool IsTransitionClip(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return false;
+
+            var normalized = name.Replace('-', '_').ToLowerInvariant();
+            return normalized.Contains("_start") || normalized.Contains("_begin") ||
+                   normalized.Contains("_end") || normalized.Contains("_finish") ||
+                   normalized.Contains("_up") || normalized.Contains("_down");
+        }
+
+        private static bool IsLoopLike(string name)
+        {
+            return !string.IsNullOrWhiteSpace(name) &&
+                   name.IndexOf("loop", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
         private float DurationOrZero(string animation)
         {
             if (string.IsNullOrWhiteSpace(animation))
@@ -374,6 +468,37 @@ namespace ArknightsACT.Gameplay.Presentation
 
             var field = type.GetField(fieldName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             return field?.GetValue(target);
+        }
+
+        private void CaptureVisualBasePose()
+        {
+            if (visualRoot == null)
+                return;
+
+            _baseScale = visualRoot.localScale;
+            _baseLocalPosition = visualRoot.localPosition;
+            _baseLocalRotation = visualRoot.localRotation;
+        }
+
+        private void ApplyProceduralLocomotion()
+        {
+            if (visualRoot == null)
+                return;
+
+            var phase = Time.time * proceduralMoveFrequency;
+            var bob = Mathf.Abs(Mathf.Sin(phase)) * proceduralMoveBob;
+            var tilt = Mathf.Sin(phase * 0.5f) * proceduralMoveTiltDegrees;
+            visualRoot.localPosition = _baseLocalPosition + new Vector3(0f, bob, 0f);
+            visualRoot.localRotation = _baseLocalRotation * Quaternion.Euler(0f, 0f, tilt);
+        }
+
+        private void ResetProceduralLocomotion()
+        {
+            if (visualRoot == null)
+                return;
+
+            visualRoot.localPosition = _baseLocalPosition;
+            visualRoot.localRotation = _baseLocalRotation;
         }
 
         private void SetFacing(int facing)
