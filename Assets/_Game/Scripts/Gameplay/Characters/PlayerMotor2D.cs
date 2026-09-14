@@ -10,8 +10,8 @@ namespace ArknightsACT.Gameplay.Characters
         [SerializeField] private float moveSpeed = 7f;
         [SerializeField] private float acceleration = 55f;
         [SerializeField] private float deceleration = 70f;
-        [SerializeField] private float jumpVelocity = 12f;
-        [SerializeField] private float fallGravityMultiplier = 1.65f;
+        [SerializeField] private float jumpVelocity = 7.0f;
+        [SerializeField] private float fallGravityMultiplier = 2.0f;
 
         [Header("Ground")]
         [SerializeField] private float groundCastDistance = 0.08f;
