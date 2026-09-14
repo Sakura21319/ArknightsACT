@@ -25,7 +25,13 @@ namespace ArknightsACT.Editor.PRTS
         [MenuItem("ArknightsACT/Assets/PRTS/Download Texas")]
         private static async void DownloadTexas()
         {
-            await DownloadPack(new[] { PrtsPrototypeAssetCatalog.Texas }, "德克萨斯");
+            await DownloadPack(new[] { PrtsPrototypeAssetCatalog.Texas }, "德克萨斯·战斗模型");
+        }
+
+        [MenuItem("ArknightsACT/Assets/PRTS/Download Texas Base Motion Source")]
+        private static async void DownloadTexasBaseMotion()
+        {
+            await DownloadPack(new[] { PrtsPrototypeAssetCatalog.TexasBaseMotion }, "德克萨斯·基建动作源");
         }
 
         [MenuItem("ArknightsACT/Assets/PRTS/Download Prototype Enemies")]
