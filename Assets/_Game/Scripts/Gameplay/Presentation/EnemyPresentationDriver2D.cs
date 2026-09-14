@@ -59,8 +59,6 @@ namespace ArknightsACT.Gameplay.Presentation
             if (_spine == null || _dead)
                 return;
 
-            // Do not let Move/Idle overwrite the attack clip during windup/recovery.
-            // The brain owns this lock and only releases it when the whole attack finishes.
             if (_brain != null && _brain.IsAttacking)
                 return;
 
@@ -73,6 +71,8 @@ namespace ArknightsACT.Gameplay.Presentation
 
         private void OnAttackStarted(int facing)
         {
+            if (_dead)
+                return;
             _spine?.PlayAttack(0, facing);
         }
 
@@ -85,7 +85,16 @@ namespace ArknightsACT.Gameplay.Presentation
 
         private void OnDied()
         {
+            if (_dead)
+                return;
             _dead = true;
+
+            if (_brain != null)
+                _brain.enabled = false;
+            if (_body != null)
+                _body.linearVelocity = Vector2.zero;
+
+            _spine?.SetExternalLocomotionActive(false);
             _spine?.PlayDie();
         }
     }
