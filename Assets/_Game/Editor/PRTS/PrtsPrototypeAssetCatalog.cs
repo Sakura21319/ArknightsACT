@@ -11,7 +11,8 @@ namespace ArknightsACT.Editor.PRTS
             "Assets/_Game/Art/Characters/Texas/PRTS/Spine",
             "Player",
             1.62f,
-            -0.72f);
+            -0.72f,
+            0.38f);
 
         public static readonly PrtsAssetDescriptor[] PrototypeEnemies =
         {
@@ -23,7 +24,8 @@ namespace ArknightsACT.Editor.PRTS
                 "Assets/_Game/Art/Enemies/PRTS/OriginiumSlug/Spine",
                 "Fodder",
                 0.72f,
-                -0.68f),
+                -0.68f,
+                0.40f),
             new(
                 "士兵",
                 "https://prts.wiki/w/%E5%A3%AB%E5%85%B5",
@@ -32,7 +34,8 @@ namespace ArknightsACT.Editor.PRTS
                 "Assets/_Game/Art/Enemies/PRTS/Soldier/Spine",
                 "Melee",
                 1.50f,
-                -0.70f),
+                -0.70f,
+                0.38f),
             new(
                 "弩手",
                 "https://prts.wiki/w/%E5%BC%A9%E6%89%8B",
@@ -41,7 +44,8 @@ namespace ArknightsACT.Editor.PRTS
                 "Assets/_Game/Art/Enemies/PRTS/Crossbowman/Spine",
                 "Ranged",
                 1.48f,
-                -0.70f),
+                -0.70f,
+                0.38f),
             new(
                 "猎狗",
                 "https://prts.wiki/w/%E7%8C%8E%E7%8B%97",
@@ -50,7 +54,8 @@ namespace ArknightsACT.Editor.PRTS
                 "Assets/_Game/Art/Enemies/PRTS/Hound/Spine",
                 "FastMelee",
                 0.92f,
-                -0.66f),
+                -0.66f,
+                0.36f),
             new(
                 "妖怪",
                 "https://prts.wiki/w/%E5%A6%96%E6%80%AA",
@@ -59,7 +64,8 @@ namespace ArknightsACT.Editor.PRTS
                 "Assets/_Game/Art/Enemies/PRTS/YokaiDrone/Spine",
                 "Flying",
                 1.05f,
-                -0.05f),
+                -0.05f,
+                0.36f),
             new(
                 "重装防御者",
                 "https://prts.wiki/w/%E9%87%8D%E8%A3%85%E9%98%B2%E5%BE%A1%E8%80%85",
@@ -68,7 +74,8 @@ namespace ArknightsACT.Editor.PRTS
                 "Assets/_Game/Art/Enemies/PRTS/HeavyDefender/Spine",
                 "EliteMelee",
                 1.72f,
-                -0.71f)
+                -0.71f,
+                0.38f)
         };
 
         public static PrtsAssetDescriptor[] GetFullPrototypePack()
