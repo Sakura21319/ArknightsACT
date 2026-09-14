@@ -22,13 +22,11 @@ Gameplay assemblies do **not** reference Spine assemblies at compile time.
 
 ---
 
-## Why not use official Spine 3.8 runtime directly?
+## Spine runtime
 
 Arknights chibi battle models are Spine 3.8 binary assets.
 
-The official Spine 3.8 Unity runtime only officially supports old Unity versions and is not suitable as a direct Unity 6 dependency. The current official 4.x runtime supports Unity 6 but does not directly load 3.8 binary skeletons.
-
-For prototype evaluation, the project provides an **optional** installer for a pinned multi-version runtime fork:
+The project currently pins the optional multi-version runtime fork:
 
 `ZeroFlyFly/WaifuSpineRuntime`
 
@@ -36,70 +34,40 @@ Pinned commit:
 
 `f569ce2e8f5cbe5aed2c6023d6569efc5abc44af`
 
-The fork advertises binary import support for Spine 3.5–4.2, including Arknights Spine 3.8.
+The dependency is recorded in `Packages/manifest.json` and `Packages/packages-lock.json` so another checkout can restore the same runtime revision.
 
-This is intentionally optional. Removing/replacing it does not require changing Combat, Skills, AI or Build code.
-
-Review the Spine runtime license before distributing builds containing a Spine runtime.
+Review Spine runtime licensing before distributing builds containing a Spine runtime.
 
 ---
 
 ## Local setup order
 
-After switching to the Phase 3 branch, run these Unity menu commands in order.
-
-### 1. Runtime
+After switching to the Phase 3 branch:
 
 ```text
-ArknightsACT
-→ Assets
-→ PRTS
-→ 1. Install Spine 3.8-Compatible Runtime
+1. ArknightsACT > Assets > PRTS > Download Full Prototype Pack
+2. ArknightsACT > Assets > PRTS > 3. Build Presentation Prefabs
+3. ArknightsACT > Assets > PRTS > 4. Validate Presentation Setup
+4. ArknightsACT > Build Prototype Scene
 ```
 
-Wait for Package Manager and Unity compilation/domain reload to finish.
-
-### 2. Download PRTS models
+If the Spine runtime is not already restored through Package Manager, run:
 
 ```text
-ArknightsACT
-→ Assets
-→ PRTS
-→ Download Full Prototype Pack
+ArknightsACT > Assets > PRTS > 1. Install Spine 3.8-Compatible Runtime
 ```
 
-The downloaded third-party assets remain local and are ignored by Git.
+Generated PRTS prefabs remain local-only. Re-run `3. Build Presentation Prefabs` after pulling presentation changes.
 
-### 3. Generate / regenerate presentation prefabs
+---
 
-```text
-ArknightsACT
-→ Assets
-→ PRTS
-→ 3. Build Presentation Prefabs
-```
+## Visual scale and alignment
 
-Run this again after pulling any Phase 3 presentation changes because generated PRTS prefabs are local-only and are not replaced by Git pull.
+PRTS raw Spine scale is not trusted as gameplay world scale.
 
-The builder:
+Generated presentation prefabs start from conservative known-safe scales. During Play, `SpineVisualAutoLayout2D` waits for the Spine mesh to become valid, measures runtime renderer bounds and only applies a bounded correction. Invalid or extreme measurements keep the safe scale instead of hiding the character.
 
-1. locates imported `SkeletonDataAsset` objects through reflection;
-2. creates `SkeletonAnimation` instances without a compile-time Spine dependency;
-3. scans all real animation names contained in the skeleton;
-4. resolves Idle / Move / Run / Attack / Combat / Skill / Hit / Die candidates;
-5. measures the rendered model bounds;
-6. scales the Spine visual child to a configured ACT world height;
-7. centers the model horizontally and aligns its rendered lowest point to the gameplay foot line;
-8. adds `SpineCharacterPresentation2D`;
-9. writes local generated prefabs to:
-
-```text
-Assets/_Game/Generated/PRTS/Prefabs/
-```
-
-Generated prefabs are also ignored by Git because they reference local PRTS files.
-
-Current target visual heights are approximately:
+Target visual heights are approximately:
 
 ```text
 Texas          1.62 world units
@@ -111,93 +79,116 @@ Yokai Drone    1.05
 Heavy Defender 1.72
 ```
 
-Physics roots remain scale `1,1,1`; only the presentation child is scaled/flipped.
-
-### 4. Validate
-
-```text
-ArknightsACT
-→ Assets
-→ PRTS
-→ 4. Validate Presentation Setup
-```
-
-Expected result:
-
-```text
-Spine runtime: OK
-PRTS source models: 7/7
-Generated presentation prefabs: 7/7
-```
-
-### 5. Rebuild prototype scene
-
-```text
-ArknightsACT → Build Prototype Scene
-```
-
-`PrototypeFactory` automatically uses generated PRTS prefabs when present and falls back to graybox visuals otherwise.
-
-The Phase 3 prototype camera is deliberately wider than the earlier combat lab and now includes a simple graybox environment backdrop so character scale can be judged against the room instead of against an empty screen.
+Physics roots remain scale `1,1,1`; only the presentation child is scaled or flipped.
 
 ---
 
-## Current animation wiring
+## Animation policy
 
-### Texas
+### Texas battle model
+
+Observed battle-model animation set:
+
+```text
+Attack_Start
+Attack_Loop
+Attack_End
+Default
+Die
+Idle
+Skill
+Start
+```
+
+`Attack_Start / Attack_Loop / Attack_End` are phases of **one attack state**. They are not treated as three combo attacks.
+
+The ACT prototype therefore uses:
+
+```text
+Basic attack gameplay definition: Texas_Basic
+Basic attack Spine animation: Attack_Loop
+Repeated presses: repeat Texas_Basic
+Attack streak / proc counters: tracked independently from animation variety
+```
+
+This keeps Swift Blade and future effects such as "every N attacks" without inventing unsupported four-hit character animation.
+
+### Texas movement
+
+The combat model does not contain a weapon-preserving Move clip. The Base/Dorm model contains movement animation, but switching to that model removes the combat weapon and can introduce skeleton/attachment mismatches.
+
+For Phase 3:
+
+```text
+Moving Texas
+→ keep combat model
+→ keep Idle animation and combat weapons
+→ add subtle procedural bob/tilt as a locomotion cue
+```
+
+Do **not** swap the whole character to the Base/Dorm model during combat movement.
+
+A later improvement can test bone-compatible animation retargeting from the Base/Dorm Move clip onto the combat skeleton. That should only be enabled after skeleton/bone compatibility is verified.
+
+### Enemy locomotion
+
+Persistent locomotion resolution now prioritizes:
+
+```text
+Move
+Move_Loop
+Run_Loop
+Walk_Loop
+```
+
+Transition/directional clips such as these are not selected as persistent locomotion:
+
+```text
+Move_Begin
+Move_End
+Move_Up
+Move_Down
+Run_Begin
+Run_End
+```
+
+### Current Texas wiring
 
 Gameplay event | Presentation
 ---|---
-Standing | Idle / Relax / Default / Stand
-Horizontal movement | Move / Run / Walk
-Attack 1–4 | available Attack / Combat / Atk animations
+Standing | Idle (Default only as fallback)
+Horizontal movement | persistent Move/Run/Walk if available; otherwise combat Idle + procedural motion
+Basic attack | one repeatable attack clip, preferring Attack_Loop, then Attack/Combat
 Sword Rain cast | Skill / Ability / Special
 Receive damage | Hit / Hurt / Stun / Damage candidate if available
 Death | Die / Death / Dead
 Facing | presentation child X scale only
 
-Animation names are resolved twice:
+Animation names are resolved twice: during local prefab generation and again at runtime from live `SkeletonData`.
 
-1. in the editor when the local prefab is generated;
-2. again at runtime from the live `SkeletonData` before playback.
-
-The second pass prevents a stale or imperfect editor mapping from leaving a character frozen in setup pose. The adapter also verifies a requested animation exists before calling `SetAnimation`.
-
-The ACT hitbox timing is still controlled by `AttackDefinition`; Spine animation does **not** own damage frames.
-
-### Enemies
-
-Phase 3 initially wires:
-
-- Idle
-- Hit
-- Die
-
-When enemy AI is implemented, Move and Attack events will use the same presentation adapter.
+Authoritative hit timing remains in `AttackDefinition`; Spine animation does **not** decide damage frames.
 
 ---
 
-## Important architecture rule
-
-Do not move gameplay rules into Spine animation events.
+## Architecture rule
 
 Correct:
 
 ```text
 PlayerAttackController
-→ damage timing
-→ AttackStarted presentation event
-→ Spine attack animation
+→ authoritative damage timing
+→ presentation event
+→ Spine animation
 ```
 
 Incorrect:
 
 ```text
 Spine animation event
-→ decides game damage
+→ authoritative gameplay damage
 ```
 
-Animation may later provide optional VFX/SFX timing markers, but authoritative combat timing stays in Gameplay/Combat.
+Animation events may later drive optional VFX/SFX markers, but gameplay authority stays in Gameplay/Combat.
 
 ---
 
@@ -208,6 +199,7 @@ Ignored by Git:
 ```text
 Assets/_Game/Art/**/PRTS/
 Assets/_Game/Generated/PRTS/
+Assets/_Game/Scenes/PrototypeRun.unity
 ```
 
-This prevents third-party PRTS binaries and generated references from entering the repository.
+The generated scene and PRTS binary/generated presentation files are reproducible local outputs, not source assets.
