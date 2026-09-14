@@ -1,4 +1,5 @@
 using System;
+using ArknightsACT.Combat;
 using ArknightsACT.Gameplay.Input;
 using UnityEngine;
 
@@ -6,6 +7,7 @@ namespace ArknightsACT.Gameplay.Abilities
 {
     public sealed class PlayerSkillController : MonoBehaviour
     {
+        private CombatEntity _entity;
         private IPlayerInputSource _input;
         private IPlayerSkill _skill;
 
@@ -14,6 +16,7 @@ namespace ArknightsACT.Gameplay.Abilities
 
         private void Awake()
         {
+            _entity = GetComponent<CombatEntity>();
             _input = GetComponent<IPlayerInputSource>();
             var behaviours = GetComponents<MonoBehaviour>();
             for (var i = 0; i < behaviours.Length; i++)
@@ -28,6 +31,9 @@ namespace ArknightsACT.Gameplay.Abilities
 
         private void Update()
         {
+            if (_entity != null && _entity.Health != null && _entity.Health.IsDead)
+                return;
+
             if (_input == null || !_input.SkillPressedThisFrame || _skill == null)
                 return;
 
