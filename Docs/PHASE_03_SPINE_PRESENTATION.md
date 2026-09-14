@@ -84,6 +84,32 @@ ArknightsACT
 
 PRTS binary assets remain local and are ignored by Git.
 
+### 2.5 / 2.6 Texture quality
+
+Original PRTS chibi atlas regions are relatively low-resolution. Mipmaps, platform compression and downscaling are disabled. Raw pages use Point filtering to avoid extra bilinear blur.
+
+For a smoother local prototype, run:
+
+```text
+ArknightsACT
+→ Assets
+→ PRTS
+→ 2.6 Build 2x Sharp Local Atlases
+```
+
+This tool keeps untouched `*.original` backups, creates a 2x bilinear-upscaled + mildly sharpened PNG, and scales the Spine atlas pixel coordinates (`size / xy / orig / offset / split / pad`) by the same factor. Generated HD pages then use Bilinear filtering for smoother sub-pixel movement.
+
+This is reversible and local-only. Restore with:
+
+```text
+ArknightsACT
+→ Assets
+→ PRTS
+→ 2.7 Restore Original Local Atlases
+```
+
+This does not create true new art detail. Production/public art should still use original/licensed high-resolution assets.
+
 ### 3. Generate / regenerate presentation prefabs
 
 ```text
@@ -93,7 +119,7 @@ ArknightsACT
 → 3. Build Presentation Prefabs
 ```
 
-Run this again after pulling presentation changes because generated PRTS prefabs are local-only.
+Run this again after pulling presentation changes or after generating/restoring local HD atlases.
 
 The builder:
 
@@ -144,34 +170,7 @@ Attack_End
 
 These are phases of one attack state, not three different combo attacks.
 
-The authoritative gameplay attack is one repeatable `Texas_Basic`. Current prototype timing is intentionally faster than the earlier build:
-
-```text
-startup  0.045 s
-active   0.035 s
-recovery 0.105 s
-```
-
-The Spine playback is now decoupled from damage pulses:
-
-```text
-first J
-→ start/enter attack presentation
-→ Attack_Loop keeps running
-
-more J presses
-→ refresh attack-chain grace
-→ DO NOT restart Attack_Loop
-→ gameplay continues producing individual hits
-
-stop attacking
-→ Attack_End
-→ Idle
-```
-
-This prevents rapid J input from repeatedly resetting the animation to its first one or two frames.
-
-Hit timing remains owned by `AttackDefinition`; Spine does not decide authoritative damage frames.
+Repeated attack input does not restart `Attack_Loop`; gameplay damage pulses remain independent from Spine playback. Hit timing is owned by `AttackDefinition`, not animation events.
 
 ---
 
@@ -186,52 +185,48 @@ base/dorm:    build_char_102_texas
 
 The combat model has weapons but no Move clip. The base/dorm model has Move but does not render the combat weapons.
 
-The prototype therefore does **not** swap rendered models while moving.
+The prototype therefore does **not** swap rendered models while moving. `SpineBoneMotionRetarget2D` uses the hidden base model as a motion source and copies matching-bone deltas onto the visible combat skeleton. Attachments still come from the combat skeleton, so weapons stay visible.
 
-Instead:
-
-1. the visible object is always the combat skeleton;
-2. `build_char_102_texas` is instantiated as a hidden motion source;
-3. the source plays `Move`;
-4. `SpineBoneMotionRetarget2D` matches bones by name;
-5. it copies animation deltas relative to each skeleton's own setup pose;
-6. slots/attachments still come from the combat skeleton, so weapons stay visible.
-
-The retargeter requires at least 60% source-bone coverage. If compatibility is too low or the source asset is missing, it automatically falls back to the existing combat-Idle + procedural bob/lean locomotion rather than breaking the character.
-
-Expected runtime log when it works:
+Expected runtime log:
 
 ```text
 [ArknightsACT/Spine] motion retarget ready: move='Move', matchedBones=..., coverage=...%
 ```
 
-If compatibility is insufficient, the Console reports the coverage and the fallback remains active.
+---
+
+## Damage readability
+
+`DamageTintFlash2D` gives player and enemies an Arknights-style red flash on damage. Spine runtimes expose tint differently, so the adapter supports both layouts:
+
+```text
+Skeleton.R / G / B / A
+Skeleton.Color.R / G / B / A
+```
+
+Current flash duration is about `0.16s`, with a strong red tint. Enemies without a dedicated Hit clip also use a short generic punch/squash reaction.
 
 ---
 
-## Enemy animation mapping
+## Jump tuning
 
-Persistent locomotion prefers loop clips and avoids transition clips:
-
-```text
-Move
-Move_Loop
-Run_Loop
-Walk_Loop
-```
-
-Clips such as the following are not used as persistent movement:
+The previous prototype only increased gravity while falling, causing a floaty ascent. Current Texas settings use strong gravity on both halves while compensating launch velocity:
 
 ```text
-Move_Begin
-Move_End
-Move_Up
-Move_Down
-Run_Begin
-Run_End
+jumpVelocity          9.6
+riseGravityMultiplier 2.0
+fallGravityMultiplier 3.2
 ```
 
-This is why Soldier/Hound/Crossbowman should now bind to their loop locomotion instead of a transition pose.
+The target is roughly similar practical jump height with clearly shorter airtime.
+
+---
+
+## Enemy prototype combat
+
+Soldier / Hound / Crossbowman use their persistent Move loops and Attack clips. Enemy attack windup and recovery lock horizontal movement. Damage interrupts the attack and allows knockback to remain visible.
+
+Death immediately stops AI/collision/physics movement, plays Die, and delays destruction long enough to see the animation.
 
 ---
 
@@ -242,17 +237,10 @@ Do not move gameplay rules into Spine animation events.
 Correct:
 
 ```text
-PlayerAttackController
+Gameplay controller
 → authoritative timing / damage
 → presentation event
 → Spine animation
-```
-
-Incorrect:
-
-```text
-Spine animation event
-→ decides game damage
 ```
 
 Animation may later provide optional VFX/SFX markers, but gameplay remains authoritative.
@@ -269,4 +257,4 @@ Assets/_Game/Generated/PRTS/
 Assets/_Game/Scenes/PrototypeRun.unity
 ```
 
-This prevents third-party PRTS binaries and generated references from entering the repository.
+PRTS binaries, locally generated HD derivatives and backups remain local-only.
