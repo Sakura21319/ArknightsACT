@@ -1,5 +1,4 @@
 #if UNITY_EDITOR
-using System;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
@@ -7,10 +6,9 @@ using UnityEngine;
 namespace ArknightsACT.Editor.PRTS
 {
     /// <summary>
-    /// Applies prototype texture import settings to locally downloaded PRTS atlas pages.
-    /// Original low-resolution pages use Point to avoid bilinear blur. Locally generated
-    /// 2x HD pages use Bilinear because the upscaled source has already been sharpened and
-    /// benefits from smoother sub-pixel motion.
+    /// Applies deterministic high-quality import settings to local PRTS atlas pages.
+    /// PRTS web viewers render these Spine assets with linear sampling; Point made the Unity
+    /// result look blocky and did not restore detail, so the prototype now mirrors that choice.
     /// </summary>
     internal static class PrtsTextureQualityUtility
     {
@@ -20,7 +18,7 @@ namespace ArknightsACT.Editor.PRTS
             var changed = ApplyToPack(PrtsPrototypeAssetCatalog.GetFullPrototypePack());
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log($"[ArknightsACT/PRTS] Texture settings applied to {changed} atlas texture(s). Original=Point; local 2x HD=Bilinear; mipmaps/compression disabled.");
+            Debug.Log($"[ArknightsACT/PRTS] Linear high-quality settings applied to {changed} atlas texture(s). Bilinear, no mipmaps, no compression/downscale.");
         }
 
         public static int ApplyToPack(PrtsAssetDescriptor[] descriptors)
@@ -34,7 +32,6 @@ namespace ArknightsACT.Editor.PRTS
                 if (descriptor == null || !Directory.Exists(descriptor.TargetDirectory))
                     continue;
 
-                var isHd = File.Exists(Path.Combine(descriptor.TargetDirectory, PrtsHdAtlasUpscaler.MarkerFileName));
                 var pngFiles = Directory.GetFiles(descriptor.TargetDirectory, "*.png", SearchOption.AllDirectories);
                 foreach (var file in pngFiles)
                 {
@@ -52,7 +49,7 @@ namespace ArknightsACT.Editor.PRTS
                     importer.crunchedCompression = false;
                     importer.maxTextureSize = 8192;
                     importer.npotScale = TextureImporterNPOTScale.None;
-                    importer.filterMode = isHd ? FilterMode.Bilinear : FilterMode.Point;
+                    importer.filterMode = FilterMode.Bilinear;
                     importer.wrapMode = TextureWrapMode.Clamp;
                     importer.anisoLevel = 1;
                     importer.SaveAndReimport();
