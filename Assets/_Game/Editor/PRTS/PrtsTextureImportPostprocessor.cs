@@ -6,9 +6,9 @@ using UnityEngine;
 namespace ArknightsACT.Editor.PRTS
 {
     /// <summary>
-    /// Keeps locally downloaded PRTS atlas pages sharp whenever Unity imports/reimports them.
-    /// The source art is not pixel art, so Bilinear stays enabled; blur-inducing mipmaps,
-    /// downscaling and compression are disabled instead.
+    /// PRTS chibi atlases are relatively low-resolution source art. Bilinear filtering makes
+    /// them look soft when enlarged in a 1080p ACT camera, so the prototype defaults to Point
+    /// sampling for a crisper result. Mipmaps/compression/downscaling stay disabled.
     /// </summary>
     internal sealed class PrtsTextureImportPostprocessor : AssetPostprocessor
     {
@@ -31,7 +31,7 @@ namespace ArknightsACT.Editor.PRTS
             importer.crunchedCompression = false;
             importer.maxTextureSize = 8192;
             importer.npotScale = TextureImporterNPOTScale.None;
-            importer.filterMode = FilterMode.Bilinear;
+            importer.filterMode = FilterMode.Point;
             importer.wrapMode = TextureWrapMode.Clamp;
             importer.anisoLevel = 1;
         }
