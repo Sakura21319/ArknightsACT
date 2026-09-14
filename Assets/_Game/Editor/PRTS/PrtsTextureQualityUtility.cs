@@ -7,9 +7,9 @@ using UnityEngine;
 namespace ArknightsACT.Editor.PRTS
 {
     /// <summary>
-    /// PRTS chibi atlases are screen-space 2D art. Unity's generic texture defaults can enable
-    /// mipmaps and platform compression, which makes the already-small source art look soft.
-    /// Keep high-quality bilinear sampling but remove mip/downsample/compression blur.
+    /// Applies crisp import settings to locally downloaded PRTS chibi atlases.
+    /// The source textures are small; Point filtering avoids the obvious blur introduced by
+    /// bilinear enlargement. This cannot invent missing detail, but it preserves source pixels.
     /// </summary>
     internal static class PrtsTextureQualityUtility
     {
@@ -19,7 +19,7 @@ namespace ArknightsACT.Editor.PRTS
             var changed = ApplyToPack(PrtsPrototypeAssetCatalog.GetFullPrototypePack());
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log($"[ArknightsACT/PRTS] High-quality texture settings applied to {changed} atlas texture(s).");
+            Debug.Log($"[ArknightsACT/PRTS] Crisp texture settings applied to {changed} atlas texture(s). Point filtering, no mipmaps, no compression.");
         }
 
         public static int ApplyToPack(PrtsAssetDescriptor[] descriptors)
@@ -50,7 +50,7 @@ namespace ArknightsACT.Editor.PRTS
                     importer.crunchedCompression = false;
                     importer.maxTextureSize = 8192;
                     importer.npotScale = TextureImporterNPOTScale.None;
-                    importer.filterMode = FilterMode.Bilinear;
+                    importer.filterMode = FilterMode.Point;
                     importer.wrapMode = TextureWrapMode.Clamp;
                     importer.anisoLevel = 1;
                     importer.SaveAndReimport();
