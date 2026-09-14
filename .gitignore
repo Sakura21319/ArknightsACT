@@ -28,3 +28,7 @@ Assets/_Game/Art/**/PRTS/
 
 # Generated prefabs reference local PRTS skeleton/atlas assets and therefore stay local as well.
 Assets/_Game/Generated/PRTS/
+
+# PrototypeRun is regenerated from PrototypeSceneBuilder and may contain local-only PRTS prefab GUIDs.
+Assets/_Game/Scenes/PrototypeRun.unity
+Assets/_Game/Scenes/PrototypeRun.unity.meta
