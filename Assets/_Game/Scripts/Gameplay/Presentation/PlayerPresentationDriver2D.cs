@@ -74,12 +74,18 @@ namespace ArknightsACT.Gameplay.Presentation
             if (_motionRetarget == null)
                 _motionRetarget = GetComponent<SpineBoneMotionRetarget2D>();
 
+            if (_dead)
+            {
+                _motionRetarget?.SetMoving(false);
+                _spine?.SetExternalLocomotionActive(false);
+                return;
+            }
+
             if (_spine == null || _body == null || _motor == null)
                 return;
 
             var moving = Mathf.Abs(_body.linearVelocity.x) > movingThreshold;
-            var allowRetarget = !_dead &&
-                                moving &&
+            var allowRetarget = moving &&
                                 (_attack == null || !_attack.IsAttacking) &&
                                 Time.time >= _externalMotionBlockedUntil &&
                                 _motionRetarget != null &&
@@ -92,6 +98,8 @@ namespace ArknightsACT.Gameplay.Presentation
 
         private void OnAttackStarted(int comboIndex)
         {
+            if (_dead)
+                return;
             _externalMotionBlockedUntil = Mathf.Max(_externalMotionBlockedUntil, Time.time + attackPresentationGrace);
             _motionRetarget?.SetMoving(false);
             _spine?.SetExternalLocomotionActive(false);
@@ -100,6 +108,8 @@ namespace ArknightsACT.Gameplay.Presentation
 
         private void OnSkillCast()
         {
+            if (_dead)
+                return;
             _externalMotionBlockedUntil = Mathf.Max(_externalMotionBlockedUntil, Time.time + skillPresentationLock);
             _motionRetarget?.SetMoving(false);
             _spine?.SetExternalLocomotionActive(false);
@@ -108,6 +118,8 @@ namespace ArknightsACT.Gameplay.Presentation
 
         private void OnDamaged(DamageContext _, DamageResult __)
         {
+            if (_dead)
+                return;
             _externalMotionBlockedUntil = Mathf.Max(_externalMotionBlockedUntil, Time.time + hitPresentationLock);
             _motionRetarget?.SetMoving(false);
             _spine?.SetExternalLocomotionActive(false);
