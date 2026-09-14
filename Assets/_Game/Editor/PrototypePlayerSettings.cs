@@ -11,12 +11,14 @@ namespace ArknightsACT.Editor
         {
             PlayerSettings.productName = "ArknightsACT";
             PlayerSettings.fullScreenMode = FullScreenMode.Windowed;
-            PlayerSettings.defaultScreenWidth = 1280;
-            PlayerSettings.defaultScreenHeight = 720;
+            // Keep the prototype windowed, but give Spine chibis enough real screen pixels.
+            // 1280x720 made a ~1.6-unit character occupy too few pixels on modern displays.
+            PlayerSettings.defaultScreenWidth = 1600;
+            PlayerSettings.defaultScreenHeight = 900;
             PlayerSettings.resizableWindow = true;
             PlayerSettings.runInBackground = true;
             AssetDatabase.SaveAssets();
-            Debug.Log("ArknightsACT PlayerSettings applied: Windowed 1280x720, resizable.");
+            Debug.Log("ArknightsACT PlayerSettings applied: Windowed 1600x900, resizable.");
         }
     }
 }
