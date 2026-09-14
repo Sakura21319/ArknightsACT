@@ -19,6 +19,8 @@ namespace ArknightsACT.Editor.PRTS
             var downloaded = 0;
             var generated = 0;
             var pack = PrtsPrototypeAssetCatalog.GetFullPrototypePack();
+            var texasMotionSourceReady = false;
+
             foreach (var descriptor in pack)
             {
                 var hasSource = Directory.Exists(descriptor.TargetDirectory) &&
@@ -28,11 +30,23 @@ namespace ArknightsACT.Editor.PRTS
 
                 if (hasSource) downloaded++;
                 if (hasPrefab) generated++;
+
+                if (descriptor == PrtsPrototypeAssetCatalog.TexasBaseMotion)
+                    texasMotionSourceReady = hasSource && hasPrefab;
+
                 lines.Add($"{descriptor.DisplayName}: source={(hasSource ? "OK" : "missing")}, prefab={(hasPrefab ? "OK" : "missing")}");
             }
 
             lines.Insert(1, $"PRTS source models: {downloaded}/{pack.Length}");
             lines.Insert(2, $"Generated presentation prefabs: {generated}/{pack.Length}");
+            lines.Insert(3, "Texas walking motion source: " + (texasMotionSourceReady ? "READY" : "MISSING"));
+
+            if (!texasMotionSourceReady)
+            {
+                lines.Add(string.Empty);
+                lines.Add("Texas walking retarget cannot run until the base motion source is READY.");
+                lines.Add("Run: Download Texas Base Motion Source -> 3. Build Presentation Prefabs -> Build Prototype Scene.");
+            }
 
             var message = string.Join("\n", lines);
             Debug.Log("[ArknightsACT/PRTS] Setup validation\n" + message);
