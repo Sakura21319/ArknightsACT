@@ -11,6 +11,7 @@ namespace ArknightsACT.Gameplay.Presentation
         private PrototypeEnemyCombatBrain2D _brain;
         private Rigidbody2D _body;
         private SpineCharacterPresentation2D _spine;
+        private bool _dead;
 
         private void Awake()
         {
@@ -55,7 +56,12 @@ namespace ArknightsACT.Gameplay.Presentation
         {
             if (_spine == null || !_spine.enabled)
                 _spine = GetComponentInChildren<SpineCharacterPresentation2D>(true);
-            if (_spine == null)
+            if (_spine == null || _dead)
+                return;
+
+            // Do not let Move/Idle overwrite the attack clip during windup/recovery.
+            // The brain owns this lock and only releases it when the whole attack finishes.
+            if (_brain != null && _brain.IsAttacking)
                 return;
 
             var moving = _brain != null
@@ -72,13 +78,14 @@ namespace ArknightsACT.Gameplay.Presentation
 
         private void OnDamaged(DamageContext _, DamageResult __)
         {
-            // If a real Hit clip exists it will play. Most current PRTS fodder enemies do not
-            // provide one, so EnemyHitReaction2D supplies the fallback physical reaction.
+            if (_dead)
+                return;
             _spine?.PlayHit();
         }
 
         private void OnDied()
         {
+            _dead = true;
             _spine?.PlayDie();
         }
     }
