@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using ArknightsACT.Combat;
+using ArknightsACT.Editor.PRTS;
 using ArknightsACT.Gameplay.Abilities;
 using ArknightsACT.Gameplay.CameraSystem;
 using ArknightsACT.Gameplay.Characters;
@@ -24,10 +25,12 @@ namespace ArknightsACT.Editor
 
         public static GameObject CreatePlayer(AttackDefinition[] attacks)
         {
-            var go = new GameObject("Player_Texas_Graybox");
+            var go = new GameObject("Player_Texas");
             go.transform.position = new Vector3(0f, FloorTopY + 0.76f, 0f);
             go.transform.localScale = Vector3.one;
-            go.AddComponent<TexasPlaceholderRig2D>();
+
+            if (!PrtsGeneratedPresentation.TryAttach(PrtsPrototypeAssetCatalog.Texas.BaseName, go.transform, out _))
+                go.AddComponent<TexasPlaceholderRig2D>();
 
             var body = go.AddComponent<Rigidbody2D>();
             body.freezeRotation = true;
@@ -52,6 +55,7 @@ namespace ArknightsACT.Editor
             go.AddComponent<PlayerDamageGate>();
             go.AddComponent<TexasSwordRainSkill>();
             go.AddComponent<PlayerSkillController>();
+            go.AddComponent<PlayerPresentationDriver2D>();
 
             var swiftBlade = go.AddComponent<TexasSwiftBladeEffect>();
             var residualThunder = go.AddComponent<TexasResidualThunderEffect>();
@@ -84,12 +88,17 @@ namespace ArknightsACT.Editor
             collider.size = size;
         }
 
-        public static void CreateDummy(Vector2 position)
+        public static void CreateDummy(Vector2 position, PrtsAssetDescriptor descriptor = null)
         {
-            var go = new GameObject("DummyEnemy");
+            var displayName = descriptor != null ? descriptor.DisplayName : "DummyEnemy";
+            var go = new GameObject("DummyEnemy_" + displayName);
             go.transform.position = new Vector3(position.x, FloorTopY + 0.73f, 0f);
             go.transform.localScale = Vector3.one;
-            CreateVisualChild(go.transform, "Visual", new Vector2(0.8f, 1.45f), new Color(1.00f, 0.18f, 0.22f), 15, true);
+
+            var hasPrtsPresentation = descriptor != null &&
+                                      PrtsGeneratedPresentation.TryAttach(descriptor.BaseName, go.transform, out _);
+            if (!hasPrtsPresentation)
+                CreateVisualChild(go.transform, "Visual", new Vector2(0.8f, 1.45f), new Color(1.00f, 0.18f, 0.22f), 15, true);
 
             var body = go.AddComponent<Rigidbody2D>();
             body.freezeRotation = true;
@@ -106,6 +115,7 @@ namespace ArknightsACT.Editor
             entity.SetTeam(Team.Enemy);
             go.AddComponent<StatusIndicator2D>();
             go.AddComponent<DummyEnemy>();
+            go.AddComponent<EnemyPresentationDriver2D>();
         }
 
         public static void CreateCamera(Transform target)
