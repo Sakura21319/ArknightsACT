@@ -8,14 +8,19 @@ using UnityEngine;
 namespace ArknightsACT.Gameplay.Presentation
 {
     /// <summary>
-    /// Presentation-only attack speed bridge. It temporarily raises Spine AnimationState
-    /// TimeScale while the player is chaining basic attacks, then restores normal playback.
-    /// Gameplay hit cadence remains owned by PlayerAttackController / AttackDefinition.
+    /// Attack-speed presentation bridge for Spine characters.
+    ///
+    /// Arknights communicates higher attack speed by accelerating the actual attack animation,
+    /// rather than allowing invisible extra hit pulses while a slower swing is still playing.
+    /// Gameplay timing remains authoritative in PlayerAttackController / AttackDefinition, while
+    /// this component makes the visible Spine swing keep pace with that cadence.
     /// </summary>
     [RequireComponent(typeof(PlayerAttackController))]
     public sealed class SpineAttackPlaybackSpeed2D : MonoBehaviour
     {
-        [SerializeField, Range(1f, 3f)] private float attackPlaybackSpeed = 1.65f;
+        // Texas' prototype battle animation is intentionally shown at 2x by default. Future
+        // AttackSpeed stats/builds should scale this value and gameplay cadence together.
+        [SerializeField, Range(1f, 4f)] private float attackPlaybackSpeed = 2.0f;
         [SerializeField, Min(0.05f)] private float chainGraceSeconds = 0.30f;
 
         private PlayerAttackController _attack;
@@ -26,6 +31,8 @@ namespace ArknightsACT.Gameplay.Presentation
         private bool _boosted;
         private float _boostUntil;
         private bool _bindAttempted;
+
+        public float AttackPlaybackSpeed => attackPlaybackSpeed;
 
         private void Awake()
         {
