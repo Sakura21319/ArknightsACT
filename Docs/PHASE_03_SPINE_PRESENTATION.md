@@ -2,165 +2,45 @@
 
 ## Goal
 
-Replace graybox-only presentation with real PRTS Spine battle models while keeping gameplay independent from Spine.
-
-Dependency direction remains:
+Replace graybox presentation with local PRTS Spine battle models while keeping gameplay independent from a concrete Spine runtime.
 
 ```text
 Combat / Gameplay
-      ↓ events
-Presentation Driver
-      ↓
-SpineCharacterPresentation2D
+      ↓ events / interfaces
+Presentation adapters
       ↓ reflection
-Spine.Unity.SkeletonAnimation
+Spine runtime
       ↓
-PRTS local assets
+PRTS local-only assets
 ```
 
-Gameplay assemblies do **not** reference Spine assemblies at compile time.
+## Current runtime
 
----
+The prototype uses the pinned multi-version-compatible Spine runtime already recorded in `Packages/manifest.json` and `Packages/packages-lock.json`.
 
-## Runtime
-
-Arknights operator battle assets are legacy Spine data. The prototype uses a pinned multi-version-compatible runtime fork:
-
-`ZeroFlyFly/WaifuSpineRuntime`
-
-Pinned commit:
-
-`f569ce2e8f5cbe5aed2c6023d6569efc5abc44af`
-
-`Packages/manifest.json` and `Packages/packages-lock.json` are committed so another checkout can restore the same dependency.
-
-Review Spine runtime licensing before distributing builds that contain a Spine runtime.
-
----
+PRTS binaries, generated prefabs and generated prototype scenes remain local-only and are ignored by Git.
 
 ## Local setup
 
-After switching to the Phase 3 branch:
-
-### 1. Runtime
-
 ```text
-ArknightsACT
-→ Assets
-→ PRTS
-→ 1. Install Spine 3.8-Compatible Runtime
+ArknightsACT > Assets > PRTS > Download Full Prototype Pack
+ArknightsACT > Assets > PRTS > 2.5 Apply High Quality Texture Settings
+ArknightsACT > Assets > PRTS > 3. Build Presentation Prefabs
+ArknightsACT > Assets > PRTS > 4. Validate Presentation Setup
+ArknightsACT > Build Prototype Scene
 ```
 
-If the package is already restored through `manifest.json`, this is not needed again.
+Texas also needs the base/dorm motion source for walking retargeting.
 
-### 2. Download PRTS models
+## Texas locomotion
 
-```text
-ArknightsACT
-→ Assets
-→ PRTS
-→ Download Full Prototype Pack
-```
+The battle model keeps the combat attachments/weapons. The base model is hidden and supplies only `Move` bone deltas through `SpineBoneMotionRetarget2D`.
 
-The current full pack contains 8 local-only skeleton sources:
+This avoids swapping to a weaponless base model during movement.
 
-- Texas combat model
-- Texas base/dorm model used only as a Move motion source
-- Originium Slug
-- Soldier
-- Crossbowman
-- Hound
-- Yokai Drone
-- Heavy Defender
+## Texas basic attack: one visible swing = one gameplay attack
 
-If the original 7-model pack was already downloaded, only run:
-
-```text
-ArknightsACT
-→ Assets
-→ PRTS
-→ Download Texas Base Motion Source
-```
-
-PRTS binary assets remain local and are ignored by Git.
-
-### 2.5 / 2.6 Texture quality
-
-Original PRTS chibi atlas regions are relatively low-resolution. Mipmaps, platform compression and downscaling are disabled. Raw pages use Point filtering to avoid extra bilinear blur.
-
-For a smoother local prototype, run:
-
-```text
-ArknightsACT
-→ Assets
-→ PRTS
-→ 2.6 Build 2x Sharp Local Atlases
-```
-
-This tool keeps untouched `*.original` backups, creates a 2x bilinear-upscaled + mildly sharpened PNG, and scales the Spine atlas pixel coordinates (`size / xy / orig / offset / split / pad`) by the same factor. Generated HD pages then use Bilinear filtering for smoother sub-pixel movement.
-
-This is reversible and local-only. Restore with:
-
-```text
-ArknightsACT
-→ Assets
-→ PRTS
-→ 2.7 Restore Original Local Atlases
-```
-
-This does not create true new art detail. Production/public art should still use original/licensed high-resolution assets.
-
-### 3. Generate / regenerate presentation prefabs
-
-```text
-ArknightsACT
-→ Assets
-→ PRTS
-→ 3. Build Presentation Prefabs
-```
-
-Run this again after pulling presentation changes or after generating/restoring local HD atlases.
-
-The builder:
-
-1. locates imported `SkeletonDataAsset` objects through reflection;
-2. creates `SkeletonAnimation` instances without a compile-time Spine dependency;
-3. scans the real animation list;
-4. resolves Idle / Move / Attack / Skill / Hit / Die candidates;
-5. starts from a conservative visible scale;
-6. lets `SpineVisualAutoLayout2D` perform bounded runtime correction after meshes exist;
-7. writes local generated prefabs to `Assets/_Game/Generated/PRTS/Prefabs/`.
-
-### 4. Validate
-
-```text
-ArknightsACT
-→ Assets
-→ PRTS
-→ 4. Validate Presentation Setup
-```
-
-Expected current result:
-
-```text
-Spine runtime: OK
-PRTS source models: 8/8
-Generated presentation prefabs: 8/8
-```
-
-### 5. Rebuild prototype scene
-
-```text
-ArknightsACT → Build Prototype Scene
-```
-
-`PrototypeRun.unity` is generated locally and is ignored by Git, because it can reference local-only generated PRTS prefabs.
-
----
-
-## Texas attack presentation
-
-The combat skeleton contains:
+The battle skeleton contains:
 
 ```text
 Attack_Start
@@ -168,93 +48,112 @@ Attack_Loop
 Attack_End
 ```
 
-These are phases of one attack state, not three different combo attacks.
+They are phases of one attack state, not different combo attacks.
 
-Repeated attack input does not restart `Attack_Loop`; gameplay damage pulses remain independent from Spine playback. Hit timing is owned by `AttackDefinition`, not animation events.
-
----
-
-## Texas movement and weapon preservation
-
-PRTS provides Texas as separate model groups:
+The prototype now uses a single authoritative rule:
 
 ```text
-combat front: char_102_texas
-base/dorm:    build_char_102_texas
+one complete Attack_Loop swing
+= one gameplay attack cycle
+= at most one damage pulse
 ```
 
-The combat model has weapons but no Move clip. The base/dorm model has Move but does not render the combat weapons.
+`SpineAttackPlaybackSpeed2D` implements `IAttackTimingProvider` and reads the real `Attack_Loop` duration from Spine at runtime.
 
-The prototype therefore does **not** swap rendered models while moving. `SpineBoneMotionRetarget2D` uses the hidden base model as a motion source and copies matching-bone deltas onto the visible combat skeleton. Attachments still come from the combat skeleton, so weapons stay visible.
-
-Expected runtime log:
+Default prototype attack animation speed:
 
 ```text
-[ArknightsACT/Spine] motion retarget ready: move='Move', matchedBones=..., coverage=...%
+2.0x
 ```
 
----
-
-## Damage readability
-
-`DamageTintFlash2D` gives player and enemies an Arknights-style red flash on damage. Spine runtimes expose tint differently, so the adapter supports both layouts:
+The runtime attack cycle is:
 
 ```text
-Skeleton.R / G / B / A
-Skeleton.Color.R / G / B / A
+cycleSeconds = Attack_Loop duration / playbackSpeed
+impactSeconds = cycleSeconds * impactNormalizedTime
 ```
 
-Current flash duration is about `0.16s`, with a strong red tint. Enemies without a dedicated Hit clip also use a short generic punch/squash reaction.
-
----
-
-## Jump tuning
-
-The previous prototype only increased gravity while falling, causing a floaty ascent. Current Texas settings use strong gravity on both halves while compensating launch velocity:
+Current impact marker starts at about 58% of the visible swing and is intentionally data-driven rather than a fixed `0.095s` guess. The runtime prints:
 
 ```text
-jumpVelocity          9.6
-riseGravityMultiplier 2.0
-fallGravityMultiplier 3.2
+[ArknightsACT/AttackTiming] Spine cycle=... raw, speed=2x, impact=58%.
 ```
 
-The target is roughly similar practical jump height with clearly shorter airtime.
+Repeated J input uses a one-slot queue. Mashing cannot create hidden extra hits while the current sword animation is still playing; it only requests the next complete swing.
 
----
+Future AttackSpeed upgrades must scale both the visible Spine playback and the gameplay cadence together.
 
-## Enemy prototype combat
+## Damage feedback
 
-Soldier / Hound / Crossbowman use their persistent Move loops and Attack clips. Enemy attack windup and recovery lock horizontal movement. Damage interrupts the attack and allows knockback to remain visible.
+`DamageTintFlash2D` tints both players and enemies red on `CombatEntity.Damaged`.
 
-Death immediately stops AI/collision/physics movement, plays Die, and delays destruction long enough to see the animation.
-
----
-
-## Important architecture rule
-
-Do not move gameplay rules into Spine animation events.
-
-Correct:
+It supports Spine runtimes exposing either:
 
 ```text
-Gameplay controller
-→ authoritative timing / damage
-→ presentation event
-→ Spine animation
+Skeleton.R/G/B/A
+Skeleton.Color.R/G/B/A
 ```
 
-Animation may later provide optional VFX/SFX markers, but gameplay remains authoritative.
+Base color is captured once. Rapid repeated hits extend the red window but never re-capture red as the new base color, fixing the permanent-red bug.
 
----
+Enemies without a dedicated Hit clip also use a short physical fallback reaction.
 
-## Local-only resources
+## Death state
 
-Ignored by Git:
+Death is higher priority than movement, dash, attack and skill input.
+
+Player movement/dash/attack/skill controllers check `Health.IsDead`; presentation stops locomotion updates and keeps `Die` active.
+
+Enemies stop AI and physics control during death. `DamageSystem` does not apply a later knockback impulse after a hit has already become lethal, preventing corpses from sliding during `Die`.
+
+## Enemy prototype behavior
+
+- Soldier: chase + melee Attack.
+- Hound: faster chase + fast melee Attack.
+- Crossbowman: spacing + ranged Attack prototype.
+- Attack windup/recovery locks horizontal movement.
+- Damage interrupts an attack and exposes knockback/stagger.
+
+## Texture/render quality investigation
+
+The PRTS web viewer can display the same source clearly, so the project no longer assumes the source atlas itself is the only problem.
+
+Current import settings mirror a conventional web Spine path:
 
 ```text
-Assets/_Game/Art/**/PRTS/
-Assets/_Game/Generated/PRTS/
-Assets/_Game/Scenes/PrototypeRun.unity
+Filter          Bilinear
+MipMap          OFF
+Compression     Uncompressed
+Max Texture     8192
+NPOT Scale      None
+Wrap            Clamp
 ```
 
-PRTS binaries, locally generated HD derivatives and backups remain local-only.
+The prototype player is now windowed `1600x900` by default and the camera uses orthographic size `3.40`, giving a 1.6-unit chibi materially more screen pixels than the previous `1280x720 / 4.25` setup.
+
+`PresentationQualityDiagnostics2D` logs the real runtime values after Spine layout settles:
+
+```text
+[ArknightsACT/PresentationQuality]
+Screen=...
+Display=...
+CameraPixels=...
+Character≈...px high
+Texture '...' WIDTHxHEIGHT, filter=...
+```
+
+If Unity is still visibly softer than the PRTS viewer, use this log before changing atlas data again.
+
+### Local 2x atlas experiment
+
+`2.6 Build 2x Sharp Local Atlases` remains available as a reversible experiment, but it is no longer the default recommendation. If it was previously applied and you want to compare the raw PRTS path again, run:
+
+```text
+ArknightsACT > Assets > PRTS > 2.7 Restore Original Local Atlases
+```
+
+Then re-run `2.5`, rebuild PRTS prefabs, and rebuild the prototype scene.
+
+## Architecture rule
+
+Spine does not own damage logic. Gameplay owns the authoritative attack and asks an optional timing provider for the visible animation's cycle length/impact phase. This keeps combat testable and allows the final art/runtime to be replaced later.
