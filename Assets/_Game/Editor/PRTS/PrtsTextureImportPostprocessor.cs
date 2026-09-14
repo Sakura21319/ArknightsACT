@@ -1,6 +1,5 @@
 #if UNITY_EDITOR
 using System;
-using System.IO;
 using UnityEditor;
 using UnityEngine;
 
@@ -8,8 +7,8 @@ namespace ArknightsACT.Editor.PRTS
 {
     /// <summary>
     /// Keeps PRTS atlas pages deterministic on import/reimport.
-    /// Original pages use Point to preserve source pixels; generated local 2x HD pages use
-    /// Bilinear because they are already upscaled/sharpened and need smoother sub-pixel motion.
+    /// Mirrors the web viewer's linear sampling while disabling mipmaps, compression and
+    /// importer downscaling that can soften the source unnecessarily.
     /// </summary>
     internal sealed class PrtsTextureImportPostprocessor : AssetPostprocessor
     {
@@ -23,10 +22,6 @@ namespace ArknightsACT.Editor.PRTS
             if (assetImporter is not TextureImporter importer)
                 return;
 
-            var directory = Path.GetDirectoryName(assetPath)?.Replace('\\', '/');
-            var isHd = !string.IsNullOrWhiteSpace(directory) &&
-                       File.Exists(Path.Combine(directory, PrtsHdAtlasUpscaler.MarkerFileName));
-
             importer.textureType = TextureImporterType.Default;
             importer.sRGBTexture = true;
             importer.alphaIsTransparency = true;
@@ -36,7 +31,7 @@ namespace ArknightsACT.Editor.PRTS
             importer.crunchedCompression = false;
             importer.maxTextureSize = 8192;
             importer.npotScale = TextureImporterNPOTScale.None;
-            importer.filterMode = isHd ? FilterMode.Bilinear : FilterMode.Point;
+            importer.filterMode = FilterMode.Bilinear;
             importer.wrapMode = TextureWrapMode.Clamp;
             importer.anisoLevel = 1;
         }
