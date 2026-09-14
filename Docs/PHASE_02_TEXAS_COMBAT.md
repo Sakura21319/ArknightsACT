@@ -13,21 +13,30 @@
 - 2：开关 Residual Thunder（剑雨结束留下 3 秒雷场）
 - 3：开关 Conductive（攻击 Shock 敌人减少剑雨 CD）
 
-## 新增底层
+## 代码边界
 
-- `Combat.Status.StatusController`
-- `CombatStatusType`：Shock / Burn / Ink，为后续能天使和夕复用
-- `IPlayerSkill` + `PlayerSkillController`：角色仍只有一个主动技能按钮
-- `PlayerAttackController` 暴露 AttackStarted / AttackHit 事件，而不写入德克萨斯业务
-- 德克萨斯专属逻辑全部放在 `Characters/Texas/`
-- 斩击与剑雨表现全部位于 Presentation 层
+- `Combat.Status.StatusController`：通用状态容器，当前先支持 Shock / Burn / Ink 类型。
+- `AreaDamageResolver`：通用范围伤害去重，技能和 Build 不再各写一套 Collider 遍历。
+- `IPlayerSkill + PlayerSkillController`：所有角色保持一个主动技能槽。
+- `PlayerAttackController`：只负责通用攻击，并暴露 `AttackStarted / AttackHit` 信号。
+- `Characters/Texas/`：德克萨斯专属技能和 Build 效果。
+- `TexasSwiftBladeEffect / TexasResidualThunderEffect / TexasConductiveEffect`：三个 Build 独立组件，互不揉在一个 Runtime 类里。
+- `TexasBuildLab`：Phase 2 的数字键调试器，之后 Roguelite Upgrade Runtime 直接调用 Set 方法。
+- `Presentation/`：斩击、剑雨、Shock 标记和角色占位 Rig。
 
-## 当前 Build Lab
+## PRTS 素材
 
-这一阶段的 1/2/3 键只是调试入口。后续 Roguelite 三选一不会改写这些效果，只把“布尔开关/参数修改”的来源改成 Upgrade Runtime。
+Unity 菜单新增：
 
-## 素材
+`ArknightsACT > Assets > Download Texas PRTS Spine Source`
 
-正式 PRTS 干员战斗模型尚未与核心代码绑定。PRTS 页面显示德克萨斯原作 S2「剑雨」为手动触发的范围法术伤害技能并带控制效果；本原型保留「多段范围剑雨」作为辨识核心，再转译成 ACT 的 Shock / Build 联动。
+它会按 PRTS `/德克萨斯/spine` 提供的 `char_102_texas` 路径，把 Spine 源文件下载到独立 Art 目录。当前不强绑 Spine Runtime，所以没有素材时仍可用 `TexasPlaceholderRig2D` 试玩。
 
-角色 Sprite/Spine 后续只替换 `Presentation`，不会进入 Combat / Texas Build 逻辑。
+## 当前测试重点
+
+1. 四段斩击的节奏是否有明显层次。
+2. 剑雨两次伤害是否有足够反馈。
+3. Shock 标记是否容易辨认。
+4. Residual Thunder 是否让“技能流”开始形成循环。
+5. Conductive 是否能让攻击 Shock 敌人的行为明显缩短剑雨等待时间。
+6. Swift Blade 第 8 次攻击的剑气是否值得继续保留。

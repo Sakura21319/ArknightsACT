@@ -1,9 +1,9 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using ArknightsACT.Combat;
 using ArknightsACT.Combat.Status;
 using ArknightsACT.Gameplay.Abilities;
+using ArknightsACT.Gameplay.Combat;
 using ArknightsACT.Gameplay.Feedback;
 using ArknightsACT.Gameplay.Presentation;
 using UnityEngine;
@@ -45,7 +45,8 @@ namespace ArknightsACT.Gameplay.Characters.Texas
 
         public void ReduceCooldown(float seconds)
         {
-            if (seconds <= 0f) return;
+            if (seconds <= 0f)
+                return;
             _readyAt = Mathf.Max(Time.time, _readyAt - seconds);
         }
 
@@ -64,29 +65,25 @@ namespace ArknightsACT.Gameplay.Characters.Texas
         private void ResolveWave(float multiplier)
         {
             var colliders = Physics2D.OverlapCircleAll(transform.position, radius);
-            var hit = new HashSet<CombatEntity>();
-            var hitAny = false;
+            var hitCount = AreaDamageResolver.ApplyUnique(
+                colliders,
+                _entity,
+                _entity,
+                waveDamage * multiplier,
+                DamageType.Arts,
+                Vector2.up * 0.5f,
+                "texas_sword_rain",
+                (target, _) =>
+                {
+                    target.Status.Apply(CombatStatusType.Shock, shockDuration);
+                    target.GetComponentInChildren<HitFlash2D>()?.Flash();
+                });
 
-            foreach (var collider in colliders)
-            {
-                var target = collider.GetComponentInParent<CombatEntity>();
-                if (target == null || target == _entity || target.Team == _entity.Team || !hit.Add(target))
-                    continue;
+            if (hitCount <= 0)
+                return;
 
-                var context = new DamageContext(_entity, _entity, target, waveDamage * multiplier, DamageType.Arts, Vector2.up * 0.5f, sourceId: "texas_sword_rain");
-                var result = DamageSystem.Apply(context);
-                if (!result.Applied) continue;
-
-                target.Status.Apply(CombatStatusType.Shock, shockDuration);
-                target.GetComponentInChildren<HitFlash2D>()?.Flash();
-                hitAny = true;
-            }
-
-            if (hitAny)
-            {
-                HitStopService.Instance?.Request(0.04f);
-                CameraShake2D.Instance?.Shake(0.10f, 0.10f);
-            }
+            HitStopService.Instance?.Request(0.04f);
+            CameraShake2D.Instance?.Shake(0.10f, 0.10f);
         }
     }
 }

@@ -27,7 +27,7 @@ namespace ArknightsACT.Editor
             var go = new GameObject("Player_Texas_Graybox");
             go.transform.position = new Vector3(0f, FloorTopY + 0.76f, 0f);
             go.transform.localScale = Vector3.one;
-            CreateVisualChild(go.transform, "Visual", new Vector2(0.8f, 1.5f), new Color(0.05f, 0.72f, 1.00f), 20, false);
+            go.AddComponent<TexasPlaceholderRig2D>();
 
             var body = go.AddComponent<Rigidbody2D>();
             body.freezeRotation = true;
@@ -52,12 +52,21 @@ namespace ArknightsACT.Editor
             go.AddComponent<PlayerDamageGate>();
             go.AddComponent<TexasSwordRainSkill>();
             go.AddComponent<PlayerSkillController>();
-            go.AddComponent<TexasBuildRuntime>();
+
+            var swiftBlade = go.AddComponent<TexasSwiftBladeEffect>();
+            var residualThunder = go.AddComponent<TexasResidualThunderEffect>();
+            var conductive = go.AddComponent<TexasConductiveEffect>();
+            swiftBlade.enabled = false;
+            residualThunder.enabled = false;
+            conductive.enabled = false;
+
+            go.AddComponent<TexasBuildLab>();
             go.AddComponent<TexasPrototypeHud>();
             return go;
         }
 
         public static void CreateFloor() => CreateStaticBlock("Floor", new Vector2(6f, FloorCenterY), FloorSize, new Color(0.20f, 0.21f, 0.24f));
+
         public static void CreatePlatform(Vector2 position, Vector2 size) => CreateStaticBlock("Platform", position, size, new Color(0.34f, 0.37f, 0.43f));
 
         private static void CreateStaticBlock(string name, Vector2 position, Vector2 size, Color color)
@@ -66,9 +75,11 @@ namespace ArknightsACT.Editor
             go.transform.position = position;
             go.transform.localScale = Vector3.one;
             CreateVisualChild(go.transform, "Visual", size, color, 0, false);
+
             var body = go.AddComponent<Rigidbody2D>();
             body.bodyType = RigidbodyType2D.Static;
             body.simulated = true;
+
             var collider = go.AddComponent<BoxCollider2D>();
             collider.size = size;
         }
@@ -102,10 +113,12 @@ namespace ArknightsACT.Editor
             var rig = new GameObject("CameraRig");
             rig.transform.position = new Vector3(1.5f, 0.6f, 0f);
             rig.AddComponent<CameraFollow2D>().SetTarget(target);
+
             var go = new GameObject("Main Camera");
             go.tag = "MainCamera";
             go.transform.SetParent(rig.transform, false);
             go.transform.localPosition = new Vector3(0f, 0f, -10f);
+
             var camera = go.AddComponent<Camera>();
             camera.orthographic = true;
             camera.orthographicSize = 3.7f;
@@ -121,10 +134,14 @@ namespace ArknightsACT.Editor
             visual.transform.SetParent(parent, false);
             visual.transform.localPosition = Vector3.zero;
             visual.transform.localScale = new Vector3(size.x, size.y, 1f);
+
             var renderer = visual.AddComponent<SpriteRenderer>();
             renderer.sortingOrder = sortingOrder;
             visual.AddComponent<PlaceholderVisual2D>().SetColor(color);
-            if (addHitFlash) visual.AddComponent<HitFlash2D>();
+
+            if (addHitFlash)
+                visual.AddComponent<HitFlash2D>();
+
             return visual;
         }
     }
