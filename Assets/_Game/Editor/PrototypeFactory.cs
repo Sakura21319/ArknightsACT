@@ -106,6 +106,7 @@ namespace ArknightsACT.Editor
 
             go.AddComponent<TexasBuildLab>();
             go.AddComponent<TexasPrototypeHud>();
+            go.AddComponent<PresentationQualityDiagnostics2D>();
             return go;
         }
 
@@ -176,9 +177,13 @@ namespace ArknightsACT.Editor
 
             var camera = go.AddComponent<Camera>();
             camera.orthographic = true;
-            camera.orthographicSize = 4.25f;
+            // Give characters more real screen pixels while still keeping enough horizontal
+            // context for a side-scrolling room. This is closer to the apparent scale used by
+            // the PRTS preview than the previous very-wide 4.25 view.
+            camera.orthographicSize = 3.40f;
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = new Color(0.055f, 0.065f, 0.085f);
+            camera.allowDynamicResolution = false;
             go.AddComponent<AudioListener>();
             go.AddComponent<CameraShake2D>();
         }
