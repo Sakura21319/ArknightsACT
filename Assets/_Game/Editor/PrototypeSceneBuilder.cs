@@ -41,17 +41,26 @@ namespace ArknightsACT.Editor
             AssetDatabase.Refresh();
             Selection.activeGameObject = player;
             EditorGUIUtility.PingObject(player);
-            Debug.Log($"ArknightsACT prototype scene generated: {ScenePath}. PRTS generated prefabs are used when available; otherwise graybox visuals remain. Standalone default: Windowed 1280x720.");
+            Debug.Log($"ArknightsACT prototype scene generated: {ScenePath}. Texas uses a single repeatable basic attack that matches the PRTS combat animation. PRTS generated prefabs are used when available; otherwise graybox visuals remain.");
         }
 
         private static AttackDefinition[] BuildTexasAttackDefinitions()
         {
+            // PRTS Texas exposes Attack_Start / Attack_Loop / Attack_End as phases of ONE
+            // normal attack state, not four distinct combo attacks. Keep one authoritative ACT
+            // attack definition and let repeated presses build streaks/upgrades independently.
             return new[]
             {
-                GetOrCreateAttack("Texas_A1", 0.07f, 0.05f, 0.12f, 0.85f, new Vector2(2.2f, 0.6f), 0.25f),
-                GetOrCreateAttack("Texas_A2", 0.06f, 0.05f, 0.13f, 0.90f, new Vector2(2.5f, 0.8f), 0.25f),
-                GetOrCreateAttack("Texas_A3", 0.08f, 0.06f, 0.15f, 1.00f, new Vector2(3.2f, 1.0f), 0.30f),
-                GetOrCreateAttack("Texas_A4", 0.11f, 0.07f, 0.22f, 1.35f, new Vector2(6.5f, 2.4f), 0.40f, 0.055f, 0.11f)
+                GetOrCreateAttack(
+                    "Texas_Basic",
+                    startup: 0.075f,
+                    active: 0.055f,
+                    recovery: 0.145f,
+                    damageMultiplier: 1.0f,
+                    knockback: new Vector2(3.0f, 0.85f),
+                    dashCancel: 0.30f,
+                    hitStop: 0.038f,
+                    shake: 0.075f)
             };
         }
 
