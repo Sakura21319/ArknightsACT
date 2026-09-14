@@ -8,5 +8,6 @@ namespace ArknightsACT.Gameplay.Input
         bool JumpPressedThisFrame { get; }
         bool AttackPressedThisFrame { get; }
         bool DashPressedThisFrame { get; }
+        bool SkillPressedThisFrame { get; }
     }
 }

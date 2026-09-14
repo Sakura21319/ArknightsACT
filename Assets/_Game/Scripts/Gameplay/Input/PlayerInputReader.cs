@@ -4,8 +4,7 @@ using UnityEngine.InputSystem;
 namespace ArknightsACT.Gameplay.Input
 {
     /// <summary>
-    /// Desktop/Gamepad input adapter.
-    /// Mobile later supplies another adapter against the same player-facing contract.
+    /// Desktop/Gamepad input adapter. Mobile will provide another adapter against the same contract.
     /// </summary>
     public sealed class PlayerInputReader : MonoBehaviour, IPlayerInputSource
     {
@@ -14,31 +13,18 @@ namespace ArknightsACT.Gameplay.Input
         private InputAction _jump;
         private InputAction _attack;
         private InputAction _dash;
+        private InputAction _skill;
 
         public Vector2 Move => _move?.ReadValue<Vector2>() ?? Vector2.zero;
         public bool JumpPressedThisFrame => _jump?.WasPressedThisFrame() ?? false;
         public bool AttackPressedThisFrame => _attack?.WasPressedThisFrame() ?? false;
         public bool DashPressedThisFrame => _dash?.WasPressedThisFrame() ?? false;
+        public bool SkillPressedThisFrame => _skill?.WasPressedThisFrame() ?? false;
 
-        private void Awake()
-        {
-            BuildActions();
-        }
-
-        private void OnEnable()
-        {
-            _gameplay?.Enable();
-        }
-
-        private void OnDisable()
-        {
-            _gameplay?.Disable();
-        }
-
-        private void OnDestroy()
-        {
-            _gameplay?.Dispose();
-        }
+        private void Awake() => BuildActions();
+        private void OnEnable() => _gameplay?.Enable();
+        private void OnDisable() => _gameplay?.Disable();
+        private void OnDestroy() => _gameplay?.Dispose();
 
         private void BuildActions()
         {
@@ -68,6 +54,11 @@ namespace ArknightsACT.Gameplay.Input
             _dash.AddBinding("<Keyboard>/k");
             _dash.AddBinding("<Keyboard>/leftShift");
             _dash.AddBinding("<Gamepad>/buttonEast");
+
+            _skill = _gameplay.AddAction("Skill", InputActionType.Button);
+            _skill.AddBinding("<Keyboard>/l");
+            _skill.AddBinding("<Mouse>/rightButton");
+            _skill.AddBinding("<Gamepad>/buttonNorth");
         }
     }
 }

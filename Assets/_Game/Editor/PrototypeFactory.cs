@@ -1,8 +1,11 @@
 #if UNITY_EDITOR
 using ArknightsACT.Combat;
+using ArknightsACT.Gameplay.Abilities;
 using ArknightsACT.Gameplay.CameraSystem;
 using ArknightsACT.Gameplay.Characters;
+using ArknightsACT.Gameplay.Characters.Texas;
 using ArknightsACT.Gameplay.Combat;
+using ArknightsACT.Gameplay.Debugging;
 using ArknightsACT.Gameplay.Enemies;
 using ArknightsACT.Gameplay.Feedback;
 using ArknightsACT.Gameplay.Input;
@@ -45,12 +48,17 @@ namespace ArknightsACT.Editor
             var entity = go.AddComponent<CombatEntity>();
             entity.SetTeam(Team.Player);
 
-            // Component order is intentional: avoid RequireComponent creating a duplicate PlayerMotor2D.
             go.AddComponent<PlayerInputReader>();
             go.AddComponent<PlayerMotor2D>();
             go.AddComponent<PlayerDashController>();
+            go.AddComponent<AttackSlashPresentation2D>();
+            go.AddComponent<SwordRainPresentation2D>();
             go.AddComponent<PlayerAttackController>().Configure(attacks, 10f);
             go.AddComponent<PlayerDamageGate>();
+            go.AddComponent<TexasSwordRainSkill>();
+            go.AddComponent<PlayerSkillController>();
+            go.AddComponent<TexasBuildRuntime>();
+            go.AddComponent<TexasPrototypeHud>();
 
             return go;
         }
@@ -70,13 +78,10 @@ namespace ArknightsACT.Editor
             var go = new GameObject(name);
             go.transform.position = position;
             go.transform.localScale = Vector3.one;
-
             CreateVisualChild(go.transform, "Visual", size, color, 0, addHitFlash: false);
-
             var body = go.AddComponent<Rigidbody2D>();
             body.bodyType = RigidbodyType2D.Static;
             body.simulated = true;
-
             var collider = go.AddComponent<BoxCollider2D>();
             collider.size = size;
             collider.isTrigger = false;
@@ -87,7 +92,6 @@ namespace ArknightsACT.Editor
             var go = new GameObject("DummyEnemy");
             go.transform.position = new Vector3(position.x, FloorTopY + 0.73f, 0f);
             go.transform.localScale = Vector3.one;
-
             CreateVisualChild(go.transform, "Visual", new Vector2(0.8f, 1.45f), new Color(1.00f, 0.18f, 0.22f), 15, addHitFlash: true);
 
             var body = go.AddComponent<Rigidbody2D>();
@@ -101,7 +105,7 @@ namespace ArknightsACT.Editor
             collider.size = new Vector2(0.72f, 1.40f);
             collider.isTrigger = false;
 
-            go.AddComponent<Health>().SetMaxHealth(100f);
+            go.AddComponent<Health>().SetMaxHealth(180f);
             var entity = go.AddComponent<CombatEntity>();
             entity.SetTeam(Team.Enemy);
             go.AddComponent<DummyEnemy>();
@@ -117,7 +121,6 @@ namespace ArknightsACT.Editor
             go.tag = "MainCamera";
             go.transform.SetParent(rig.transform, false);
             go.transform.localPosition = new Vector3(0f, 0f, -10f);
-
             var camera = go.AddComponent<Camera>();
             camera.orthographic = true;
             camera.orthographicSize = 3.7f;
@@ -133,14 +136,10 @@ namespace ArknightsACT.Editor
             visual.transform.SetParent(parent, false);
             visual.transform.localPosition = Vector3.zero;
             visual.transform.localScale = new Vector3(size.x, size.y, 1f);
-
             var renderer = visual.AddComponent<SpriteRenderer>();
             renderer.sortingOrder = sortingOrder;
             visual.AddComponent<PlaceholderVisual2D>().SetColor(color);
-
-            if (addHitFlash)
-                visual.AddComponent<HitFlash2D>();
-
+            if (addHitFlash) visual.AddComponent<HitFlash2D>();
             return visual;
         }
     }
