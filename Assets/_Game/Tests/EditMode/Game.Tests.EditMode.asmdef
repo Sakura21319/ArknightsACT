@@ -1,0 +1,8 @@
+{
+  "name": "Game.Tests.EditMode",
+  "rootNamespace": "ArknightsACT.Tests",
+  "references": ["Game.Core", "Game.Combat"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "autoReferenced": false
+}
