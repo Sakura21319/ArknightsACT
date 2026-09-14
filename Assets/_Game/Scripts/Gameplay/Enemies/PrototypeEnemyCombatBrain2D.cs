@@ -12,10 +12,6 @@ namespace ArknightsACT.Gameplay.Enemies
         Ranged
     }
 
-    /// <summary>
-    /// Small prototype combat brain used by the Phase 3 room.
-    /// It owns only target selection / movement / attack timing; visuals stay in Presentation.
-    /// </summary>
     [RequireComponent(typeof(CombatEntity), typeof(Rigidbody2D))]
     public sealed class PrototypeEnemyCombatBrain2D : MonoBehaviour
     {
@@ -67,6 +63,13 @@ namespace ArknightsACT.Gameplay.Enemies
         {
             if (_entity != null)
                 _entity.Damaged -= OnDamaged;
+            if (_attackRoutine != null)
+            {
+                StopCoroutine(_attackRoutine);
+                _attackRoutine = null;
+            }
+            if (_body != null)
+                StopHorizontal();
         }
 
         private void FixedUpdate()
@@ -123,7 +126,6 @@ namespace ArknightsACT.Gameplay.Enemies
                 TryAttack();
                 return;
             }
-
             Move(Mathf.Sign(deltaX));
         }
 
@@ -135,22 +137,23 @@ namespace ArknightsACT.Gameplay.Enemies
                 Move(-Mathf.Sign(deltaX));
                 return;
             }
-
             if (distance > preferredRange * 1.18f)
             {
                 Move(Mathf.Sign(deltaX));
                 return;
             }
-
             StopHorizontal();
             TryAttack();
         }
 
         private void TryAttack()
         {
-            if (Time.time < _nextAttackAt || _target == null)
+            if (Time.time < _nextAttackAt || _target == null || _attackRoutine != null)
                 return;
 
+            // Stop on the exact frame attack state begins. Do not wait for the next FixedUpdate,
+            // otherwise interpolation can make the enemy visibly slide during its first attack frames.
+            StopHorizontal();
             _attackRoutine = StartCoroutine(AttackRoutine());
         }
 
@@ -159,7 +162,7 @@ namespace ArknightsACT.Gameplay.Enemies
             StopHorizontal();
             AttackStarted?.Invoke(FacingSign);
 
-            yield return new WaitForSeconds(attackWindup);
+            yield return WaitWhileLocked(attackWindup);
 
             if (_target != null && _target.Health != null && !_target.Health.IsDead)
             {
@@ -183,9 +186,21 @@ namespace ArknightsACT.Gameplay.Enemies
                 }
             }
 
-            yield return new WaitForSeconds(attackRecovery);
+            yield return WaitWhileLocked(attackRecovery);
+            StopHorizontal();
             _attackRoutine = null;
             _nextAttackAt = Time.time + attackCooldown;
+        }
+
+        private IEnumerator WaitWhileLocked(float seconds)
+        {
+            var elapsed = 0f;
+            while (elapsed < seconds)
+            {
+                StopHorizontal();
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
         }
 
         private void OnDamaged(DamageContext _, DamageResult __)
@@ -197,6 +212,9 @@ namespace ArknightsACT.Gameplay.Enemies
                 _attackRoutine = null;
                 _nextAttackAt = Time.time + Mathf.Max(0.15f, attackCooldown * 0.35f);
             }
+            // Do not zero X here: DamageSystem has just applied knockback and stagger should
+            // allow that impulse to remain visible instead of immediately cancelling it.
+            IsMoving = false;
         }
 
         private void AcquireTargetIfNeeded()
@@ -238,6 +256,8 @@ namespace ArknightsACT.Gameplay.Enemies
 
         private void StopHorizontal()
         {
+            if (_body == null)
+                return;
             _body.linearVelocity = new Vector2(0f, _body.linearVelocity.y);
             IsMoving = false;
         }
@@ -253,25 +273,25 @@ namespace ArknightsACT.Gameplay.Enemies
                     attackRecovery = 0.12f;
                     attackCooldown = 0.55f;
                     attackDamage = 7f;
-                    hitStaggerSeconds = 0.11f;
+                    hitStaggerSeconds = 0.15f;
                     break;
                 case PrototypeEnemyArchetype.Ranged:
                     moveSpeed = 2.2f;
                     preferredRange = 4.8f;
                     attackWindup = 0.28f;
-                    attackRecovery = 0.18f;
+                    attackRecovery = 0.20f;
                     attackCooldown = 1.05f;
                     attackDamage = 6f;
-                    hitStaggerSeconds = 0.13f;
+                    hitStaggerSeconds = 0.17f;
                     break;
                 default:
                     moveSpeed = 2.7f;
                     attackRange = 1.25f;
-                    attackWindup = 0.20f;
-                    attackRecovery = 0.18f;
+                    attackWindup = 0.22f;
+                    attackRecovery = 0.20f;
                     attackCooldown = 0.80f;
                     attackDamage = 8f;
-                    hitStaggerSeconds = 0.14f;
+                    hitStaggerSeconds = 0.18f;
                     break;
             }
         }
