@@ -20,7 +20,6 @@ namespace ArknightsACT.Editor
             EnsureFolder(SceneDir);
             var attacks = BuildTexasAttackDefinitions();
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            scene.name = "PrototypeRun";
 
             PrototypeFactory.CreateServices();
             var player = PrototypeFactory.CreatePlayer(attacks);
