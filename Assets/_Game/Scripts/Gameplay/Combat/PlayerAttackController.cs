@@ -17,6 +17,10 @@ namespace ArknightsACT.Gameplay.Combat
         [SerializeField] private float baseAttack = 10f;
         [SerializeField] private float comboResetSeconds = 0.55f;
 
+        [Header("Action feel")]
+        [Tooltip("After the authoritative hit frame, keep feet planted only for this short recovery. The visible attack may keep finishing while locomotion is already responsive again.")]
+        [SerializeField, Min(0f)] private float movementUnlockAfterImpactSeconds = 0.04f;
+
         private CombatEntity _entity;
         private PlayerMotor2D _motor;
         private IPlayerInputSource _input;
@@ -26,11 +30,31 @@ namespace ArknightsACT.Gameplay.Combat
         private int _comboIndex;
         private float _lastAttackFinishedAt = -999f;
         private float _attackStartedAt;
+        private float _currentImpactSeconds;
         private float _currentCycleSeconds;
         private AttackDefinition _currentDefinition;
         private bool _attackQueued;
 
         public bool IsAttacking => _attackRoutine != null;
+
+        /// <summary>
+        /// Movement is committed only through startup, impact, and a tiny post-hit recovery.
+        /// This keeps attacks grounded without making the player wait for the whole visual tail.
+        /// </summary>
+        public bool IsMovementLocked
+        {
+            get
+            {
+                if (!IsAttacking)
+                    return false;
+
+                var unlockAt = Mathf.Min(
+                    Mathf.Max(0f, _currentCycleSeconds),
+                    Mathf.Max(0f, _currentImpactSeconds) + movementUnlockAfterImpactSeconds);
+                return Time.time - _attackStartedAt < unlockAt;
+            }
+        }
+
         public event Action<int> AttackStarted;
         public event Action<CombatEntity> AttackHit;
 
@@ -108,6 +132,7 @@ namespace ArknightsACT.Gameplay.Combat
                 StopCoroutine(_attackRoutine);
             _attackRoutine = null;
             _currentDefinition = null;
+            _currentImpactSeconds = 0f;
             _currentCycleSeconds = 0f;
             _attackQueued = false;
         }
@@ -137,6 +162,7 @@ namespace ArknightsACT.Gameplay.Combat
             _attackQueued = false;
 
             ResolveTiming(definition, out var impactSeconds, out var cycleSeconds);
+            _currentImpactSeconds = impactSeconds;
             _currentCycleSeconds = cycleSeconds;
 
             AttackStarted?.Invoke(comboIndex);
@@ -153,6 +179,7 @@ namespace ArknightsACT.Gameplay.Combat
             _comboIndex = (_comboIndex + 1) % combo.Length;
             _attackRoutine = null;
             _currentDefinition = null;
+            _currentImpactSeconds = 0f;
             _currentCycleSeconds = 0f;
 
             var continueChain = _attackQueued &&
