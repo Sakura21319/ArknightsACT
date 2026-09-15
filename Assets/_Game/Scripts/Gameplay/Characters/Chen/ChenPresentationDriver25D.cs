@@ -15,6 +15,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
     /// 2.5D presentation driver that preserves the validated authored Ch'en animation mapping
     /// from the side-view build. Only locomotion state comes from PlayerMotor25D; clip selection,
     /// segment timing and base-motion retargeting remain identical to the original presentation.
+    /// A small eight-direction billboard cue helps side-view Spine art read naturally on XZ.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(PlayerMotor25D), typeof(PlayerAttackController), typeof(PlayerSkillController))]
@@ -24,6 +25,9 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         private const float Combo3PlaybackSpeed = 1.80f;
         private const float Skill1PlaybackSpeed = 1.50f;
         private const float Skill2PlaybackSpeed = 1.55f;
+        private const float IdleDirectionStrength = 0.25f;
+        private const float MoveDirectionStrength = 0.65f;
+        private const float ActionDirectionStrength = 1.00f;
 
         private readonly Dictionary<string, float> _durations = new(StringComparer.OrdinalIgnoreCase);
 
@@ -33,6 +37,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         private CombatEntity _entity;
         private SpineCharacterPresentation2D _presentation;
         private SpineBoneMotionRetarget2D _retarget;
+        private BillboardPresentation25D _billboard;
 
         private Component _skeletonAnimation;
         private object _animationState;
@@ -51,6 +56,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             _presentation = GetComponentsInChildren<SpineCharacterPresentation2D>(true)
                 .FirstOrDefault(item => item != null && item.enabled);
             _retarget = GetComponent<SpineBoneMotionRetarget2D>();
+            _billboard = GetComponentInChildren<BillboardPresentation25D>(true);
             TryBind();
         }
 
@@ -73,6 +79,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             if (_entity?.Health != null)
                 _entity.Health.Died -= OnDied;
             _retarget?.SetMoving(false);
+            _billboard?.ResetDirectionalCue();
         }
 
         private void Update()
@@ -80,6 +87,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             if (_dead || _presentation == null || _motor == null)
                 return;
 
+            var facing = _motor.FacingSign;
             var actionVisualActive = Time.time < _visualLockUntil ||
                                      (_attack != null && _attack.IsAttacking) ||
                                      (_skills != null && _skills.IsCasting);
@@ -88,6 +96,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                 _actionVisualWasActive = true;
                 _retarget?.SetMoving(false);
                 _presentation.SetExternalLocomotionActive(false);
+                _billboard?.SetPlanarDirection(_motor.PlanarForward, facing, ActionDirectionStrength);
                 return;
             }
 
@@ -101,7 +110,11 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             var allowRetarget = moving && _retarget != null && _retarget.IsCompatible;
             _retarget?.SetMoving(allowRetarget);
             _presentation.SetExternalLocomotionActive(allowRetarget);
-            _presentation.SetLocomotion(moving, _motor.FacingSign);
+            _presentation.SetLocomotion(moving, facing);
+            _billboard?.SetPlanarDirection(
+                _motor.PlanarForward,
+                facing,
+                moving ? MoveDirectionStrength : IdleDirectionStrength);
         }
 
         private void OnAttackStarted(int comboIndex)
@@ -112,6 +125,8 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             StopLocomotionPresentation();
             var facing = _motor != null ? _motor.FacingSign : 1;
             _presentation?.SetLocomotion(false, facing);
+            if (_motor != null)
+                _billboard?.SetPlanarDirection(_motor.PlanarForward, facing, ActionDirectionStrength);
 
             switch (comboIndex)
             {
@@ -135,6 +150,8 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             StopLocomotionPresentation();
             var facing = _motor != null ? _motor.FacingSign : 1;
             _presentation?.SetLocomotion(false, facing);
+            if (_motor != null)
+                _billboard?.SetPlanarDirection(_motor.PlanarForward, facing, ActionDirectionStrength);
 
             if (slot == 1)
                 PlayOneShot("Skill_2", "Skill_End_2", Skill1PlaybackSpeed);
@@ -147,6 +164,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             _dead = true;
             _retarget?.SetMoving(false);
             _presentation?.SetExternalLocomotionActive(false);
+            _billboard?.ResetDirectionalCue();
             _presentation?.PlayDie();
         }
 
