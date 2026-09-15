@@ -9,9 +9,9 @@ namespace ArknightsACT.Gameplay.Characters
     public sealed class PlayerMotor2D : MonoBehaviour
     {
         [Header("Movement")]
-        [SerializeField] private float moveSpeed = 7f;
-        [SerializeField] private float acceleration = 140f;
-        [SerializeField] private float deceleration = 180f;
+        [SerializeField] private float moveSpeed = 5.8f;
+        [SerializeField] private float acceleration = 120f;
+        [SerializeField] private float deceleration = 160f;
 
         [Header("Jump")]
         [SerializeField] private float jumpVelocity = 15.5f;
@@ -52,8 +52,6 @@ namespace ArknightsACT.Gameplay.Characters
             if (IsDead || (_dash != null && _dash.IsDashing))
                 return;
 
-            // Jump remains a committed action boundary: do not jump out of a basic attack.
-            // Horizontal movement, however, can cancel the post-hit recovery in FixedUpdate.
             if (_attack != null && _attack.IsAttacking)
                 return;
 
@@ -81,8 +79,6 @@ namespace ArknightsACT.Gameplay.Characters
 
             var current = _body.linearVelocity;
 
-            // Starting a normal attack still plants the player in place. The lock ends shortly
-            // after the real hit frame, so directional input can cancel only the recovery tail.
             if (_attack != null && _attack.IsMovementLocked)
             {
                 current.x = 0f;
