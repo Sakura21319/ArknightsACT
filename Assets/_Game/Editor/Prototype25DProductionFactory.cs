@@ -23,9 +23,15 @@ namespace ArknightsACT.Editor
             if (demoFollow != null)
                 Object.DestroyImmediate(demoFollow);
 
-            var follow = camera.GetComponent<CameraFollow25D>();
-            if (follow == null)
-                follow = camera.gameObject.AddComponent<CameraFollow25D>();
+            var rig = new GameObject("CameraRig25D");
+            rig.transform.position = camera.transform.position;
+            rig.transform.rotation = camera.transform.rotation;
+
+            camera.transform.SetParent(rig.transform, true);
+            camera.transform.localPosition = Vector3.zero;
+            camera.transform.localRotation = Quaternion.identity;
+
+            var follow = rig.AddComponent<CameraFollow25D>();
             follow.Configure(player, CameraOffset);
 
             if (camera.GetComponent<CameraShake2D>() == null)
