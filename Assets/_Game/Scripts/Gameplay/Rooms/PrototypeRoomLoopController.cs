@@ -9,8 +9,9 @@ namespace ArknightsACT.Gameplay.Rooms
 {
     /// <summary>
     /// Small prototype Roguelite loop:
-    /// spawn room -> clear enemies -> choose upgrade -> spawn next room.
-    /// Enemy presentation templates are scene-local and remain inactive outside spawning.
+    /// spawn room -> clear enemies -> optional reward -> spawn next room.
+    /// The reward panel is optional so animation/gameplay character experiments do not have to
+    /// depend on Texas-specific build UI.
     /// </summary>
     public sealed class PrototypeRoomLoopController : MonoBehaviour
     {
@@ -69,8 +70,7 @@ namespace ArknightsACT.Gameplay.Rooms
             if (!CanSpawn())
             {
                 Debug.LogWarning(
-                    "[ArknightsACT/RoomLoop] Missing player, reward panel, enemy templates or spawn points. " +
-                    "Rebuild Prototype Scene.",
+                    "[ArknightsACT/RoomLoop] Missing player, enemy templates or spawn points. Rebuild Prototype Scene.",
                     this);
                 return;
             }
@@ -105,8 +105,6 @@ namespace ArknightsACT.Gameplay.Rooms
             if (upgradePanel != null && upgradePanel.HasAvailableUpgrade && upgradePanel.OpenForRoom(CurrentRoom))
                 return;
 
-            // Once the three prototype upgrades have all been collected, keep the room loop
-            // running without trapping the player in an empty reward panel.
             BeginNextRoomTransition();
         }
 
@@ -159,9 +157,6 @@ namespace ArknightsACT.Gameplay.Rooms
 
                 instance.SetActive(true);
 
-                // Combat actors overlap instead of physically shoving one another. Their colliders
-                // still collide with floors, platforms and world bounds, and hit detection still
-                // uses overlap queries against the same colliders.
                 IgnoreActorCollision(instance, player != null ? player.gameObject : null);
                 for (var previous = 0; previous < _activeEnemies.Count; previous++)
                 {
@@ -188,8 +183,6 @@ namespace ArknightsACT.Gameplay.Rooms
             if (enemyTemplates == null || enemyTemplates.Length == 0)
                 return null;
 
-            // Template order is Soldier, Hound, Crossbowman. Keep the ranged Crossbowman out of
-            // the onboarding rooms so the player can learn movement / attack / dash first.
             var availableTemplateCount = CurrentRoom < rangedUnlockRoom
                 ? Mathf.Min(2, enemyTemplates.Length)
                 : enemyTemplates.Length;
@@ -279,7 +272,6 @@ namespace ArknightsACT.Gameplay.Rooms
         private bool CanSpawn()
         {
             return player != null &&
-                   upgradePanel != null &&
                    enemyTemplates != null && enemyTemplates.Length > 0 &&
                    spawnPoints != null && spawnPoints.Length > 0;
         }
