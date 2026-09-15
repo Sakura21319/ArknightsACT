@@ -28,13 +28,16 @@ namespace ArknightsACT.Editor
             PrototypeBackdropFactory.Create();
             var player = PrototypeFactory.CreatePlayer(attacks);
 
-            // Replace the old whole-presentation Transform accent with real Texas Spine bone
-            // posing now that the local PRTS rig has been mapped. This keeps only one action
-            // authoring layer active at a time and makes move differences readable without VFX.
+            // Use the authored PRTS Spine clips as the only character animation source for now.
+            // PrototypeFactory still adds the legacy transform accent for compatibility with older
+            // scenes, so remove it here. Do not add the experimental procedural bone animator.
             var legacyAccent = player.GetComponent<PlayerComboMotionAccent2D>();
             if (legacyAccent != null)
                 UnityEngine.Object.DestroyImmediate(legacyAccent);
-            player.AddComponent<TexasProceduralActionAnimator2D>();
+
+            var experimentalBoneAnimator = player.GetComponent<TexasProceduralActionAnimator2D>();
+            if (experimentalBoneAnimator != null)
+                UnityEngine.Object.DestroyImmediate(experimentalBoneAnimator);
 
             PrototypeFactory.CreateFloor();
             PrototypeFactory.CreateWorldBounds();
@@ -54,16 +57,15 @@ namespace ArknightsACT.Editor
             Selection.activeGameObject = player;
             EditorGUIUtility.PingObject(player);
             Debug.Log(
-                $"ArknightsACT prototype scene generated: {ScenePath}. Texas now uses mapped Spine bone poses " +
-                "for ground combo, dash slash, air slash and plunge actions.");
+                $"ArknightsACT prototype scene generated: {ScenePath}. " +
+                "Texas presentation uses the original authored PRTS Spine animations only.");
         }
 
         private static AttackDefinition[] BuildTexasAttackDefinitions()
         {
-            // Spine supplies the authoritative visible cycle/impact timing at runtime. These three
-            // definitions intentionally share that cadence but vary damage, hit volume, knockback
-            // and feedback so repeated J presses read as a real 1-2-finisher combo instead of one
-            // identical swing forever.
+            // Gameplay keeps the three-step combo data, but presentation is intentionally back on
+            // the original authored Spine attack clip. Different actions may still have different
+            // hitboxes/damage/knockback while animation experimentation is paused.
             return new[]
             {
                 GetOrCreateAttack(
