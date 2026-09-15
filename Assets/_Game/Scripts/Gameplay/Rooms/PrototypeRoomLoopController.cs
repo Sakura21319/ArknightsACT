@@ -35,6 +35,7 @@ namespace ArknightsACT.Gameplay.Rooms
         private PlayerAttackController _playerAttack;
         private PlayerSkillController _playerSkills;
         private PlayerDashController _playerDash;
+        private CombatRoomTuning _pendingTuning = CombatRoomTuning.Default;
 
         public int CurrentRoom { get; private set; }
         public int LivingEnemies => CountLivingEnemies();
@@ -57,11 +58,14 @@ namespace ArknightsACT.Gameplay.Rooms
 
         public void SetExternalContinueGate(bool enabled) => waitForExternalContinue = enabled;
 
-        public bool ContinueToNextRoom()
+        public bool ContinueToNextRoom() => ContinueToNextRoom(CombatRoomTuning.Default);
+
+        public bool ContinueToNextRoom(CombatRoomTuning tuning)
         {
             if (!_roomClearHandled || _transitionRoutine != null || CurrentRoom <= 0)
                 return false;
 
+            _pendingTuning = tuning;
             IsWaitingForContinue = false;
             _transitionRoutine = StartCoroutine(NextRoomRoutine());
             return true;
@@ -78,7 +82,7 @@ namespace ArknightsACT.Gameplay.Rooms
             }
 
             CachePlayerActionState();
-            SpawnRoom(1);
+            SpawnRoom(1, CombatRoomTuning.Default);
         }
 
         private void OnDisable()
@@ -115,6 +119,7 @@ namespace ArknightsACT.Gameplay.Rooms
                 return;
             }
 
+            _pendingTuning = CombatRoomTuning.Default;
             _transitionRoutine = StartCoroutine(NextRoomRoutine());
         }
 
@@ -123,11 +128,13 @@ namespace ArknightsACT.Gameplay.Rooms
             if (nextRoomDelay > 0f)
                 yield return new WaitForSecondsRealtime(nextRoomDelay);
 
+            var tuning = _pendingTuning;
+            _pendingTuning = CombatRoomTuning.Default;
             _transitionRoutine = null;
-            SpawnRoom(CurrentRoom + 1);
+            SpawnRoom(CurrentRoom + 1, tuning);
         }
 
-        private void SpawnRoom(int roomIndex)
+        private void SpawnRoom(int roomIndex, CombatRoomTuning tuning)
         {
             if (!CanSpawn())
                 return;
@@ -138,12 +145,19 @@ namespace ArknightsACT.Gameplay.Rooms
             _activeEnemies.Clear();
             ResetPlayerForRoom();
 
-            var enemyCount = Mathf.Clamp(startingEnemyCount + CurrentRoom - 1, startingEnemyCount, maxEnemyCount);
-            var healthMultiplier = 1f + Mathf.Max(0, CurrentRoom - 1) * healthGrowthPerRoom;
+            var baseEnemyCount = Mathf.Clamp(
+                startingEnemyCount + CurrentRoom - 1,
+                startingEnemyCount,
+                maxEnemyCount);
+            var enemyCount = tuning.EnemyCountOverride > 0
+                ? Mathf.Clamp(tuning.EnemyCountOverride, 1, spawnPoints.Length)
+                : Mathf.Clamp(baseEnemyCount + tuning.EnemyCountBonus, 1, spawnPoints.Length);
+            var progressionHealthMultiplier = 1f + Mathf.Max(0, CurrentRoom - 1) * healthGrowthPerRoom;
+            var healthMultiplier = progressionHealthMultiplier * Mathf.Max(0.1f, tuning.HealthMultiplier);
 
             for (var i = 0; i < enemyCount; i++)
             {
-                var template = SelectEnemyTemplate(i);
+                var template = SelectEnemyTemplate(i, tuning);
                 if (template == null)
                     continue;
 
@@ -169,22 +183,27 @@ namespace ArknightsACT.Gameplay.Rooms
                     _activeEnemies.Add(entity);
             }
 
-            var rangedState = CurrentRoom < rangedUnlockRoom ? "melee-only" : "ranged-enabled";
+            var rangedEnabled = tuning.EnableRangedEarly || CurrentRoom >= rangedUnlockRoom;
             Debug.Log(
-                $"[ArknightsACT/RoomLoop] Room {CurrentRoom} started: enemies={_activeEnemies.Count}, " +
-                $"healthMultiplier={healthMultiplier:0.00}x, {rangedState}.",
+                $"[ArknightsACT/RoomLoop] Room {CurrentRoom} started: node={tuning.Label}, " +
+                $"enemies={_activeEnemies.Count}, healthMultiplier={healthMultiplier:0.00}x, " +
+                $"ranged={(rangedEnabled ? "enabled" : "locked")}.",
                 this);
             RoomStarted?.Invoke(CurrentRoom);
         }
 
-        private GameObject SelectEnemyTemplate(int spawnIndex)
+        private GameObject SelectEnemyTemplate(int spawnIndex, CombatRoomTuning tuning)
         {
             if (enemyTemplates == null || enemyTemplates.Length == 0)
                 return null;
 
-            var availableTemplateCount = CurrentRoom < rangedUnlockRoom
-                ? Mathf.Min(2, enemyTemplates.Length)
-                : enemyTemplates.Length;
+            if (tuning.ForcedTemplateIndex >= 0 && tuning.ForcedTemplateIndex < enemyTemplates.Length)
+                return enemyTemplates[tuning.ForcedTemplateIndex];
+
+            var rangedEnabled = tuning.EnableRangedEarly || CurrentRoom >= rangedUnlockRoom;
+            var availableTemplateCount = rangedEnabled
+                ? Mathf.Min(3, enemyTemplates.Length)
+                : Mathf.Min(2, enemyTemplates.Length);
             if (availableTemplateCount <= 0)
                 return null;
 
