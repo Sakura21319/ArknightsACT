@@ -21,7 +21,7 @@ namespace ArknightsACT.Editor
             PrototypePlayerSettings.Apply();
             EnsureFolder(DataDir);
             EnsureFolder(SceneDir);
-            var attacks = BuildChenPlaceholderAttackDefinitions();
+            var attacks = BuildChenAttackDefinitions();
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             PrototypeFactory.CreateServices();
@@ -33,8 +33,7 @@ namespace ArknightsACT.Editor
             PrototypeFactory.CreatePlatform(new Vector2(5f, 1.5f), new Vector2(4f, 0.35f));
             PrototypeFactory.CreatePlatform(new Vector2(11f, 2.6f), new Vector2(3f, 0.35f));
 
-            var enemies = PrtsPrototypeAssetCatalog.PrototypeEnemies;
-            var enemyTemplates = PrototypeFactory.CreateEnemyTemplates(enemies);
+            var enemyTemplates = PrototypeFactory.CreateEnemyTemplates(PrtsPrototypeAssetCatalog.PrototypeEnemies);
             PrototypeFactory.CreateRoomLoop(player.transform, enemyTemplates);
             PrototypeFactory.CreateCamera(player.transform);
 
@@ -43,55 +42,56 @@ namespace ArknightsACT.Editor
             AssetDatabase.Refresh();
             Selection.activeGameObject = player;
             EditorGUIUtility.PingObject(player);
+
             Debug.Log(
-                $"ArknightsACT 2D ACT prototype generated: {ScenePath}. " +
-                "Player is now Ch'en. Texas-specific skill/build components are intentionally not attached. " +
-                "Current attack data is a temporary gameplay shell until Ch'en's authored PRTS clips are catalogued.");
+                $"ArknightsACT Chen 2D ACT prototype generated: {ScenePath}. " +
+                "Controls: A/D move, Space jump, J/LMB three-hit combo, K/Shift dash, L skill1, I/RMB skill2.");
         }
 
-        private static AttackDefinition[] BuildChenPlaceholderAttackDefinitions()
+        private static AttackDefinition[] BuildChenAttackDefinitions()
         {
-            // Temporary collision/timing shell only. Do not treat these as Ch'en's final combo.
-            // The next step is to inspect her complete authored PRTS animation catalog and map
-            // gameplay actions to real clips before tuning startup/recovery/hit timing.
+            // Presentation mapping:
+            // combo 1 -> Attack first half
+            // combo 2 -> Attack second half
+            // combo 3 -> Skill
             return new[]
             {
                 GetOrCreateAttack(
-                    "Chen_Basic_1_Placeholder",
-                    startup: 0.095f,
-                    active: 0.030f,
-                    recovery: 0.055f,
+                    "Chen_Basic_1",
+                    startup: 0.12f,
+                    active: 0.03f,
+                    recovery: 0.21f,
                     damageMultiplier: 1.00f,
-                    hitboxOffset: new Vector2(0.90f, 0.02f),
-                    hitboxSize: new Vector2(1.40f, 1.10f),
+                    hitboxOffset: new Vector2(0.92f, 0.03f),
+                    hitboxSize: new Vector2(1.50f, 1.12f),
                     knockback: new Vector2(2.2f, 0.45f),
-                    dashCancel: 0.34f,
+                    dashCancel: 0.42f,
                     hitStop: 0.018f,
                     shake: 0.045f),
                 GetOrCreateAttack(
-                    "Chen_Basic_2_Placeholder",
-                    startup: 0.095f,
-                    active: 0.030f,
-                    recovery: 0.055f,
-                    damageMultiplier: 1.00f,
-                    hitboxOffset: new Vector2(0.90f, 0.02f),
-                    hitboxSize: new Vector2(1.40f, 1.10f),
-                    knockback: new Vector2(2.2f, 0.45f),
-                    dashCancel: 0.34f,
-                    hitStop: 0.018f,
-                    shake: 0.045f),
+                    "Chen_Basic_2",
+                    startup: 0.11f,
+                    active: 0.03f,
+                    recovery: 0.22f,
+                    damageMultiplier: 1.15f,
+                    hitboxOffset: new Vector2(1.00f, 0.05f),
+                    hitboxSize: new Vector2(1.65f, 1.20f),
+                    knockback: new Vector2(2.8f, 0.60f),
+                    dashCancel: 0.40f,
+                    hitStop: 0.022f,
+                    shake: 0.055f),
                 GetOrCreateAttack(
-                    "Chen_Basic_3_Placeholder",
-                    startup: 0.095f,
-                    active: 0.030f,
-                    recovery: 0.055f,
-                    damageMultiplier: 1.00f,
-                    hitboxOffset: new Vector2(0.90f, 0.02f),
-                    hitboxSize: new Vector2(1.40f, 1.10f),
-                    knockback: new Vector2(2.2f, 0.45f),
-                    dashCancel: 0.34f,
-                    hitStop: 0.018f,
-                    shake: 0.045f)
+                    "Chen_Basic_3",
+                    startup: 0.16f,
+                    active: 0.04f,
+                    recovery: 0.32f,
+                    damageMultiplier: 1.55f,
+                    hitboxOffset: new Vector2(1.08f, 0.08f),
+                    hitboxSize: new Vector2(2.05f, 1.42f),
+                    knockback: new Vector2(4.8f, 1.05f),
+                    dashCancel: 0.52f,
+                    hitStop: 0.040f,
+                    shake: 0.10f)
             };
         }
 
@@ -105,8 +105,8 @@ namespace ArknightsACT.Editor
             Vector2 hitboxSize,
             Vector2 knockback,
             float dashCancel,
-            float hitStop = 0.035f,
-            float shake = 0.07f)
+            float hitStop,
+            float shake)
         {
             var path = $"{DataDir}/{name}.asset";
             var asset = AssetDatabase.LoadAssetAtPath<AttackDefinition>(path);
