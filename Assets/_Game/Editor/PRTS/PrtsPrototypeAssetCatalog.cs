@@ -3,28 +3,49 @@ namespace ArknightsACT.Editor.PRTS
 {
     internal static class PrtsPrototypeAssetCatalog
     {
+        public static readonly PrtsAssetDescriptor Chen = new(
+            "陈·战斗",
+            "https://prts.wiki/w/%E9%99%88/spine",
+            "https://static.prts.wiki/spine/char/char_010_chen/char_010_chen/",
+            "char_010_chen",
+            "Assets/_Game/Art/Characters/Chen/PRTS/Spine",
+            "Player",
+            1.64f,
+            -0.72f,
+            0.38f);
+
+        // Ch'en's base/dorm model is kept as a hidden locomotion source. The visible model remains
+        // the combat skeleton so the weapon and combat attachments never disappear during movement.
+        public static readonly PrtsAssetDescriptor ChenBaseMotion = new(
+            "陈·基建动作源",
+            "https://prts.wiki/w/%E9%99%88/spine",
+            "https://static.prts.wiki/spine/char/char_010_chen/build_char_010_chen/",
+            "build_char_010_chen",
+            "Assets/_Game/Art/Characters/Chen/PRTS/BaseMotion",
+            "MotionSource",
+            1.64f,
+            -0.72f,
+            0.38f);
+
+        // Texas is retained only as an optional local reference while the prototype player moves to Ch'en.
         public static readonly PrtsAssetDescriptor Texas = new(
             "德克萨斯·战斗",
             "https://prts.wiki/w/%E5%BE%B7%E5%85%8B%E8%90%A8%E6%96%AF/spine",
             "https://static.prts.wiki/spine/char/char_102_texas/char_102_texas/",
             "char_102_texas",
             "Assets/_Game/Art/Characters/Texas/PRTS/Spine",
-            "Player",
+            "PlayerReference",
             1.62f,
             -0.72f,
             0.38f);
 
-        // PRTS exposes the base/dorm model as a separate Spine file. It contains Move,
-        // but its attachments omit the combat weapons. We import it as a hidden motion source
-        // and retarget matching bone deltas onto the visible combat skeleton instead of
-        // swapping rendered models at runtime.
         public static readonly PrtsAssetDescriptor TexasBaseMotion = new(
             "德克萨斯·基建动作源",
             "https://prts.wiki/w/%E5%BE%B7%E5%85%8B%E8%90%A8%E6%96%AF/spine",
             "https://static.prts.wiki/spine/char/char_102_texas/build_char_102_texas/",
             "build_char_102_texas",
             "Assets/_Game/Art/Characters/Texas/PRTS/BaseMotion",
-            "MotionSource",
+            "MotionSourceReference",
             1.62f,
             -0.72f,
             0.38f);
@@ -96,8 +117,8 @@ namespace ArknightsACT.Editor.PRTS
         public static PrtsAssetDescriptor[] GetFullPrototypePack()
         {
             var result = new PrtsAssetDescriptor[PrototypeEnemies.Length + 2];
-            result[0] = Texas;
-            result[1] = TexasBaseMotion;
+            result[0] = Chen;
+            result[1] = ChenBaseMotion;
             for (var i = 0; i < PrototypeEnemies.Length; i++)
                 result[i + 2] = PrototypeEnemies[i];
             return result;
