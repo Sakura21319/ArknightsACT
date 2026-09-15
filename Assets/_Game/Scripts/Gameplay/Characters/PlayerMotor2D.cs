@@ -14,12 +14,12 @@ namespace ArknightsACT.Gameplay.Characters
         [SerializeField] private float deceleration = 70f;
 
         [Header("Jump")]
-        // Keep roughly the same peak height as the previous prototype, but reach/leave the
-        // apex much faster. 13.6 @ 4x gravity gives about the same ~2.35 world-unit rise as
-        // 9.6 @ 2x gravity, while cutting total airtime to roughly 0.65s.
-        [SerializeField] private float jumpVelocity = 13.6f;
-        [SerializeField] private float riseGravityMultiplier = 4.0f;
-        [SerializeField] private float fallGravityMultiplier = 5.2f;
+        // Prototype ACT jump: deliberately short and decisive. The previous ~0.65s arc still
+        // felt floaty, so this version targets roughly 0.47s total airtime with a slightly
+        // lower peak. Keep jump tuning here independent from animation/presentation code.
+        [SerializeField] private float jumpVelocity = 15.5f;
+        [SerializeField] private float riseGravityMultiplier = 6.5f;
+        [SerializeField] private float fallGravityMultiplier = 7.5f;
 
         [Header("Ground")]
         [SerializeField] private float groundCastDistance = 0.08f;
