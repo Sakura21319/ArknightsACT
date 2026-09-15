@@ -113,7 +113,7 @@ namespace ArknightsACT.Gameplay.Characters.Texas
             };
             GUI.Label(
                 new Rect(panel.x, panel.y + 72f, panel.width, 34f),
-                "按 1 / 2 / 3，或点击卡片",
+                "同一流派可连续强化至 Lv.3；Lv.3 会发生质变",
                 subtitleStyle);
 
             var gap = 18f;
@@ -124,38 +124,40 @@ namespace ArknightsACT.Gameplay.Characters.Texas
             DrawChoice(
                 new Rect(panel.x + 24f, cardY, cardWidth, cardHeight),
                 0,
-                "1　迅刃",
-                "每完成 8 次普攻，向前释放一道剑气，造成 6 点法术伤害。\n适合持续贴身连击。");
+                "迅刃",
+                GetSwiftBladeDescription());
             DrawChoice(
                 new Rect(panel.x + 24f + cardWidth + gap, cardY, cardWidth, cardHeight),
                 1,
-                "2　余雷",
-                "剑雨结束后留下持续 3 秒的雷场，每 0.5 秒造成 3 点法术伤害并施加震击。\n强化范围压制能力。");
+                "余雷",
+                GetResidualThunderDescription());
             DrawChoice(
                 new Rect(panel.x + 24f + (cardWidth + gap) * 2f, cardY, cardWidth, cardHeight),
                 2,
-                "3　导电",
-                "普攻命中处于【震击】状态的敌人时，剑雨冷却减少 0.15 秒。\n让普攻与技能形成循环。 ");
+                "导电",
+                GetConductiveDescription());
         }
 
         private void DrawChoice(Rect rect, int index, string title, string description)
         {
-            var acquired = _buildLab != null && _buildLab.HasUpgrade(index);
+            var level = _buildLab != null ? _buildLab.GetLevel(index) : 0;
+            var maxed = _buildLab == null || !_buildLab.CanUpgrade(index);
             var style = new GUIStyle(GUI.skin.button)
             {
                 alignment = TextAnchor.UpperCenter,
-                fontSize = Mathf.Clamp(Mathf.RoundToInt(Screen.height * 0.022f), 16, 24),
+                fontSize = Mathf.Clamp(Mathf.RoundToInt(Screen.height * 0.021f), 15, 23),
                 fontStyle = FontStyle.Bold,
                 wordWrap = true,
-                padding = new RectOffset(18, 18, 22, 16),
+                padding = new RectOffset(18, 18, 20, 16),
                 font = _chineseFont != null ? _chineseFont : GUI.skin.font
             };
 
             var previousEnabled = GUI.enabled;
-            GUI.enabled = !acquired;
-            var text = acquired
-                ? title + "\n\n已获得\n\n" + description
-                : title + "\n\n" + description;
+            GUI.enabled = !maxed;
+            var header = $"{index + 1}　{title}　Lv.{level}/{TexasBuildLab.MaxUpgradeLevel}";
+            var text = maxed
+                ? header + "\n\n已满级\n\n" + description
+                : header + "\n\n" + description;
             var clicked = GUI.Button(rect, text, style);
             GUI.enabled = previousEnabled;
 
@@ -163,25 +165,49 @@ namespace ArknightsACT.Gameplay.Characters.Texas
                 Choose(index);
         }
 
+        private string GetSwiftBladeDescription()
+        {
+            var level = _buildLab != null ? _buildLab.SwiftBladeLevel : 0;
+            return level switch
+            {
+                0 => "获得：每 4 次普攻释放剑气，造成 7 点法术伤害。\n让平A开始产生额外攻击。",
+                1 => "强化：改为每 3 次普攻释放剑气，伤害提升至 10。\n触发频率明显提高。",
+                2 => "进化：每 3 次普攻连续释放两道剑气，每道 12 点法术伤害。\n形成持续扫场。",
+                _ => "每 3 次普攻连续释放两道剑气，每道 12 点法术伤害。"
+            };
+        }
+
+        private string GetResidualThunderDescription()
+        {
+            var level = _buildLab != null ? _buildLab.ResidualThunderLevel : 0;
+            return level switch
+            {
+                0 => "获得：剑雨后留下 3 秒雷场，每 0.5 秒造成 3 点法术伤害并施加震击。",
+                1 => "强化：雷场延长至 4 秒，每 0.4 秒造成 4 点法术伤害。\n覆盖时间和频率同时提升。",
+                2 => "进化：雷场延长至 5 秒，每 0.3 秒造成 5 点伤害，范围扩大 25%，周期性雷爆。",
+                _ => "5 秒高频大范围雷场，持续施加震击并周期性雷爆。"
+            };
+        }
+
+        private string GetConductiveDescription()
+        {
+            var level = _buildLab != null ? _buildLab.ConductiveLevel : 0;
+            return level switch
+            {
+                0 => "获得：普攻击中震击敌人时，向附近 1 个目标连锁闪电，造成 5 点法术伤害；剑雨冷却 -0.25 秒。",
+                1 => "强化：连锁 2 个目标，每跳 7 点法术伤害；剑雨冷却 -0.40 秒。",
+                2 => "进化：最多连锁 4 个目标，每跳 10 点法术伤害并传播震击；剑雨冷却 -0.60 秒。",
+                _ => "最多连锁 4 个目标，每跳 10 点法术伤害并传播震击。"
+            };
+        }
+
         private void Choose(int index)
         {
-            if (!_open || _buildLab == null || _buildLab.HasUpgrade(index))
+            if (!_open || _buildLab == null || !_buildLab.CanUpgrade(index))
                 return;
 
-            switch (index)
-            {
-                case 0:
-                    _buildLab.SetSwiftBlade(true);
-                    break;
-                case 1:
-                    _buildLab.SetResidualThunder(true);
-                    break;
-                case 2:
-                    _buildLab.SetConductive(true);
-                    break;
-                default:
-                    return;
-            }
+            if (!_buildLab.Upgrade(index))
+                return;
 
             _open = false;
             Time.timeScale = _previousTimeScale > 0.001f ? _previousTimeScale : 1f;
