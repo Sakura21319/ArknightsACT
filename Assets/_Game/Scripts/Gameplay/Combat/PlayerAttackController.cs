@@ -20,6 +20,7 @@ namespace ArknightsACT.Gameplay.Combat
 
         private CombatEntity _entity;
         private PlayerMotor2D _motor;
+        private PlayerDashController _dash;
         private IPlayerInputSource _input;
         private PlayerSkillController _skills;
         private Coroutine _attackRoutine;
@@ -66,6 +67,7 @@ namespace ArknightsACT.Gameplay.Combat
         {
             _entity = GetComponent<CombatEntity>();
             _motor = GetComponent<PlayerMotor2D>();
+            _dash = GetComponent<PlayerDashController>();
             _input = GetComponent<IPlayerInputSource>();
             _skills = GetComponent<PlayerSkillController>();
         }
@@ -87,6 +89,8 @@ namespace ArknightsACT.Gameplay.Combat
             if (_entity?.Health == null || _entity.Health.IsDead || _input == null)
                 return;
             if (!_input.AttackPressedThisFrame)
+                return;
+            if (_dash != null && _dash.IsDashing)
                 return;
             if (_skills != null && _skills.IsCasting)
                 return;
@@ -117,6 +121,9 @@ namespace ArknightsACT.Gameplay.Combat
             _currentImpactSeconds = 0f;
             _currentCycleSeconds = 0f;
             _attackQueued = false;
+            _comboIndex = 0;
+            CurrentComboIndex = 0;
+            _lastAttackFinishedAt = -999f;
         }
 
         private void OnDied() => CancelCurrentAttack();
@@ -124,6 +131,8 @@ namespace ArknightsACT.Gameplay.Combat
         private void BeginNextComboAttack()
         {
             if (combo == null || combo.Length == 0 || _entity?.Health == null || _entity.Health.IsDead)
+                return;
+            if (_dash != null && _dash.IsDashing)
                 return;
             if (_motor != null && !_motor.IsGrounded)
                 return;
@@ -164,6 +173,7 @@ namespace ArknightsACT.Gameplay.Combat
             var continueChain = _attackQueued &&
                                 _entity?.Health != null &&
                                 !_entity.Health.IsDead &&
+                                (_dash == null || !_dash.IsDashing) &&
                                 (_motor == null || _motor.IsGrounded) &&
                                 (_skills == null || !_skills.IsCasting);
             _attackQueued = false;
