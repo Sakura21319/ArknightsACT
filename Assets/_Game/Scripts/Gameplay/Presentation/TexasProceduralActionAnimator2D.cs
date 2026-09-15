@@ -13,10 +13,13 @@ namespace ArknightsACT.Gameplay.Presentation
     /// Prototype action animator for the PRTS Texas combat skeleton.
     ///
     /// Gameplay movement, hitboxes and damage remain authoritative elsewhere. This component
-    /// only overrides a small set of Texas Spine bones after the source animation evaluates,
-    /// then rebuilds world transforms so the original IK constraints solve arms and legs around
-    /// our authored targets. It is a fast prototyping layer that can later be replaced by final
-    /// hand-authored Spine clips without changing combat gameplay code.
+    /// only overrides a small set of Texas Spine bones after SkeletonAnimation has evaluated in
+    /// Update, then rebuilds world transforms before SkeletonRenderer creates its mesh in
+    /// LateUpdate. This timing is important: applying the pose in LateUpdate would be too late
+    /// for the current frame and the source animation would overwrite it again next frame.
+    ///
+    /// It is a fast prototyping layer that can later be replaced by final hand-authored Spine
+    /// clips without changing combat gameplay code.
     /// </summary>
     [DefaultExecutionOrder(1600)]
     [RequireComponent(typeof(PlayerAttackController), typeof(PlayerMotor2D))]
@@ -91,7 +94,12 @@ namespace ArknightsACT.Gameplay.Presentation
             _pendingCapture = true;
         }
 
-        private void LateUpdate()
+        /// <summary>
+        /// Intentionally Update, not LateUpdate.
+        /// DefaultExecutionOrder(1600) keeps this after the normal SkeletonAnimation.Update pass,
+        /// while SkeletonRenderer still consumes the modified skeleton later in LateUpdate.
+        /// </summary>
+        private void Update()
         {
             if (!TryBind())
                 return;
