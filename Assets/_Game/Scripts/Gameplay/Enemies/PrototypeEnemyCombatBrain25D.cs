@@ -13,6 +13,8 @@ namespace ArknightsACT.Gameplay.Enemies
     [RequireComponent(typeof(CharacterController), typeof(CombatEntity))]
     public sealed class PrototypeEnemyCombatBrain25D : MonoBehaviour
     {
+        private const float FacingHorizontalDeadzone = 0.30f;
+
         [Header("Archetype")]
         [SerializeField] private PrototypeEnemyArchetype archetype = PrototypeEnemyArchetype.Melee;
 
@@ -345,9 +347,14 @@ namespace ArknightsACT.Gameplay.Enemies
             var camera = Camera.main;
             if (camera == null)
                 return;
-            var right = Vector3.ProjectOnPlane(camera.transform.right, Vector3.up).normalized;
+
+            var right = Vector3.ProjectOnPlane(camera.transform.right, Vector3.up);
+            if (right.sqrMagnitude < 0.001f)
+                return;
+            right.Normalize();
+
             var dot = Vector3.Dot(LogicForward, right);
-            if (Mathf.Abs(dot) > 0.08f)
+            if (Mathf.Abs(dot) >= FacingHorizontalDeadzone)
                 FacingSign = dot >= 0f ? 1 : -1;
         }
     }
