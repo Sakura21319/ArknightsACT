@@ -8,7 +8,7 @@ namespace ArknightsACT.Gameplay.Feedback
         public static HitStopService Instance { get; private set; }
 
         private Coroutine _routine;
-        private float _baseFixedDelta;
+        private GameplayPauseService _pause;
 
         public bool IsActive => _routine != null;
 
@@ -21,7 +21,11 @@ namespace ArknightsACT.Gameplay.Feedback
             }
 
             Instance = this;
-            _baseFixedDelta = Time.fixedDeltaTime;
+            _pause = GameplayPauseService.Instance;
+            if (_pause == null)
+                _pause = GetComponent<GameplayPauseService>();
+            if (_pause == null)
+                _pause = gameObject.AddComponent<GameplayPauseService>();
         }
 
         private void OnDestroy()
@@ -52,21 +56,15 @@ namespace ArknightsACT.Gameplay.Feedback
                 _routine = null;
             }
 
-            RestoreNormalTime();
+            _pause?.Resume(this);
         }
 
         private IEnumerator Routine(float duration)
         {
-            Time.timeScale = 0f;
+            _pause?.Pause(this);
             yield return new WaitForSecondsRealtime(duration);
-            RestoreNormalTime();
+            _pause?.Resume(this);
             _routine = null;
-        }
-
-        private void RestoreNormalTime()
-        {
-            Time.timeScale = 1f;
-            Time.fixedDeltaTime = _baseFixedDelta;
         }
     }
 }
