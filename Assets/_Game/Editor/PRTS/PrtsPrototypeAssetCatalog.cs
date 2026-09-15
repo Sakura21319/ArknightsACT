@@ -14,8 +14,6 @@ namespace ArknightsACT.Editor.PRTS
             -0.72f,
             0.38f);
 
-        // Ch'en's base/dorm model is kept as a hidden locomotion source. The visible model remains
-        // the combat skeleton so the weapon and combat attachments never disappear during movement.
         public static readonly PrtsAssetDescriptor ChenBaseMotion = new(
             "陈·基建动作源",
             "https://prts.wiki/w/%E9%99%88/spine",
@@ -24,29 +22,6 @@ namespace ArknightsACT.Editor.PRTS
             "Assets/_Game/Art/Characters/Chen/PRTS/BaseMotion",
             "MotionSource",
             1.64f,
-            -0.72f,
-            0.38f);
-
-        // Texas is retained only as an optional local reference while the prototype player moves to Ch'en.
-        public static readonly PrtsAssetDescriptor Texas = new(
-            "德克萨斯·战斗",
-            "https://prts.wiki/w/%E5%BE%B7%E5%85%8B%E8%90%A8%E6%96%AF/spine",
-            "https://static.prts.wiki/spine/char/char_102_texas/char_102_texas/",
-            "char_102_texas",
-            "Assets/_Game/Art/Characters/Texas/PRTS/Spine",
-            "PlayerReference",
-            1.62f,
-            -0.72f,
-            0.38f);
-
-        public static readonly PrtsAssetDescriptor TexasBaseMotion = new(
-            "德克萨斯·基建动作源",
-            "https://prts.wiki/w/%E5%BE%B7%E5%85%8B%E8%90%A8%E6%96%AF/spine",
-            "https://static.prts.wiki/spine/char/char_102_texas/build_char_102_texas/",
-            "build_char_102_texas",
-            "Assets/_Game/Art/Characters/Texas/PRTS/BaseMotion",
-            "MotionSourceReference",
-            1.62f,
             -0.72f,
             0.38f);
 
