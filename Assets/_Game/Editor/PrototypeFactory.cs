@@ -21,7 +21,12 @@ namespace ArknightsACT.Editor
         private const float FloorCenterY = -1.35f;
         private const float FloorTopY = -1.10f;
 
-        public static void CreateServices() => new GameObject("[Services]").AddComponent<HitStopService>();
+        public static void CreateServices()
+        {
+            var services = new GameObject("[Services]");
+            services.AddComponent<HitStopService>();
+            services.AddComponent<PresentationQualityDiagnostics2D>();
+        }
 
         public static GameObject CreatePlayer(AttackDefinition[] attacks)
         {
@@ -106,7 +111,6 @@ namespace ArknightsACT.Editor
 
             go.AddComponent<TexasBuildLab>();
             go.AddComponent<TexasPrototypeHud>();
-            go.AddComponent<PresentationQualityDiagnostics2D>();
             return go;
         }
 
@@ -177,9 +181,6 @@ namespace ArknightsACT.Editor
 
             var camera = go.AddComponent<Camera>();
             camera.orthographic = true;
-            // Give characters more real screen pixels while still keeping enough horizontal
-            // context for a side-scrolling room. This is closer to the apparent scale used by
-            // the PRTS preview than the previous very-wide 4.25 view.
             camera.orthographicSize = 3.40f;
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = new Color(0.055f, 0.065f, 0.085f);
