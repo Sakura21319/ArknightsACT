@@ -25,12 +25,13 @@ namespace ArknightsACT.Gameplay.Debugging
             var skill = _skillController != null ? _skillController.Skill : null;
             var cooldown = skill != null ? skill.CooldownRemaining : 0f;
 
-            GUI.Box(new Rect(12, 12, 350, 132), "Texas Combat Lab");
-            GUI.Label(new Rect(24, 38, 320, 22), $"HP: {currentHealth:0}/{maxHealth:0}");
-            GUI.Label(new Rect(24, 60, 320, 22), $"L / RMB  Sword Rain   CD: {cooldown:0.0}s");
-            GUI.Label(new Rect(24, 82, 320, 22), $"[1] Swift Blade: {OnOff(_buildLab != null && _buildLab.SwiftBlade)}");
-            GUI.Label(new Rect(24, 102, 320, 22), $"[2] Residual Thunder: {OnOff(_buildLab != null && _buildLab.ResidualThunder)}");
-            GUI.Label(new Rect(24, 122, 320, 22), $"[3] Conductive: {OnOff(_buildLab != null && _buildLab.Conductive)}");
+            GUI.Box(new Rect(12, 12, 390, 150), "Texas Combat Prototype");
+            GUI.Label(new Rect(24, 38, 350, 22), $"HP: {currentHealth:0}/{maxHealth:0}");
+            GUI.Label(new Rect(24, 60, 350, 22), $"L / RMB  Sword Rain   CD: {cooldown:0.0}s");
+            GUI.Label(new Rect(24, 82, 350, 22), "Clear all enemies to choose one upgrade.");
+            GUI.Label(new Rect(24, 104, 350, 22), $"Swift Blade: {OnOff(_buildLab != null && _buildLab.SwiftBlade)}");
+            GUI.Label(new Rect(24, 124, 350, 22), $"Residual Thunder: {OnOff(_buildLab != null && _buildLab.ResidualThunder)}");
+            GUI.Label(new Rect(24, 144, 350, 22), $"Conductive: {OnOff(_buildLab != null && _buildLab.Conductive)}");
         }
 
         private static string OnOff(bool value) => value ? "ON" : "OFF";
