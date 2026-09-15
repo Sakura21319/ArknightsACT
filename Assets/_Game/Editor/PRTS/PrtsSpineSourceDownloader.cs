@@ -22,10 +22,16 @@ namespace ArknightsACT.Editor.PRTS
             await DownloadPack(PrtsPrototypeAssetCatalog.GetFullPrototypePack(), "完整 Demo 素材包");
         }
 
-        [MenuItem("ArknightsACT/Assets/PRTS/Download Texas")]
-        private static async void DownloadTexas()
+        [MenuItem("ArknightsACT/Assets/PRTS/Download Ch'en")]
+        private static async void DownloadChen()
         {
-            await DownloadPack(new[] { PrtsPrototypeAssetCatalog.Texas }, "德克萨斯");
+            await DownloadPack(new[] { PrtsPrototypeAssetCatalog.Chen }, "陈·战斗模型");
+        }
+
+        [MenuItem("ArknightsACT/Assets/PRTS/Download Ch'en Base Motion Source")]
+        private static async void DownloadChenBaseMotion()
+        {
+            await DownloadPack(new[] { PrtsPrototypeAssetCatalog.ChenBaseMotion }, "陈·基建动作源");
         }
 
         [MenuItem("ArknightsACT/Assets/PRTS/Download Prototype Enemies")]
@@ -34,8 +40,8 @@ namespace ArknightsACT.Editor.PRTS
             await DownloadPack(PrtsPrototypeAssetCatalog.PrototypeEnemies, "Demo 小兵素材包");
         }
 
-        [MenuItem("ArknightsACT/Assets/PRTS/Open Texas Source Page")]
-        private static void OpenTexasPage() => Application.OpenURL(PrtsPrototypeAssetCatalog.Texas.SourcePage);
+        [MenuItem("ArknightsACT/Assets/PRTS/Open Ch'en Source Page")]
+        private static void OpenChenPage() => Application.OpenURL(PrtsPrototypeAssetCatalog.Chen.SourcePage);
 
         private static async Task DownloadPack(IReadOnlyList<PrtsAssetDescriptor> assets, string packName)
         {
@@ -51,7 +57,7 @@ namespace ArknightsACT.Editor.PRTS
                 {
                     Timeout = TimeSpan.FromSeconds(30)
                 };
-                client.DefaultRequestHeaders.UserAgent.ParseAdd("ArknightsACT-Prototype/0.2");
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("ArknightsACT-Prototype/0.3");
 
                 for (var i = 0; i < assets.Count; i++)
                 {
@@ -97,7 +103,7 @@ namespace ArknightsACT.Editor.PRTS
                 }
 
                 message.AppendLine();
-                message.AppendLine("这些是 Spine 源素材；实际播放动画仍由 Presentation 层接入兼容的 Spine Runtime。下载目录已被 .gitignore 排除。 ");
+                message.AppendLine("这些是 Spine 源素材；实际播放动画仍由 Presentation 层接入兼容的 Spine Runtime。下载目录已被 .gitignore 排除。");
                 EditorUtility.DisplayDialog("PRTS 素材下载", message.ToString(), "OK");
             }
             finally

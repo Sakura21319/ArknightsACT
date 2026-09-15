@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using ArknightsACT.Editor.PRTS;
 using ArknightsACT.Gameplay.Combat;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -9,9 +10,10 @@ namespace ArknightsACT.Editor
 {
     public static class PrototypeSceneBuilder
     {
-        private const string DataDir = "Assets/_Game/Data/Attacks/Texas";
+        private const string DataDir = "Assets/_Game/Data/Attacks/Chen";
         private const string SceneDir = "Assets/_Game/Scenes";
         private const string ScenePath = SceneDir + "/PrototypeRun.unity";
+        private const float PlayerSpawnY = -0.34f;
 
         [MenuItem("ArknightsACT/Build Prototype Scene")]
         public static void Build()
@@ -19,16 +21,20 @@ namespace ArknightsACT.Editor
             PrototypePlayerSettings.Apply();
             EnsureFolder(DataDir);
             EnsureFolder(SceneDir);
-            var attacks = BuildTexasAttackDefinitions();
+            var attacks = BuildChenAttackDefinitions();
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             PrototypeFactory.CreateServices();
-            var player = PrototypeFactory.CreatePlayer(attacks);
+            PrototypeBackdropFactory.Create();
+            var player = ChenPrototypePlayerFactory.Create(attacks, PlayerSpawnY);
+
             PrototypeFactory.CreateFloor();
+            PrototypeFactory.CreateWorldBounds();
             PrototypeFactory.CreatePlatform(new Vector2(5f, 1.5f), new Vector2(4f, 0.35f));
             PrototypeFactory.CreatePlatform(new Vector2(11f, 2.6f), new Vector2(3f, 0.35f));
-            PrototypeFactory.CreateDummy(new Vector2(4f, 0f));
-            PrototypeFactory.CreateDummy(new Vector2(8f, 0f));
+
+            var enemyTemplates = PrototypeFactory.CreateEnemyTemplates(PrtsPrototypeAssetCatalog.PrototypeEnemies);
+            PrototypeFactory.CreateRoomLoop(player.transform, enemyTemplates);
             PrototypeFactory.CreateCamera(player.transform);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -36,21 +42,71 @@ namespace ArknightsACT.Editor
             AssetDatabase.Refresh();
             Selection.activeGameObject = player;
             EditorGUIUtility.PingObject(player);
-            Debug.Log($"ArknightsACT prototype scene generated: {ScenePath}. Standalone default: Windowed 1280x720.");
+
+            Debug.Log(
+                $"ArknightsACT Chen 2D ACT prototype generated: {ScenePath}. " +
+                "Controls: A/D move, Space jump, J/LMB three-hit combo, K/Shift dash, L skill1, I/RMB skill2.");
         }
 
-        private static AttackDefinition[] BuildTexasAttackDefinitions()
+        private static AttackDefinition[] BuildChenAttackDefinitions()
         {
+            // Presentation mapping:
+            // combo 1 -> Attack first half
+            // combo 2 -> Attack second half
+            // combo 3 -> Skill
             return new[]
             {
-                GetOrCreateAttack("Texas_A1", 0.07f, 0.05f, 0.12f, 0.85f, new Vector2(2.2f, 0.6f), 0.25f),
-                GetOrCreateAttack("Texas_A2", 0.06f, 0.05f, 0.13f, 0.90f, new Vector2(2.5f, 0.8f), 0.25f),
-                GetOrCreateAttack("Texas_A3", 0.08f, 0.06f, 0.15f, 1.00f, new Vector2(3.2f, 1.0f), 0.30f),
-                GetOrCreateAttack("Texas_A4", 0.11f, 0.07f, 0.22f, 1.35f, new Vector2(6.5f, 2.4f), 0.40f, 0.055f, 0.11f)
+                GetOrCreateAttack(
+                    "Chen_Basic_1",
+                    startup: 0.12f,
+                    active: 0.03f,
+                    recovery: 0.21f,
+                    damageMultiplier: 1.00f,
+                    hitboxOffset: new Vector2(0.92f, 0.03f),
+                    hitboxSize: new Vector2(1.50f, 1.12f),
+                    knockback: new Vector2(2.2f, 0.45f),
+                    dashCancel: 0.42f,
+                    hitStop: 0.018f,
+                    shake: 0.045f),
+                GetOrCreateAttack(
+                    "Chen_Basic_2",
+                    startup: 0.11f,
+                    active: 0.03f,
+                    recovery: 0.22f,
+                    damageMultiplier: 1.15f,
+                    hitboxOffset: new Vector2(1.00f, 0.05f),
+                    hitboxSize: new Vector2(1.65f, 1.20f),
+                    knockback: new Vector2(2.8f, 0.60f),
+                    dashCancel: 0.40f,
+                    hitStop: 0.022f,
+                    shake: 0.055f),
+                GetOrCreateAttack(
+                    "Chen_Basic_3",
+                    startup: 0.16f,
+                    active: 0.04f,
+                    recovery: 0.32f,
+                    damageMultiplier: 1.55f,
+                    hitboxOffset: new Vector2(1.08f, 0.08f),
+                    hitboxSize: new Vector2(2.05f, 1.42f),
+                    knockback: new Vector2(4.8f, 1.05f),
+                    dashCancel: 0.52f,
+                    hitStop: 0.040f,
+                    shake: 0.10f)
             };
         }
 
-        private static AttackDefinition GetOrCreateAttack(string name, float startup, float active, float recovery, float damageMultiplier, Vector2 knockback, float dashCancel, float hitStop = 0.035f, float shake = 0.07f)
+        private static AttackDefinition GetOrCreateAttack(
+            string name,
+            float startup,
+            float active,
+            float recovery,
+            float damageMultiplier,
+            Vector2 hitboxOffset,
+            Vector2 hitboxSize,
+            Vector2 knockback,
+            float dashCancel,
+            float hitStop,
+            float shake)
         {
             var path = $"{DataDir}/{name}.asset";
             var asset = AssetDatabase.LoadAssetAtPath<AttackDefinition>(path);
@@ -65,8 +121,8 @@ namespace ArknightsACT.Editor
             asset.active = active;
             asset.recovery = recovery;
             asset.damageMultiplier = damageMultiplier;
-            asset.hitboxOffset = new Vector2(0.95f, 0f);
-            asset.hitboxSize = new Vector2(1.45f, 1.15f);
+            asset.hitboxOffset = hitboxOffset;
+            asset.hitboxSize = hitboxSize;
             asset.knockback = knockback;
             asset.dashCancelNormalizedTime = dashCancel;
             asset.hitStopSeconds = hitStop;

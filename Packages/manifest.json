@@ -1,9 +1,12 @@
 {
   "dependencies": {
+    "com.esotericsoftware.spine.spine-csharp": "https://github.com/ZeroFlyFly/WaifuSpineRuntime.git?path=Assets/Spine/Runtime/spine-csharp#f569ce2e8f5cbe5aed2c6023d6569efc5abc44af",
+    "com.esotericsoftware.spine.spine-unity": "https://github.com/ZeroFlyFly/WaifuSpineRuntime.git?path=Assets/Spine#f569ce2e8f5cbe5aed2c6023d6569efc5abc44af",
     "com.unity.inputsystem": "1.11.2",
     "com.unity.render-pipelines.universal": "17.0.3",
     "com.unity.test-framework": "1.4.5",
     "com.unity.modules.physics2d": "1.0.0",
-    "com.unity.modules.ui": "1.0.0"
+    "com.unity.modules.ui": "1.0.0",
+    "com.unity.modules.animation": "1.0.0"
   }
 }

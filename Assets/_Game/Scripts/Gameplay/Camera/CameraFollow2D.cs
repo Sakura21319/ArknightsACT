@@ -12,6 +12,12 @@ namespace ArknightsACT.Gameplay.CameraSystem
 
         public void SetTarget(Transform value) => target = value;
 
+        public void SetBounds(Vector2 min, Vector2 max)
+        {
+            minBounds = new Vector2(Mathf.Min(min.x, max.x), Mathf.Min(min.y, max.y));
+            maxBounds = new Vector2(Mathf.Max(min.x, max.x), Mathf.Max(min.y, max.y));
+        }
+
         private void LateUpdate()
         {
             if (target == null)

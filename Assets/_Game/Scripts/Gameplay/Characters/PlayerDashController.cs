@@ -1,4 +1,6 @@
 using System.Collections;
+using ArknightsACT.Combat;
+using ArknightsACT.Gameplay.Abilities;
 using ArknightsACT.Gameplay.Combat;
 using ArknightsACT.Gameplay.Input;
 using UnityEngine;
@@ -13,31 +15,37 @@ namespace ArknightsACT.Gameplay.Characters
         [SerializeField] private float dashCooldown = 0.35f;
 
         private Rigidbody2D _body;
+        private CombatEntity _entity;
         private PlayerMotor2D _motor;
         private IPlayerInputSource _input;
         private PlayerAttackController _attack;
+        private PlayerSkillController _skills;
         private float _cooldownUntil;
 
         public bool IsDashing { get; private set; }
         public bool IsInvulnerable => IsDashing;
 
+        private bool IsDead => _entity != null && _entity.Health != null && _entity.Health.IsDead;
+
         private void Awake()
         {
             _body = GetComponent<Rigidbody2D>();
+            _entity = GetComponent<CombatEntity>();
             _motor = GetComponent<PlayerMotor2D>();
             _input = GetComponent<IPlayerInputSource>();
             _attack = GetComponent<PlayerAttackController>();
+            _skills = GetComponent<PlayerSkillController>();
         }
 
         private void Update()
         {
-            if (_input != null && _input.DashPressedThisFrame)
+            if (!IsDead && _input != null && _input.DashPressedThisFrame)
                 TryDash();
         }
 
         public bool TryDash()
         {
-            if (IsDashing || Time.time < _cooldownUntil)
+            if (IsDead || IsDashing || Time.time < _cooldownUntil || (_skills != null && _skills.IsCasting))
                 return false;
 
             if (_attack != null && _attack.IsAttacking && !_attack.CanDashCancel)
@@ -61,7 +69,7 @@ namespace ArknightsACT.Gameplay.Characters
             _body.linearVelocity = new Vector2(direction * dashSpeed, 0f);
 
             var elapsed = 0f;
-            while (elapsed < dashDuration)
+            while (elapsed < dashDuration && !IsDead)
             {
                 elapsed += Time.deltaTime;
                 _body.linearVelocity = new Vector2(direction * dashSpeed, 0f);
@@ -69,6 +77,9 @@ namespace ArknightsACT.Gameplay.Characters
             }
 
             _body.gravityScale = previousGravity;
+            if (IsDead)
+                _body.linearVelocity = new Vector2(0f, _body.linearVelocity.y);
+
             IsDashing = false;
         }
     }

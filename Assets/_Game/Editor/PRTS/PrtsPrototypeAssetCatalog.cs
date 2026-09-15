@@ -3,13 +3,27 @@ namespace ArknightsACT.Editor.PRTS
 {
     internal static class PrtsPrototypeAssetCatalog
     {
-        public static readonly PrtsAssetDescriptor Texas = new(
-            "德克萨斯",
-            "https://prts.wiki/w/%E5%BE%B7%E5%85%8B%E8%90%A8%E6%96%AF/spine",
-            "https://static.prts.wiki/spine/char/char_102_texas/char_102_texas/",
-            "char_102_texas",
-            "Assets/_Game/Art/Characters/Texas/PRTS/Spine",
-            "Player");
+        public static readonly PrtsAssetDescriptor Chen = new(
+            "陈·战斗",
+            "https://prts.wiki/w/%E9%99%88/spine",
+            "https://static.prts.wiki/spine/char/char_010_chen/char_010_chen/",
+            "char_010_chen",
+            "Assets/_Game/Art/Characters/Chen/PRTS/Spine",
+            "Player",
+            1.64f,
+            -0.72f,
+            0.38f);
+
+        public static readonly PrtsAssetDescriptor ChenBaseMotion = new(
+            "陈·基建动作源",
+            "https://prts.wiki/w/%E9%99%88/spine",
+            "https://static.prts.wiki/spine/char/char_010_chen/build_char_010_chen/",
+            "build_char_010_chen",
+            "Assets/_Game/Art/Characters/Chen/PRTS/BaseMotion",
+            "MotionSource",
+            1.64f,
+            -0.72f,
+            0.38f);
 
         public static readonly PrtsAssetDescriptor[] PrototypeEnemies =
         {
@@ -19,50 +33,69 @@ namespace ArknightsACT.Editor.PRTS
                 "https://torappu.prts.wiki/assets/enemy_spine/enemy_1007_slime/",
                 "enemy_1007_slime",
                 "Assets/_Game/Art/Enemies/PRTS/OriginiumSlug/Spine",
-                "Fodder"),
+                "Fodder",
+                0.72f,
+                -0.68f,
+                0.40f),
             new(
                 "士兵",
                 "https://prts.wiki/w/%E5%A3%AB%E5%85%B5",
                 "https://torappu.prts.wiki/assets/enemy_spine/enemy_1002_nsabr/",
                 "enemy_1002_nsabr",
                 "Assets/_Game/Art/Enemies/PRTS/Soldier/Spine",
-                "Melee"),
+                "Melee",
+                1.50f,
+                -0.70f,
+                0.38f),
             new(
                 "弩手",
                 "https://prts.wiki/w/%E5%BC%A9%E6%89%8B",
                 "https://torappu.prts.wiki/assets/enemy_spine/enemy_1003_ncbow/",
                 "enemy_1003_ncbow",
                 "Assets/_Game/Art/Enemies/PRTS/Crossbowman/Spine",
-                "Ranged"),
+                "Ranged",
+                1.48f,
+                -0.70f,
+                0.38f),
             new(
                 "猎狗",
                 "https://prts.wiki/w/%E7%8C%8E%E7%8B%97",
                 "https://torappu.prts.wiki/assets/enemy_spine/enemy_1000_gopro/",
                 "enemy_1000_gopro",
                 "Assets/_Game/Art/Enemies/PRTS/Hound/Spine",
-                "FastMelee"),
+                "FastMelee",
+                0.92f,
+                -0.66f,
+                0.36f),
             new(
                 "妖怪",
                 "https://prts.wiki/w/%E5%A6%96%E6%80%AA",
                 "https://torappu.prts.wiki/assets/enemy_spine/enemy_1005_yokai/",
                 "enemy_1005_yokai",
                 "Assets/_Game/Art/Enemies/PRTS/YokaiDrone/Spine",
-                "Flying"),
+                "Flying",
+                1.05f,
+                -0.05f,
+                0.36f),
             new(
                 "重装防御者",
                 "https://prts.wiki/w/%E9%87%8D%E8%A3%85%E9%98%B2%E5%BE%A1%E8%80%85",
                 "https://torappu.prts.wiki/assets/enemy_spine/enemy_1006_shield/",
                 "enemy_1006_shield",
                 "Assets/_Game/Art/Enemies/PRTS/HeavyDefender/Spine",
-                "EliteMelee")
+                "EliteMelee",
+                1.72f,
+                -0.71f,
+                0.38f)
         };
 
         public static PrtsAssetDescriptor[] GetFullPrototypePack()
         {
-            var result = new PrtsAssetDescriptor[PrototypeEnemies.Length + 1];
-            result[0] = Texas;
+            var result = new PrtsAssetDescriptor[PrototypeEnemies.Length + 2];
+            result[0] = Chen;
+            result[1] = ChenBaseMotion;
             for (var i = 0; i < PrototypeEnemies.Length; i++)
-                result[i + 1] = PrototypeEnemies[i];
+                result[i + 2] = PrototypeEnemies[i];
             return result;
         }
     }
