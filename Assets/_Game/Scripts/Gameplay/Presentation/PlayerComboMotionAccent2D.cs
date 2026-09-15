@@ -8,7 +8,6 @@ namespace ArknightsACT.Gameplay.Presentation
     /// <summary>
     /// Adds readable ACT-style body accents on top of Texas' single Attack_Loop Spine clip.
     /// The presentation root moves/leans only; the gameplay Rigidbody/collider never moves.
-    /// This lets combo steps look different without inventing new authoritative movement.
     /// </summary>
     [RequireComponent(typeof(PlayerAttackController), typeof(PlayerMotor2D), typeof(Rigidbody2D))]
     public sealed class PlayerComboMotionAccent2D : MonoBehaviour
@@ -16,6 +15,7 @@ namespace ArknightsACT.Gameplay.Presentation
         [SerializeField, Min(0.02f)] private float lightAccentSeconds = 0.16f;
         [SerializeField, Min(0.02f)] private float secondAccentSeconds = 0.19f;
         [SerializeField, Min(0.04f)] private float heavyAccentSeconds = 0.31f;
+        [SerializeField, Min(0.04f)] private float dashSlashAccentSeconds = 0.24f;
         [SerializeField, Min(0f)] private float cancelMoveThreshold = 0.10f;
 
         private PlayerAttackController _attack;
@@ -54,8 +54,6 @@ namespace ArknightsACT.Gameplay.Presentation
             if (_routine == null || _attack == null)
                 return;
 
-            // Movement cancel after the real impact should cancel the visual body accent as well,
-            // otherwise the character would appear to slide while still leaning through a slash.
             if (!_attack.IsAttacking ||
                 (!_attack.IsMovementLocked && _body != null && Mathf.Abs(_body.linearVelocity.x) > cancelMoveThreshold))
             {
@@ -80,49 +78,67 @@ namespace ArknightsACT.Gameplay.Presentation
         {
             var direction = facing < 0 ? -1f : 1f;
 
-            switch (Mathf.Abs(comboIndex) % 3)
+            if (comboIndex == 3)
             {
-                case 0:
-                    yield return AnimateSegment(
-                        lightAccentSeconds * 0.42f,
-                        new Vector3(0.085f * direction, 0.015f, 0f),
-                        -3.5f * direction);
-                    yield return AnimateSegment(
-                        lightAccentSeconds * 0.58f,
-                        Vector3.zero,
-                        0f);
-                    break;
+                // Post-dash slash: very small recoil, then a long forward body cut.
+                yield return AnimateSegment(
+                    dashSlashAccentSeconds * 0.24f,
+                    new Vector3(-0.055f * direction, 0.015f, 0f),
+                    4f * direction);
+                yield return AnimateSegment(
+                    dashSlashAccentSeconds * 0.42f,
+                    new Vector3(0.31f * direction, -0.015f, 0f),
+                    -9f * direction);
+                yield return AnimateSegment(
+                    dashSlashAccentSeconds * 0.34f,
+                    Vector3.zero,
+                    0f);
+            }
+            else
+            {
+                switch (Mathf.Abs(comboIndex) % 3)
+                {
+                    case 0:
+                        yield return AnimateSegment(
+                            lightAccentSeconds * 0.42f,
+                            new Vector3(0.085f * direction, 0.015f, 0f),
+                            -3.5f * direction);
+                        yield return AnimateSegment(
+                            lightAccentSeconds * 0.58f,
+                            Vector3.zero,
+                            0f);
+                        break;
 
-                case 1:
-                    yield return AnimateSegment(
-                        secondAccentSeconds * 0.38f,
-                        new Vector3(-0.035f * direction, 0.025f, 0f),
-                        4.5f * direction);
-                    yield return AnimateSegment(
-                        secondAccentSeconds * 0.30f,
-                        new Vector3(0.13f * direction, -0.01f, 0f),
-                        -6.5f * direction);
-                    yield return AnimateSegment(
-                        secondAccentSeconds * 0.32f,
-                        Vector3.zero,
-                        0f);
-                    break;
+                    case 1:
+                        yield return AnimateSegment(
+                            secondAccentSeconds * 0.38f,
+                            new Vector3(-0.035f * direction, 0.025f, 0f),
+                            4.5f * direction);
+                        yield return AnimateSegment(
+                            secondAccentSeconds * 0.30f,
+                            new Vector3(0.13f * direction, -0.01f, 0f),
+                            -6.5f * direction);
+                        yield return AnimateSegment(
+                            secondAccentSeconds * 0.32f,
+                            Vector3.zero,
+                            0f);
+                        break;
 
-                default:
-                    // Heavy third hit: visible anticipation -> strong forward body cut -> recovery.
-                    yield return AnimateSegment(
-                        heavyAccentSeconds * 0.30f,
-                        new Vector3(-0.10f * direction, 0.035f, 0f),
-                        7.5f * direction);
-                    yield return AnimateSegment(
-                        heavyAccentSeconds * 0.32f,
-                        new Vector3(0.24f * direction, -0.025f, 0f),
-                        -12f * direction);
-                    yield return AnimateSegment(
-                        heavyAccentSeconds * 0.38f,
-                        Vector3.zero,
-                        0f);
-                    break;
+                    default:
+                        yield return AnimateSegment(
+                            heavyAccentSeconds * 0.30f,
+                            new Vector3(-0.10f * direction, 0.035f, 0f),
+                            7.5f * direction);
+                        yield return AnimateSegment(
+                            heavyAccentSeconds * 0.32f,
+                            new Vector3(0.24f * direction, -0.025f, 0f),
+                            -12f * direction);
+                        yield return AnimateSegment(
+                            heavyAccentSeconds * 0.38f,
+                            Vector3.zero,
+                            0f);
+                        break;
+                }
             }
 
             RestoreBasePose();
