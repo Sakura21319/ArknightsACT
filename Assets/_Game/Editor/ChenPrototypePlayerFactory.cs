@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using ArknightsACT.Combat;
+using ArknightsACT.Combat.Status;
 using ArknightsACT.Editor.PRTS;
 using ArknightsACT.Gameplay.Abilities;
 using ArknightsACT.Gameplay.Characters;
@@ -13,12 +14,15 @@ using UnityEngine;
 
 namespace ArknightsACT.Editor
 {
+    /// <summary>
+    /// Ch'en-specific composition. The legacy side-view factory is retained as a fallback,
+    /// while Create25D is the production Phase 06 path.
+    /// </summary>
     internal static class ChenPrototypePlayerFactory
     {
         public static GameObject Create(AttackDefinition[] attacks, float spawnY)
         {
             var go = new GameObject("Player_Chen");
-            go.SetActive(false);
             go.transform.position = new Vector3(0f, spawnY, 0f);
             go.transform.localScale = Vector3.one;
 
@@ -49,6 +53,13 @@ namespace ArknightsACT.Editor
                     var retarget = go.AddComponent<SpineBoneMotionRetarget2D>();
                     retarget.Configure(combatPresentation.transform, motionSource.transform, "Move");
                 }
+                else
+                {
+                    Debug.LogWarning(
+                        "[ArknightsACT/Spine] Ch'en base motion source prefab is missing. " +
+                        "Movement will use the combat presentation fallback until it is downloaded/built.",
+                        go);
+                }
             }
 
             var body = go.AddComponent<Rigidbody2D>();
@@ -61,13 +72,12 @@ namespace ArknightsACT.Editor
             collider.direction = CapsuleDirection2D.Vertical;
             collider.size = new Vector2(0.72f, 1.45f);
 
-            go.AddComponent<PlayerMotor2D>();
             AddSharedGameplay(go, attacks);
+            go.AddComponent<PlayerMotor2D>();
             go.AddComponent<ChenPresentationDriver2D>();
             go.AddComponent<DamageTintFlash2D>();
             go.AddComponent<WorldHealthBar2D>();
             go.AddComponent<DamageNumberEmitter2D>();
-            go.SetActive(true);
             return go;
         }
 
@@ -85,9 +95,10 @@ namespace ArknightsACT.Editor
             controller.stepOffset = 0.28f;
             controller.slopeLimit = 45f;
 
+            AddSharedGameplay(go, attacks);
+
             var motor = go.AddComponent<PlayerMotor25D>();
             motor.SetCamera(camera);
-            AddSharedGameplay(go, attacks);
 
             var billboard = new GameObject("PresentationBillboard");
             billboard.transform.SetParent(go.transform, false);
@@ -116,8 +127,16 @@ namespace ArknightsACT.Editor
 
         private static void AddSharedGameplay(GameObject go, AttackDefinition[] attacks)
         {
-            go.AddComponent<Health>().SetMaxHealth(100f);
-            var entity = go.AddComponent<CombatEntity>();
+            // CombatEntity has RequireComponent(Health, StatusController). During editor-time
+            // composition of an inactive GameObject, relying on RequireComponent to inject the
+            // missing StatusController can fail inside AddComponent<CombatEntity>(). Compose the
+            // dependency chain explicitly and deterministically instead.
+            var health = go.GetComponent<Health>() ?? go.AddComponent<Health>();
+            health.SetMaxHealth(100f);
+            if (go.GetComponent<StatusController>() == null)
+                go.AddComponent<StatusController>();
+
+            var entity = go.GetComponent<CombatEntity>() ?? go.AddComponent<CombatEntity>();
             entity.SetTeam(Team.Player);
 
             go.AddComponent<PlayerInputReader>();
