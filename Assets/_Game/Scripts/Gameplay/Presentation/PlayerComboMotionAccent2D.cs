@@ -6,8 +6,9 @@ using UnityEngine;
 namespace ArknightsACT.Gameplay.Presentation
 {
     /// <summary>
-    /// Adds readable ACT-style body accents on top of Texas' single Attack_Loop Spine clip.
-    /// The presentation root moves/leans only; the gameplay Rigidbody/collider never moves.
+    /// Adds readable ACT-style body actions on top of Texas' limited battle Spine clip set.
+    /// Only the visible presentation root is posed here; Rigidbody/collider authority stays in
+    /// gameplay. Distinct locomotion/air trajectories are owned by PlayerAttackController.
     /// </summary>
     [RequireComponent(typeof(PlayerAttackController), typeof(PlayerMotor2D), typeof(Rigidbody2D))]
     public sealed class PlayerComboMotionAccent2D : MonoBehaviour
@@ -16,6 +17,7 @@ namespace ArknightsACT.Gameplay.Presentation
         [SerializeField, Min(0.02f)] private float secondAccentSeconds = 0.19f;
         [SerializeField, Min(0.04f)] private float heavyAccentSeconds = 0.31f;
         [SerializeField, Min(0.04f)] private float dashSlashAccentSeconds = 0.24f;
+        [SerializeField, Min(0.04f)] private float airSlashAccentSeconds = 0.23f;
         [SerializeField, Min(0f)] private float cancelMoveThreshold = 0.10f;
 
         private PlayerAttackController _attack;
@@ -55,13 +57,16 @@ namespace ArknightsACT.Gameplay.Presentation
                 return;
 
             if (!_attack.IsAttacking ||
-                (!_attack.IsMovementLocked && _body != null && Mathf.Abs(_body.linearVelocity.x) > cancelMoveThreshold))
+                (!_attack.IsMovementLocked &&
+                 _attack.CurrentActionType != PlayerAttackActionType.AirSlash &&
+                 _body != null &&
+                 Mathf.Abs(_body.linearVelocity.x) > cancelMoveThreshold))
             {
                 StopAccent(true);
             }
         }
 
-        private void OnAttackStarted(int comboIndex)
+        private void OnAttackStarted(int presentationIndex)
         {
             ResolvePresentation();
             if (_visual == null || _motor == null)
@@ -71,74 +76,115 @@ namespace ArknightsACT.Gameplay.Presentation
             _baseLocalPosition = _visual.localPosition;
             _baseLocalRotation = _visual.localRotation;
             _hasBasePose = true;
-            _routine = StartCoroutine(AccentRoutine(comboIndex, _motor.FacingSign));
+            _routine = StartCoroutine(AccentRoutine(presentationIndex, _motor.FacingSign));
         }
 
-        private IEnumerator AccentRoutine(int comboIndex, int facing)
+        private IEnumerator AccentRoutine(int presentationIndex, int facing)
         {
             var direction = facing < 0 ? -1f : 1f;
 
-            if (comboIndex == 3)
+            switch (presentationIndex)
             {
-                // Post-dash slash: very small recoil, then a long forward body cut.
-                yield return AnimateSegment(
-                    dashSlashAccentSeconds * 0.24f,
-                    new Vector3(-0.055f * direction, 0.015f, 0f),
-                    4f * direction);
-                yield return AnimateSegment(
-                    dashSlashAccentSeconds * 0.42f,
-                    new Vector3(0.31f * direction, -0.015f, 0f),
-                    -9f * direction);
-                yield return AnimateSegment(
-                    dashSlashAccentSeconds * 0.34f,
-                    Vector3.zero,
-                    0f);
-            }
-            else
-            {
-                switch (Mathf.Abs(comboIndex) % 3)
-                {
-                    case 0:
-                        yield return AnimateSegment(
-                            lightAccentSeconds * 0.42f,
-                            new Vector3(0.085f * direction, 0.015f, 0f),
-                            -3.5f * direction);
-                        yield return AnimateSegment(
-                            lightAccentSeconds * 0.58f,
-                            Vector3.zero,
-                            0f);
-                        break;
+                case 3:
+                    // Dash slash: recoil -> full-body forward cut.
+                    yield return AnimateSegment(
+                        dashSlashAccentSeconds * 0.24f,
+                        new Vector3(-0.055f * direction, 0.015f, 0f),
+                        4f * direction);
+                    yield return AnimateSegment(
+                        dashSlashAccentSeconds * 0.42f,
+                        new Vector3(0.34f * direction, -0.015f, 0f),
+                        -11f * direction);
+                    yield return AnimateSegment(
+                        dashSlashAccentSeconds * 0.34f,
+                        Vector3.zero,
+                        0f);
+                    break;
 
-                    case 1:
-                        yield return AnimateSegment(
-                            secondAccentSeconds * 0.38f,
-                            new Vector3(-0.035f * direction, 0.025f, 0f),
-                            4.5f * direction);
-                        yield return AnimateSegment(
-                            secondAccentSeconds * 0.30f,
-                            new Vector3(0.13f * direction, -0.01f, 0f),
-                            -6.5f * direction);
-                        yield return AnimateSegment(
-                            secondAccentSeconds * 0.32f,
-                            Vector3.zero,
-                            0f);
-                        break;
+                case 4:
+                    // Air slash: tuck, twist through a horizontal cut, then reopen before fall.
+                    yield return AnimateSegment(
+                        airSlashAccentSeconds * 0.28f,
+                        new Vector3(-0.03f * direction, 0.07f, 0f),
+                        11f * direction);
+                    yield return AnimateSegment(
+                        airSlashAccentSeconds * 0.38f,
+                        new Vector3(0.12f * direction, 0.02f, 0f),
+                        -24f * direction);
+                    yield return AnimateSegment(
+                        airSlashAccentSeconds * 0.34f,
+                        new Vector3(0.02f * direction, -0.015f, 0f),
+                        6f * direction);
+                    break;
 
-                    default:
-                        yield return AnimateSegment(
-                            heavyAccentSeconds * 0.30f,
-                            new Vector3(-0.10f * direction, 0.035f, 0f),
-                            7.5f * direction);
-                        yield return AnimateSegment(
-                            heavyAccentSeconds * 0.32f,
-                            new Vector3(0.24f * direction, -0.025f, 0f),
-                            -12f * direction);
-                        yield return AnimateSegment(
-                            heavyAccentSeconds * 0.38f,
-                            Vector3.zero,
-                            0f);
-                        break;
-                }
+                case 5:
+                    // Plunge: fold upward very briefly, point the body down, then HOLD that pose
+                    // until gameplay reports the landing action is finished.
+                    yield return AnimateSegment(
+                        0.065f,
+                        new Vector3(-0.04f * direction, 0.10f, 0f),
+                        16f * direction);
+                    yield return AnimateSegment(
+                        0.075f,
+                        new Vector3(0.02f * direction, -0.08f, 0f),
+                        -64f * direction);
+
+                    while (_attack != null &&
+                           _attack.IsAttacking &&
+                           _attack.CurrentActionType == PlayerAttackActionType.Plunge &&
+                           _visual != null)
+                    {
+                        _visual.localPosition = _baseLocalPosition + new Vector3(0.02f * direction, -0.08f, 0f);
+                        _visual.localRotation = _baseLocalRotation * Quaternion.Euler(0f, 0f, -64f * direction);
+                        yield return null;
+                    }
+                    break;
+
+                default:
+                    switch (Mathf.Abs(presentationIndex) % 3)
+                    {
+                        case 0:
+                            yield return AnimateSegment(
+                                lightAccentSeconds * 0.42f,
+                                new Vector3(0.085f * direction, 0.015f, 0f),
+                                -3.5f * direction);
+                            yield return AnimateSegment(
+                                lightAccentSeconds * 0.58f,
+                                Vector3.zero,
+                                0f);
+                            break;
+
+                        case 1:
+                            yield return AnimateSegment(
+                                secondAccentSeconds * 0.38f,
+                                new Vector3(-0.035f * direction, 0.025f, 0f),
+                                4.5f * direction);
+                            yield return AnimateSegment(
+                                secondAccentSeconds * 0.30f,
+                                new Vector3(0.13f * direction, -0.01f, 0f),
+                                -6.5f * direction);
+                            yield return AnimateSegment(
+                                secondAccentSeconds * 0.32f,
+                                Vector3.zero,
+                                0f);
+                            break;
+
+                        default:
+                            yield return AnimateSegment(
+                                heavyAccentSeconds * 0.30f,
+                                new Vector3(-0.10f * direction, 0.035f, 0f),
+                                7.5f * direction);
+                            yield return AnimateSegment(
+                                heavyAccentSeconds * 0.32f,
+                                new Vector3(0.24f * direction, -0.025f, 0f),
+                                -12f * direction);
+                            yield return AnimateSegment(
+                                heavyAccentSeconds * 0.38f,
+                                Vector3.zero,
+                                0f);
+                            break;
+                    }
+                    break;
             }
 
             RestoreBasePose();
