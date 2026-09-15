@@ -31,10 +31,11 @@ namespace ArknightsACT.Editor
             PrototypeFactory.CreatePlatform(new Vector2(5f, 1.5f), new Vector2(4f, 0.35f));
             PrototypeFactory.CreatePlatform(new Vector2(11f, 2.6f), new Vector2(3f, 0.35f));
 
+            // Keep local PRTS enemy objects as inactive scene templates. Runtime room progression
+            // clones these templates instead of hardcoding one disposable wave into the scene.
             var enemies = PrtsPrototypeAssetCatalog.PrototypeEnemies;
-            PrototypeFactory.CreateDummy(new Vector2(4f, 0f), enemies.Length > 1 ? enemies[1] : null); // Soldier
-            PrototypeFactory.CreateDummy(new Vector2(8f, 0f), enemies.Length > 3 ? enemies[3] : null); // Hound
-            PrototypeFactory.CreateDummy(new Vector2(12f, 0f), enemies.Length > 2 ? enemies[2] : null); // Crossbowman
+            var enemyTemplates = PrototypeFactory.CreateEnemyTemplates(enemies);
+            PrototypeFactory.CreateRoomLoop(player.transform, enemyTemplates);
             PrototypeFactory.CreateCamera(player.transform);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -43,8 +44,8 @@ namespace ArknightsACT.Editor
             Selection.activeGameObject = player;
             EditorGUIUtility.PingObject(player);
             Debug.Log(
-                $"ArknightsACT prototype scene generated: {ScenePath}. Room bounds are active, enemy prototype health is reduced, " +
-                "and Texas uses one buffered attack per visible Spine swing with 2x animation timing.");
+                $"ArknightsACT prototype scene generated: {ScenePath}. Runtime loop is now " +
+                "combat room -> localized three-choice reward -> next room, with enemy count/HP scaling per room.");
         }
 
         private static AttackDefinition[] BuildTexasAttackDefinitions()
