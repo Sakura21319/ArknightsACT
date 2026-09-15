@@ -102,6 +102,7 @@ namespace ArknightsACT.Editor
             var brain = go.AddComponent<PrototypeEnemyCombatBrain25D>();
             brain.Configure(archetype, Vector3.back);
             go.AddComponent<EnemyVisionCone25D>();
+            go.AddComponent<EnemyDeathCleanup25D>();
 
             var billboard = new GameObject("PresentationBillboard");
             billboard.transform.SetParent(go.transform, false);
