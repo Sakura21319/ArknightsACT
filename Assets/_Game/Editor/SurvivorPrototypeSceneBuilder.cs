@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using ArknightsACT.Editor.PRTS;
+using ArknightsACT.Gameplay.CameraSystem;
 using ArknightsACT.Gameplay.Combat;
 using ArknightsACT.Gameplay.Debugging;
 using ArknightsACT.Gameplay.Input;
@@ -76,6 +77,9 @@ namespace ArknightsACT.Editor
                 EnemyGroundY);
 
             PrototypeFactory.CreateCamera(player.transform);
+            var follow = Object.FindFirstObjectByType<CameraFollow2D>();
+            if (follow != null)
+                follow.SetBounds(new Vector2(WorldMinX + 2.5f, -2f), new Vector2(WorldMaxX - 2.5f, 8f));
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             AssetDatabase.SaveAssets();
