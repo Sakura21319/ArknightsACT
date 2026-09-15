@@ -83,7 +83,7 @@ namespace ArknightsACT.Editor
             collider.size = new Vector2(0.72f, 1.40f);
 
             var archetype = ResolvePrototypeArchetype(descriptor);
-            go.AddComponent<Health>().SetMaxHealth(ResolvePrototypeHealth(archetype));
+            go.AddComponent<Health>().SetMaxHealth(ResolvePrototypeHealth(descriptor, archetype));
             var entity = go.AddComponent<CombatEntity>();
             entity.SetTeam(Team.Enemy);
             go.AddComponent<StatusIndicator2D>();
@@ -104,10 +104,11 @@ namespace ArknightsACT.Editor
         public static GameObject[] CreateEnemyTemplates(PrtsAssetDescriptor[] enemies)
         {
             var root = new GameObject("[EnemyTemplates]");
-            var templates = new GameObject[3];
+            var templates = new GameObject[4];
             templates[0] = CreateDummy(new Vector2(0f, -20f), enemies.Length > 1 ? enemies[1] : null, false, "EnemyTemplate_");
             templates[1] = CreateDummy(new Vector2(0f, -20f), enemies.Length > 3 ? enemies[3] : null, false, "EnemyTemplate_");
             templates[2] = CreateDummy(new Vector2(0f, -20f), enemies.Length > 2 ? enemies[2] : null, false, "EnemyTemplate_");
+            templates[3] = CreateDummy(new Vector2(0f, -20f), enemies.Length > 5 ? enemies[5] : null, false, "BossTemplate_");
 
             foreach (var template in templates)
                 if (template != null) template.transform.SetParent(root.transform, true);
@@ -166,12 +167,18 @@ namespace ArknightsACT.Editor
             };
         }
 
-        private static float ResolvePrototypeHealth(PrototypeEnemyArchetype archetype) => archetype switch
+        private static float ResolvePrototypeHealth(PrtsAssetDescriptor descriptor, PrototypeEnemyArchetype archetype)
         {
-            PrototypeEnemyArchetype.FastMelee => 45f,
-            PrototypeEnemyArchetype.Ranged => 50f,
-            _ => 60f
-        };
+            if (descriptor != null && descriptor.Role == "EliteMelee")
+                return 180f;
+
+            return archetype switch
+            {
+                PrototypeEnemyArchetype.FastMelee => 45f,
+                PrototypeEnemyArchetype.Ranged => 50f,
+                _ => 60f
+            };
+        }
 
         private static void CreateStaticBlock(string name, Vector2 position, Vector2 size, Color color)
         {
