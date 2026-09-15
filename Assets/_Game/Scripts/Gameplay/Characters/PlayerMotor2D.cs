@@ -1,4 +1,5 @@
 using ArknightsACT.Combat;
+using ArknightsACT.Gameplay.Abilities;
 using ArknightsACT.Gameplay.Combat;
 using ArknightsACT.Gameplay.Input;
 using UnityEngine;
@@ -27,6 +28,7 @@ namespace ArknightsACT.Gameplay.Characters
         private IPlayerInputSource _input;
         private PlayerDashController _dash;
         private PlayerAttackController _attack;
+        private PlayerSkillController _skills;
         private readonly RaycastHit2D[] _groundHits = new RaycastHit2D[4];
 
         public bool IsGrounded { get; private set; }
@@ -43,13 +45,14 @@ namespace ArknightsACT.Gameplay.Characters
             _input = GetComponent<IPlayerInputSource>();
             _dash = GetComponent<PlayerDashController>();
             _attack = GetComponent<PlayerAttackController>();
+            _skills = GetComponent<PlayerSkillController>();
         }
 
         private void Update()
         {
             UpdateGrounded();
 
-            if (IsDead || (_dash != null && _dash.IsDashing))
+            if (IsDead || (_dash != null && _dash.IsDashing) || (_skills != null && _skills.IsCasting))
                 return;
 
             if (_attack != null && _attack.IsAttacking)
@@ -79,7 +82,7 @@ namespace ArknightsACT.Gameplay.Characters
 
             var current = _body.linearVelocity;
 
-            if (_attack != null && _attack.IsMovementLocked)
+            if ((_attack != null && _attack.IsMovementLocked) || (_skills != null && _skills.IsCasting))
             {
                 current.x = 0f;
                 _body.gravityScale = current.y > 0.05f ? riseGravityMultiplier : fallGravityMultiplier;
