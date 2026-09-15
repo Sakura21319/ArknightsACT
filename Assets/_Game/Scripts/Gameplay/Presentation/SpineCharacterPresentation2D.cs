@@ -176,8 +176,6 @@ namespace ArknightsACT.Gameplay.Presentation
         {
             SetFacing(facing);
 
-            // A sustained Attack_Loop is a visual state, not one frame per gameplay hit.
-            // Locomotion must not overwrite it until the chain grace window expires.
             if (_attackSequenceActive)
                 return;
 
@@ -194,8 +192,6 @@ namespace ArknightsACT.Gameplay.Presentation
             if (_externalLocomotionActive)
             {
                 ResetProceduralLocomotion();
-                // The retargeter will overwrite matching bones after animation update.
-                // Keep the combat skeleton on Idle so weapon-only bones remain valid.
                 PlayLoop(idleAnimation);
                 return;
             }
@@ -207,9 +203,6 @@ namespace ArknightsACT.Gameplay.Presentation
                 return;
             }
 
-            // Some operator combat skeletons do not ship a weapon-preserving Move clip.
-            // Keep their combat Idle and add a small motion cue rather than swapping to a
-            // base/dorm model where weapons disappear.
             PlayLoop(idleAnimation);
             ApplyProceduralLocomotion(facing);
         }
@@ -221,8 +214,6 @@ namespace ArknightsACT.Gameplay.Presentation
 
             if (_hasPhasedBasicAttack && !string.IsNullOrWhiteSpace(_attackLoopAnimation))
             {
-                // Every gameplay attack pulse only extends the chain. Crucially, repeated
-                // inputs do NOT call SetAnimation again, so Attack_Loop can finish its swing.
                 _attackSequenceExpiresAt = Time.time + phasedAttackGraceSeconds;
                 if (_attackSequenceActive)
                     return;
@@ -230,9 +221,6 @@ namespace ArknightsACT.Gameplay.Presentation
                 _attackSequenceActive = true;
                 _currentLoop = string.Empty;
                 _lockedUntil = 0f;
-
-                // For ACT responsiveness start directly from the loop. Attack_Start is kept
-                // as metadata/debug information but is intentionally skipped for normal taps.
                 Play(_attackLoopAnimation, true, true);
                 _currentLoop = _attackLoopAnimation;
                 return;
@@ -274,9 +262,15 @@ namespace ArknightsACT.Gameplay.Presentation
 
         public void CancelBasicAttackPresentation()
         {
+            // Procedural action animation may call this repeatedly while it owns the pose.
+            // Only the first call should actually interrupt Attack_Loop. Once Idle/Move has
+            // become the current loop, clearing _currentLoop every frame would restart that
+            // loop continuously and freeze secondary motion such as hair/cape sway.
+            if (!_attackSequenceActive)
+                return;
+
             InterruptAttackSequence();
             _lockedUntil = 0f;
-            _currentLoop = string.Empty;
         }
 
         private void EndAttackSequence()
@@ -457,7 +451,6 @@ namespace ArknightsACT.Gameplay.Presentation
 
         private string ResolvePersistentMove()
         {
-            // Prefer persistent loop clips over directional/transition clips.
             return ResolveExact("Move")
                    ?? ResolveExact("Move_Loop")
                    ?? ResolveExact("Run_Loop")
@@ -470,8 +463,6 @@ namespace ArknightsACT.Gameplay.Presentation
 
         private string[] ResolveBasicAttacks()
         {
-            // Attack_Start / Attack_Loop / Attack_End are one phased attack state in
-            // Arknights operator data, not three different combo attacks.
             if (!string.IsNullOrWhiteSpace(_attackLoopAnimation))
                 return new[] { _attackLoopAnimation };
 
