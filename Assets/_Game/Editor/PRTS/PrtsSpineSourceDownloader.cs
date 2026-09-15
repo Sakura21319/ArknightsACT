@@ -19,19 +19,35 @@ namespace ArknightsACT.Editor.PRTS
         [MenuItem("ArknightsACT/Assets/PRTS/Download Full Prototype Pack")]
         private static async void DownloadFullPrototypePack()
         {
-            await DownloadPack(PrtsPrototypeAssetCatalog.GetFullPrototypePack(), "完整 Demo 素材包");
+            await DownloadPack(PrtsPrototypeAssetCatalog.GetFullPrototypePack(), "完整 Demo 素材包（陈 + 小兵）");
         }
 
-        [MenuItem("ArknightsACT/Assets/PRTS/Download Texas")]
+        [MenuItem("ArknightsACT/Assets/PRTS/Download Ch'en")]
+        private static async void DownloadChen()
+        {
+            await DownloadPack(new[] { PrtsPrototypeAssetCatalog.Chen }, "陈·战斗模型");
+        }
+
+        [MenuItem("ArknightsACT/Assets/PRTS/Download Ch'en Base Motion Source")]
+        private static async void DownloadChenBaseMotion()
+        {
+            await DownloadPack(new[] { PrtsPrototypeAssetCatalog.ChenBaseMotion }, "陈·基建动作源");
+        }
+
+        [MenuItem("ArknightsACT/Assets/PRTS/Open Ch'en Source Page")]
+        private static void OpenChenPage() => Application.OpenURL(PrtsPrototypeAssetCatalog.Chen.SourcePage);
+
+        // Texas remains downloadable as a comparison/reference asset, but it is no longer the prototype player.
+        [MenuItem("ArknightsACT/Assets/PRTS/Reference/Download Texas")]
         private static async void DownloadTexas()
         {
-            await DownloadPack(new[] { PrtsPrototypeAssetCatalog.Texas }, "德克萨斯·战斗模型");
+            await DownloadPack(new[] { PrtsPrototypeAssetCatalog.Texas }, "德克萨斯·战斗模型（参考）");
         }
 
-        [MenuItem("ArknightsACT/Assets/PRTS/Download Texas Base Motion Source")]
+        [MenuItem("ArknightsACT/Assets/PRTS/Reference/Download Texas Base Motion Source")]
         private static async void DownloadTexasBaseMotion()
         {
-            await DownloadPack(new[] { PrtsPrototypeAssetCatalog.TexasBaseMotion }, "德克萨斯·基建动作源");
+            await DownloadPack(new[] { PrtsPrototypeAssetCatalog.TexasBaseMotion }, "德克萨斯·基建动作源（参考）");
         }
 
         [MenuItem("ArknightsACT/Assets/PRTS/Download Prototype Enemies")]
@@ -39,9 +55,6 @@ namespace ArknightsACT.Editor.PRTS
         {
             await DownloadPack(PrtsPrototypeAssetCatalog.PrototypeEnemies, "Demo 小兵素材包");
         }
-
-        [MenuItem("ArknightsACT/Assets/PRTS/Open Texas Source Page")]
-        private static void OpenTexasPage() => Application.OpenURL(PrtsPrototypeAssetCatalog.Texas.SourcePage);
 
         private static async Task DownloadPack(IReadOnlyList<PrtsAssetDescriptor> assets, string packName)
         {
@@ -57,7 +70,7 @@ namespace ArknightsACT.Editor.PRTS
                 {
                     Timeout = TimeSpan.FromSeconds(30)
                 };
-                client.DefaultRequestHeaders.UserAgent.ParseAdd("ArknightsACT-Prototype/0.2");
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("ArknightsACT-Prototype/0.3");
 
                 for (var i = 0; i < assets.Count; i++)
                 {
