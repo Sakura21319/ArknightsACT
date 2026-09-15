@@ -11,6 +11,7 @@ namespace ArknightsACT.Gameplay.Abilities
     {
         private CombatEntity _entity;
         private IPlayerInputSource _input;
+        private PlayerMotor2D _motor;
         private PlayerAttackController _attack;
         private PlayerDashController _dash;
         private IPlayerSkill _skill1;
@@ -26,6 +27,7 @@ namespace ArknightsACT.Gameplay.Abilities
         {
             _entity = GetComponent<CombatEntity>();
             _input = GetComponent<IPlayerInputSource>();
+            _motor = GetComponent<PlayerMotor2D>();
             _attack = GetComponent<PlayerAttackController>();
             _dash = GetComponent<PlayerDashController>();
 
@@ -47,6 +49,8 @@ namespace ArknightsACT.Gameplay.Abilities
             if (_entity != null && _entity.Health != null && _entity.Health.IsDead)
                 return;
             if (_input == null || IsCasting || (_dash != null && _dash.IsDashing))
+                return;
+            if (_motor != null && !_motor.IsGrounded)
                 return;
 
             if (_input.Skill1PressedThisFrame)
