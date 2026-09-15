@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using ArknightsACT.Gameplay.Roguelite.Collectibles;
 using ArknightsACT.Gameplay.Rooms;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace ArknightsACT.Gameplay.Roguelite.Rewards
 {
@@ -55,11 +56,15 @@ namespace ArknightsACT.Gameplay.Roguelite.Rewards
             if (!_isOpen)
                 return;
 
-            if (Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Keypad1))
+            var keyboard = Keyboard.current;
+            if (keyboard == null)
+                return;
+
+            if (keyboard.digit1Key.wasPressedThisFrame || keyboard.numpad1Key.wasPressedThisFrame)
                 Choose(0);
-            else if (Input.GetKeyDown(KeyCode.Alpha2) || Input.GetKeyDown(KeyCode.Keypad2))
+            else if (keyboard.digit2Key.wasPressedThisFrame || keyboard.numpad2Key.wasPressedThisFrame)
                 Choose(1);
-            else if (Input.GetKeyDown(KeyCode.Alpha3) || Input.GetKeyDown(KeyCode.Keypad3))
+            else if (keyboard.digit3Key.wasPressedThisFrame || keyboard.numpad3Key.wasPressedThisFrame)
                 Choose(2);
         }
 
