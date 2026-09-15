@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using ArknightsACT.Gameplay.Characters;
 using ArknightsACT.Gameplay.Combat;
 using UnityEngine;
 
@@ -11,17 +12,14 @@ namespace ArknightsACT.Gameplay.Presentation
     /// <summary>
     /// Prototype action animator for the PRTS Texas combat skeleton.
     ///
-    /// This is intentionally presentation-only: gameplay movement, hitboxes and damage remain
-    /// authoritative in PlayerAttackController / Rigidbody2D. The component overrides a small
-    /// set of known Texas Spine bones after Spine has evaluated its source animation, then asks
-    /// the skeleton to rebuild world transforms so the original IK constraints resolve the arms
-    /// and legs around our authored targets.
-    ///
-    /// The goal is to prototype genuinely different body mechanics before investing in final
-    /// hand-authored Spine clips. Once final clips exist this component can simply be removed.
+    /// Gameplay movement, hitboxes and damage remain authoritative elsewhere. This component
+    /// only overrides a small set of Texas Spine bones after the source animation evaluates,
+    /// then rebuilds world transforms so the original IK constraints solve arms and legs around
+    /// our authored targets. It is a fast prototyping layer that can later be replaced by final
+    /// hand-authored Spine clips without changing combat gameplay code.
     /// </summary>
     [DefaultExecutionOrder(1600)]
-    [RequireComponent(typeof(PlayerAttackController))]
+    [RequireComponent(typeof(PlayerAttackController), typeof(PlayerMotor2D))]
     public sealed class TexasProceduralActionAnimator2D : MonoBehaviour
     {
         private const int MaxBindAttempts = 120;
@@ -40,7 +38,12 @@ namespace ArknightsACT.Gameplay.Presentation
             "F_Weapon"
         };
 
+        [Header("Prototype pose tuning")]
+        [Tooltip("Global multiplier for procedural bone offsets. Keep at 1 for the authored prototype; reduce after the action silhouette is validated.")]
+        [SerializeField, Range(0f, 1.5f)] private float poseStrength = 1f;
+
         private PlayerAttackController _attack;
+        private PlayerMotor2D _motor;
         private Component _skeletonAnimation;
         private object _skeleton;
         private readonly Dictionary<string, BoneHandle> _bones = new(StringComparer.OrdinalIgnoreCase);
@@ -59,6 +62,7 @@ namespace ArknightsACT.Gameplay.Presentation
         private void Awake()
         {
             _attack = GetComponent<PlayerAttackController>();
+            _motor = GetComponent<PlayerMotor2D>();
             TryBind();
         }
 
@@ -73,6 +77,8 @@ namespace ArknightsACT.Gameplay.Presentation
             if (_attack != null)
                 _attack.AttackActionStarted -= OnActionStarted;
             RestoreActionBase();
+            if (_bound)
+                UpdateWorldTransform();
             _active = false;
             _pendingCapture = false;
         }
@@ -117,8 +123,7 @@ namespace ArknightsACT.Gameplay.Presentation
             }
 
             var elapsed = Mathf.Max(0f, Time.time - _actionStartedAt);
-            var pose = EvaluatePose(_action, elapsed);
-            ApplyPose(pose);
+            ApplyPose(EvaluatePose(_action, elapsed));
             UpdateWorldTransform();
         }
 
@@ -157,10 +162,10 @@ namespace ArknightsACT.Gameplay.Presentation
                 if (string.IsNullOrWhiteSpace(name) || !RequiredBoneNames.Contains(name, StringComparer.OrdinalIgnoreCase))
                     continue;
 
-                var accessor = new BoneAccessors(bone.GetType());
-                if (!accessor.CanReadWriteCore)
+                var access = new BoneAccessors(bone.GetType());
+                if (!access.CanReadWriteCore)
                     continue;
-                _bones[name] = new BoneHandle(name, bone, accessor);
+                _bones[name] = new BoneHandle(name, bone, access);
             }
 
             var missing = RequiredBoneNames.Where(name => !_bones.ContainsKey(name)).ToArray();
@@ -208,6 +213,7 @@ namespace ArknightsACT.Gameplay.Presentation
 
         private void ApplyPose(ActionPose pose)
         {
+            var strength = Mathf.Max(0f, poseStrength);
             foreach (var baseItem in _actionBase)
             {
                 if (!_bones.TryGetValue(baseItem.Key, out var handle))
@@ -215,9 +221,9 @@ namespace ArknightsACT.Gameplay.Presentation
 
                 var delta = pose.Get(baseItem.Key);
                 var basePose = baseItem.Value;
-                handle.Access.X.Set(handle.Bone, basePose.X + delta.X);
-                handle.Access.Y.Set(handle.Bone, basePose.Y + delta.Y);
-                handle.Access.Rotation.Set(handle.Bone, basePose.Rotation + delta.Rotation);
+                handle.Access.X.Set(handle.Bone, basePose.X + delta.X * strength);
+                handle.Access.Y.Set(handle.Bone, basePose.Y + delta.Y * strength);
+                handle.Access.Rotation.Set(handle.Bone, basePose.Rotation + delta.Rotation * strength);
             }
         }
 
@@ -280,8 +286,7 @@ namespace ArknightsACT.Gameplay.Presentation
         {
             var tuck = PosePlungeTuck();
             var dive = PosePlungeDive();
-            var landed = _attack != null && _attack.IsPlunging &&
-                         GetComponent<Characters.PlayerMotor2D>() is { IsGrounded: true };
+            var landed = _attack != null && _attack.IsPlunging && _motor != null && _motor.IsGrounded;
 
             if (elapsed < 0.075f)
                 return ActionPose.Lerp(ActionPose.Zero, tuck, Smooth01(elapsed / 0.075f));
@@ -299,93 +304,92 @@ namespace ArknightsACT.Gameplay.Presentation
             return value * value * (3f - 2f * value);
         }
 
-        // Local Texas rig axes are unusual because the skeleton's top-level "bone" is rotated 90°.
-        // These deltas were authored conservatively from the dumped PRTS setup/runtime values:
-        // rotations carry most of the silhouette change, while IK target offsets stay small enough
-        // to avoid folding elbows/knees through the body.
+        // Texas' top-level combat bone is rotated 90 degrees, so local X/Y do not map directly
+        // to intuitive world horizontal/vertical. Rotations therefore carry most silhouette change;
+        // IK/weapon offsets stay deliberately small to keep the first prototype robust.
 
         private static ActionPose PoseLight1Anticipation() => new ActionPose()
             .Rot("F_Waist", -5f).Rot("F_Chest", -10f).Rot("F_Head", 4f)
             .Move("Ik_F_L_Hand", -0.03f, 0.09f).Move("Ik_F_R_Hand", -0.02f, 0.14f)
-            .Rot("F_Weapon", 28f)
+            .Move("F_Weapon", -0.02f, 0.10f).Rot("F_Weapon", 28f)
             .Move("Ik_F_L_Leg", -0.02f, 0.03f).Move("Ik_F_R_Leg", 0.02f, -0.03f);
 
         private static ActionPose PoseLight1Strike() => new ActionPose()
             .Rot("F_Waist", 7f).Rot("F_Chest", 16f).Rot("F_Head", -5f)
             .Move("Ik_F_L_Hand", 0.06f, -0.12f).Move("Ik_F_R_Hand", 0.08f, -0.25f)
-            .Rot("F_Weapon", -68f)
+            .Move("F_Weapon", 0.07f, -0.23f).Rot("F_Weapon", -68f)
             .Move("Ik_F_L_Leg", 0.03f, -0.05f).Move("Ik_F_R_Leg", -0.02f, 0.05f);
 
         private static ActionPose PoseLight2Anticipation() => new ActionPose()
             .Rot("F_Waist", 6f).Rot("F_Chest", 13f).Rot("F_Head", -4f)
             .Move("Ik_F_L_Hand", -0.02f, -0.16f).Move("Ik_F_R_Hand", 0.02f, -0.22f)
-            .Rot("F_Weapon", -48f);
+            .Move("F_Weapon", 0.01f, -0.20f).Rot("F_Weapon", -48f);
 
         private static ActionPose PoseLight2Strike() => new ActionPose()
             .Rot("F_Waist", -9f).Rot("F_Chest", -20f).Rot("F_Head", 6f)
             .Move("Ik_F_L_Hand", 0.07f, 0.18f).Move("Ik_F_R_Hand", 0.10f, 0.28f)
-            .Rot("F_Weapon", 82f)
+            .Move("F_Weapon", 0.08f, 0.25f).Rot("F_Weapon", 82f)
             .Move("Ik_F_L_Leg", -0.03f, 0.06f).Move("Ik_F_R_Leg", 0.04f, -0.06f);
 
         private static ActionPose PoseHeavyAnticipation() => new ActionPose()
             .Rot("F_Waist", -13f).Rot("F_Chest", -25f).Rot("F_Head", 9f)
             .Move("Ik_F_L_Hand", -0.08f, 0.19f).Move("Ik_F_R_Hand", -0.10f, 0.31f)
-            .Rot("F_Weapon", 62f)
+            .Move("F_Weapon", -0.08f, 0.28f).Rot("F_Weapon", 62f)
             .Move("Ik_F_L_Leg", -0.10f, 0.05f).Move("Ik_F_R_Leg", -0.08f, -0.05f)
             .Move("Ik_F_L_Foot", -0.07f, 0.04f).Move("Ik_F_R_Foot", -0.05f, -0.04f);
 
         private static ActionPose PoseHeavyStrike() => new ActionPose()
             .Rot("F_Waist", 15f).Rot("F_Chest", 31f).Rot("F_Head", -10f)
             .Move("Ik_F_L_Hand", 0.11f, -0.21f).Move("Ik_F_R_Hand", 0.16f, -0.36f)
-            .Rot("F_Weapon", -108f)
+            .Move("F_Weapon", 0.15f, -0.34f).Rot("F_Weapon", -108f)
             .Move("Ik_F_L_Leg", 0.07f, -0.08f).Move("Ik_F_R_Leg", -0.03f, 0.10f)
             .Move("Ik_F_L_Foot", 0.04f, -0.07f).Move("Ik_F_R_Foot", -0.02f, 0.08f);
 
         private static ActionPose PoseDashAnticipation() => new ActionPose()
             .Rot("F_Waist", -7f).Rot("F_Chest", -13f).Rot("F_Head", 4f)
             .Move("Ik_F_L_Hand", -0.04f, 0.10f).Move("Ik_F_R_Hand", -0.05f, 0.18f)
-            .Rot("F_Weapon", 38f)
+            .Move("F_Weapon", -0.04f, 0.16f).Rot("F_Weapon", 38f)
             .Move("Ik_F_L_Leg", -0.02f, 0.08f).Move("Ik_F_R_Leg", 0.03f, -0.11f);
 
         private static ActionPose PoseDashStrike() => new ActionPose()
             .Rot("F_Waist", 13f).Rot("F_Chest", 27f).Rot("F_Head", -8f)
             .Move("Ik_F_L_Hand", 0.13f, -0.20f).Move("Ik_F_R_Hand", 0.18f, -0.38f)
-            .Rot("F_Weapon", -96f)
+            .Move("F_Weapon", 0.17f, -0.36f).Rot("F_Weapon", -96f)
             .Move("Ik_F_L_Leg", 0.08f, -0.12f).Move("Ik_F_R_Leg", -0.03f, 0.13f)
             .Move("Ik_F_L_Foot", 0.05f, -0.10f).Move("Ik_F_R_Foot", -0.02f, 0.11f);
 
         private static ActionPose PoseAirAnticipation() => new ActionPose()
             .Rot("F_Waist", -8f).Rot("F_Chest", -16f).Rot("F_Head", 5f)
             .Move("Ik_F_L_Hand", -0.04f, 0.12f).Move("Ik_F_R_Hand", -0.04f, 0.19f)
-            .Rot("F_Weapon", 42f)
+            .Move("F_Weapon", -0.03f, 0.17f).Rot("F_Weapon", 42f)
             .Move("Ik_F_L_Leg", -0.16f, 0.10f).Move("Ik_F_R_Leg", -0.13f, -0.10f)
             .Move("Ik_F_L_Foot", -0.14f, 0.07f).Move("Ik_F_R_Foot", -0.12f, -0.07f);
 
         private static ActionPose PoseAirStrike() => new ActionPose()
             .Rot("F_Waist", 10f).Rot("F_Chest", 23f).Rot("F_Head", -7f)
             .Move("Ik_F_L_Hand", 0.09f, -0.17f).Move("Ik_F_R_Hand", 0.13f, -0.31f)
-            .Rot("F_Weapon", -86f)
+            .Move("F_Weapon", 0.12f, -0.29f).Rot("F_Weapon", -86f)
             .Move("Ik_F_L_Leg", -0.10f, -0.10f).Move("Ik_F_R_Leg", -0.17f, 0.12f)
             .Move("Ik_F_L_Foot", -0.08f, -0.08f).Move("Ik_F_R_Foot", -0.14f, 0.09f);
 
         private static ActionPose PosePlungeTuck() => new ActionPose()
             .Rot("F_Waist", -10f).Rot("F_Chest", -20f).Rot("F_Head", 8f)
             .Move("Ik_F_L_Hand", -0.06f, 0.11f).Move("Ik_F_R_Hand", -0.08f, 0.20f)
-            .Rot("F_Weapon", 48f)
+            .Move("F_Weapon", -0.06f, 0.18f).Rot("F_Weapon", 48f)
             .Move("Ik_F_L_Leg", -0.18f, 0.08f).Move("Ik_F_R_Leg", -0.16f, -0.08f)
             .Move("Ik_F_L_Foot", -0.15f, 0.06f).Move("Ik_F_R_Foot", -0.14f, -0.06f);
 
         private static ActionPose PosePlungeDive() => new ActionPose()
             .Rot("F_Waist", 18f).Rot("F_Chest", 34f).Rot("F_Head", -12f)
             .Move("Ik_F_L_Hand", 0.16f, -0.12f).Move("Ik_F_R_Hand", 0.20f, -0.22f)
-            .Rot("F_Weapon", -112f)
+            .Move("F_Weapon", 0.18f, -0.20f).Rot("F_Weapon", -112f)
             .Move("Ik_F_L_Leg", 0.10f, 0.07f).Move("Ik_F_R_Leg", 0.12f, -0.07f)
             .Move("Ik_F_L_Foot", 0.14f, 0.05f).Move("Ik_F_R_Foot", 0.15f, -0.05f);
 
         private static ActionPose PosePlungeLanding() => new ActionPose()
             .Rot("F_Waist", -14f).Rot("F_Chest", -26f).Rot("F_Head", 9f)
             .Move("Ik_F_L_Hand", 0.02f, -0.08f).Move("Ik_F_R_Hand", 0.03f, -0.13f)
-            .Rot("F_Weapon", -74f)
+            .Move("F_Weapon", 0.02f, -0.12f).Rot("F_Weapon", -74f)
             .Move("Ik_F_L_Leg", -0.13f, 0.12f).Move("Ik_F_R_Leg", -0.11f, -0.12f)
             .Move("Ik_F_L_Foot", -0.10f, 0.10f).Move("Ik_F_R_Foot", -0.09f, -0.10f);
 
