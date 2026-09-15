@@ -1,15 +1,9 @@
 #if UNITY_EDITOR
 using ArknightsACT.Combat;
 using ArknightsACT.Editor.PRTS;
-using ArknightsACT.Gameplay.Abilities;
 using ArknightsACT.Gameplay.CameraSystem;
-using ArknightsACT.Gameplay.Characters;
-using ArknightsACT.Gameplay.Characters.Texas;
-using ArknightsACT.Gameplay.Combat;
-using ArknightsACT.Gameplay.Debugging;
 using ArknightsACT.Gameplay.Enemies;
 using ArknightsACT.Gameplay.Feedback;
-using ArknightsACT.Gameplay.Input;
 using ArknightsACT.Gameplay.Presentation;
 using ArknightsACT.Gameplay.Rooms;
 using UnityEngine;
@@ -30,95 +24,6 @@ namespace ArknightsACT.Editor
         {
             var services = new GameObject("[Services]");
             services.AddComponent<HitStopService>();
-            services.AddComponent<PresentationQualityDiagnostics2D>();
-        }
-
-        public static GameObject CreatePlayer(AttackDefinition[] attacks)
-        {
-            var go = new GameObject("Player_Texas");
-            go.transform.position = new Vector3(0f, FloorTopY + 0.76f, 0f);
-            go.transform.localScale = Vector3.one;
-
-            GameObject combatPresentation = null;
-            var hasCombatPresentation = PrtsGeneratedPresentation.TryAttach(
-                PrtsPrototypeAssetCatalog.Texas.BaseName,
-                go.transform,
-                out combatPresentation);
-
-            if (!hasCombatPresentation)
-            {
-                go.AddComponent<TexasPlaceholderRig2D>();
-                Debug.LogWarning(
-                    "[ArknightsACT/Spine] Texas combat presentation prefab is missing; using placeholder. " +
-                    "Run PRTS prefab generation before rebuilding the prototype scene.");
-            }
-            else
-            {
-                var hasMotionSource = PrtsGeneratedPresentation.TryAttach(
-                    PrtsPrototypeAssetCatalog.TexasBaseMotion.BaseName,
-                    go.transform,
-                    out var motionSource);
-
-                if (hasMotionSource)
-                {
-                    motionSource.name = "MotionSource_Texas_Base";
-                    var retarget = go.AddComponent<SpineBoneMotionRetarget2D>();
-                    retarget.Configure(combatPresentation.transform, motionSource.transform, "Move");
-                    Debug.Log(
-                        "[ArknightsACT/Spine] Texas motion source attached. " +
-                        "Runtime retarget will validate bone compatibility when Play starts.",
-                        go);
-                }
-                else
-                {
-                    Debug.LogWarning(
-                        "[ArknightsACT/Spine] Texas base motion source prefab is MISSING. " +
-                        "Walking retarget cannot run, so Texas will fall back to procedural movement. " +
-                        "Run 'ArknightsACT > Assets > PRTS > Download Texas Base Motion Source', then " +
-                        "'3. Build Presentation Prefabs', and rebuild Prototype Scene.",
-                        go);
-                }
-            }
-
-            var body = go.AddComponent<Rigidbody2D>();
-            body.freezeRotation = true;
-            body.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
-            body.interpolation = RigidbodyInterpolation2D.Interpolate;
-            body.gravityScale = 1f;
-
-            var collider = go.AddComponent<CapsuleCollider2D>();
-            collider.direction = CapsuleDirection2D.Vertical;
-            collider.size = new Vector2(0.72f, 1.45f);
-
-            go.AddComponent<Health>().SetMaxHealth(100f);
-            var entity = go.AddComponent<CombatEntity>();
-            entity.SetTeam(Team.Player);
-
-            go.AddComponent<PlayerInputReader>();
-            go.AddComponent<PlayerMotor2D>();
-            go.AddComponent<PlayerDashController>();
-            go.AddComponent<AttackSlashPresentation2D>();
-            go.AddComponent<SwordRainPresentation2D>();
-            go.AddComponent<PlayerAttackController>().Configure(attacks, 10f);
-            go.AddComponent<PlayerDamageGate>();
-            go.AddComponent<TexasSwordRainSkill>();
-            go.AddComponent<PlayerSkillController>();
-            go.AddComponent<PlayerPresentationDriver2D>();
-            go.AddComponent<SpineAttackPlaybackSpeed2D>();
-            go.AddComponent<PlayerComboMotionAccent2D>();
-            go.AddComponent<DamageTintFlash2D>();
-
-            var swiftBlade = go.AddComponent<TexasSwiftBladeEffect>();
-            var residualThunder = go.AddComponent<TexasResidualThunderEffect>();
-            var conductive = go.AddComponent<TexasConductiveEffect>();
-            swiftBlade.enabled = false;
-            residualThunder.enabled = false;
-            conductive.enabled = false;
-
-            go.AddComponent<TexasBuildLab>();
-            go.AddComponent<TexasUpgradeChoicePanel>();
-            go.AddComponent<TexasPrototypeHud>();
-            return go;
         }
 
         public static void CreateFloor() =>
@@ -141,7 +46,6 @@ namespace ArknightsACT.Editor
                 new Vector2(FloorRightX - wallThickness * 0.5f, wallCenterY),
                 new Vector2(wallThickness, wallHeight),
                 wallColor);
-
             CreateStaticCollider(
                 "Boundary_BottomSafety",
                 new Vector2(FloorCenterX, -4.25f),
@@ -150,35 +54,6 @@ namespace ArknightsACT.Editor
 
         public static void CreatePlatform(Vector2 position, Vector2 size) =>
             CreateStaticBlock("Platform", position, size, new Color(0.34f, 0.37f, 0.43f));
-
-        private static void CreateStaticBlock(string name, Vector2 position, Vector2 size, Color color)
-        {
-            var go = new GameObject(name);
-            go.transform.position = position;
-            go.transform.localScale = Vector3.one;
-            CreateVisualChild(go.transform, "Visual", size, color, 0, false);
-
-            var body = go.AddComponent<Rigidbody2D>();
-            body.bodyType = RigidbodyType2D.Static;
-            body.simulated = true;
-
-            var collider = go.AddComponent<BoxCollider2D>();
-            collider.size = size;
-        }
-
-        private static void CreateStaticCollider(string name, Vector2 position, Vector2 size)
-        {
-            var go = new GameObject(name);
-            go.transform.position = position;
-            go.transform.localScale = Vector3.one;
-
-            var body = go.AddComponent<Rigidbody2D>();
-            body.bodyType = RigidbodyType2D.Static;
-            body.simulated = true;
-
-            var collider = go.AddComponent<BoxCollider2D>();
-            collider.size = size;
-        }
 
         public static GameObject CreateDummy(
             Vector2 position,
@@ -231,12 +106,8 @@ namespace ArknightsACT.Editor
             templates[1] = CreateDummy(new Vector2(0f, -20f), enemies.Length > 3 ? enemies[3] : null, false, "EnemyTemplate_");
             templates[2] = CreateDummy(new Vector2(0f, -20f), enemies.Length > 2 ? enemies[2] : null, false, "EnemyTemplate_");
 
-            for (var i = 0; i < templates.Length; i++)
-            {
-                if (templates[i] != null)
-                    templates[i].transform.SetParent(root.transform, true);
-            }
-
+            foreach (var template in templates)
+                if (template != null) template.transform.SetParent(root.transform, true);
             return templates;
         }
 
@@ -244,10 +115,8 @@ namespace ArknightsACT.Editor
         {
             var go = new GameObject("[RoomLoop]");
             var controller = go.AddComponent<PrototypeRoomLoopController>();
-            var rewardPanel = player != null ? player.GetComponent<TexasUpgradeChoicePanel>() : null;
             controller.Configure(
                 player,
-                rewardPanel,
                 enemyTemplates,
                 new[]
                 {
@@ -286,39 +155,58 @@ namespace ArknightsACT.Editor
         {
             if (descriptor == null)
                 return PrototypeEnemyArchetype.Melee;
-
-            switch (descriptor.Role)
+            return descriptor.Role switch
             {
-                case "FastMelee": return PrototypeEnemyArchetype.FastMelee;
-                case "Ranged": return PrototypeEnemyArchetype.Ranged;
-                default: return PrototypeEnemyArchetype.Melee;
-            }
+                "FastMelee" => PrototypeEnemyArchetype.FastMelee,
+                "Ranged" => PrototypeEnemyArchetype.Ranged,
+                _ => PrototypeEnemyArchetype.Melee
+            };
         }
 
-        private static float ResolvePrototypeHealth(PrototypeEnemyArchetype archetype)
+        private static float ResolvePrototypeHealth(PrototypeEnemyArchetype archetype) => archetype switch
         {
-            switch (archetype)
-            {
-                case PrototypeEnemyArchetype.FastMelee: return 45f;
-                case PrototypeEnemyArchetype.Ranged: return 50f;
-                default: return 60f;
-            }
+            PrototypeEnemyArchetype.FastMelee => 45f,
+            PrototypeEnemyArchetype.Ranged => 50f,
+            _ => 60f
+        };
+
+        private static void CreateStaticBlock(string name, Vector2 position, Vector2 size, Color color)
+        {
+            var go = new GameObject(name);
+            go.transform.position = position;
+            CreateVisualChild(go.transform, "Visual", size, color, 0, false);
+            var body = go.AddComponent<Rigidbody2D>();
+            body.bodyType = RigidbodyType2D.Static;
+            var collider = go.AddComponent<BoxCollider2D>();
+            collider.size = size;
         }
 
-        private static GameObject CreateVisualChild(Transform parent, string name, Vector2 size, Color color, int sortingOrder, bool addHitFlash)
+        private static void CreateStaticCollider(string name, Vector2 position, Vector2 size)
+        {
+            var go = new GameObject(name);
+            go.transform.position = position;
+            var body = go.AddComponent<Rigidbody2D>();
+            body.bodyType = RigidbodyType2D.Static;
+            var collider = go.AddComponent<BoxCollider2D>();
+            collider.size = size;
+        }
+
+        private static GameObject CreateVisualChild(
+            Transform parent,
+            string name,
+            Vector2 size,
+            Color color,
+            int sortingOrder,
+            bool addHitFlash)
         {
             var visual = new GameObject(name);
             visual.transform.SetParent(parent, false);
-            visual.transform.localPosition = Vector3.zero;
             visual.transform.localScale = new Vector3(size.x, size.y, 1f);
-
             var renderer = visual.AddComponent<SpriteRenderer>();
             renderer.sortingOrder = sortingOrder;
             visual.AddComponent<PlaceholderVisual2D>().SetColor(color);
-
             if (addHitFlash)
                 visual.AddComponent<HitFlash2D>();
-
             return visual;
         }
     }
