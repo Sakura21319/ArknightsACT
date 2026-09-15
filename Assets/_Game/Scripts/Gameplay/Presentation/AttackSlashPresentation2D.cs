@@ -22,29 +22,92 @@ namespace ArknightsACT.Gameplay.Presentation
 
         public void PlayBasic(int comboIndex, int facing)
         {
-            switch (comboIndex)
+            switch (Mathf.Abs(comboIndex) % 3)
             {
                 case 0:
-                    SpawnSlash(facing, 28f, 1.35f, 0.08f, new Vector2(0.70f, 0.05f));
+                    SpawnLayeredSlash(
+                        facing,
+                        30f,
+                        1.55f,
+                        0.12f,
+                        new Vector2(0.76f, 0.05f),
+                        new Color(0.94f, 0.99f, 1f, 1f),
+                        new Color(0.20f, 0.75f, 1f, 0.58f),
+                        0.14f);
                     break;
+
                 case 1:
-                    SpawnSlash(facing, -24f, 1.50f, 0.09f, new Vector2(0.76f, 0.08f), 0f, new Color(0.72f, 0.94f, 1f, 0.94f));
+                    // Cross-cut: clearly different from hit 1 even though the underlying Spine
+                    // source only provides one Attack_Loop clip.
+                    SpawnLayeredSlash(
+                        facing,
+                        -30f,
+                        1.82f,
+                        0.14f,
+                        new Vector2(0.86f, 0.10f),
+                        new Color(0.88f, 0.98f, 1f, 1f),
+                        new Color(0.18f, 0.72f, 1f, 0.64f),
+                        0.16f);
+                    SpawnLayeredSlash(
+                        facing,
+                        18f,
+                        1.48f,
+                        0.10f,
+                        new Vector2(0.82f, 0.02f),
+                        new Color(0.72f, 0.94f, 1f, 0.96f),
+                        new Color(0.12f, 0.62f, 1f, 0.52f),
+                        0.14f,
+                        0.025f);
                     break;
-                case 2:
-                    SpawnSlash(facing, 4f, 2.15f, 0.15f, new Vector2(1.00f, 0.10f), 0f, new Color(0.90f, 0.98f, 1f, 1f));
-                    SpawnSlash(facing, -14f, 1.80f, 0.075f, new Vector2(0.92f, -0.02f), 0.025f, new Color(0.40f, 0.86f, 1f, 0.72f));
-                    break;
+
                 default:
-                    SpawnSlash(facing, 42f, 1.85f, 0.11f, new Vector2(0.88f, 0.14f));
-                    SpawnSlash(facing, 0f, 1.55f, 0.075f, new Vector2(0.82f, 0.05f), 0.025f);
-                    SpawnSlash(facing, -38f, 1.75f, 0.085f, new Vector2(0.88f, -0.05f), 0.045f);
+                    // Heavy finisher: wide three-line fan + impact star. This is intentionally
+                    // much louder than hits 1/2 so the 1 -> 2 -> HEAVY rhythm reads instantly.
+                    SpawnLayeredSlash(
+                        facing,
+                        7f,
+                        2.55f,
+                        0.22f,
+                        new Vector2(1.10f, 0.08f),
+                        new Color(1f, 1f, 1f, 1f),
+                        new Color(0.22f, 0.82f, 1f, 0.82f),
+                        0.20f);
+                    SpawnLayeredSlash(
+                        facing,
+                        -18f,
+                        2.20f,
+                        0.13f,
+                        new Vector2(1.02f, -0.02f),
+                        new Color(0.68f, 0.94f, 1f, 1f),
+                        new Color(0.08f, 0.58f, 1f, 0.62f),
+                        0.18f,
+                        0.018f);
+                    SpawnLayeredSlash(
+                        facing,
+                        27f,
+                        1.95f,
+                        0.11f,
+                        new Vector2(0.98f, 0.17f),
+                        new Color(0.82f, 0.97f, 1f, 0.98f),
+                        new Color(0.16f, 0.70f, 1f, 0.55f),
+                        0.17f,
+                        0.038f);
+                    SpawnImpactBurst((Vector2)transform.position + new Vector2(1.20f * facing, 0.08f), 0.95f, 1.25f);
                     break;
             }
         }
 
         public void PlaySwordWave(int facing)
         {
-            SpawnSlash(facing, 0f, 2.6f, 0.13f, new Vector2(1.35f, 0.10f), 0f, new Color(0.55f, 0.95f, 1f, 0.95f));
+            SpawnLayeredSlash(
+                facing,
+                0f,
+                3.15f,
+                0.18f,
+                new Vector2(1.55f, 0.10f),
+                new Color(0.90f, 1f, 1f, 1f),
+                new Color(0.18f, 0.78f, 1f, 0.72f),
+                0.20f);
         }
 
         public void PlayChainLightning(Vector2 from, Vector2 to, float intensity = 1f)
@@ -52,50 +115,59 @@ namespace ArknightsACT.Gameplay.Presentation
             if (_sprite == null)
                 return;
 
-            intensity = Mathf.Clamp(intensity, 0.75f, 1.5f);
+            intensity = Mathf.Clamp(intensity, 0.8f, 1.8f);
             var delta = to - from;
-            var length = Mathf.Max(0.05f, delta.magnitude);
-            var angle = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
-            var midpoint = Vector2.Lerp(from, to, 0.5f);
+            var length = delta.magnitude;
+            if (length <= 0.03f)
+                return;
 
-            SpawnWorldLine(
-                "ChainLightningCore",
-                midpoint,
-                angle,
-                length,
-                0.045f * intensity,
-                new Color(0.92f, 0.99f, 1f, 1f),
-                68,
-                0.10f);
-            SpawnWorldLine(
-                "ChainLightningGlow",
-                midpoint,
-                angle,
-                length,
-                0.12f * intensity,
-                new Color(0.25f, 0.78f, 1f, 0.38f),
-                67,
-                0.13f);
+            var direction = delta / length;
+            var perpendicular = new Vector2(-direction.y, direction.x);
+            var segments = Mathf.Clamp(Mathf.CeilToInt(length / 0.45f), 5, 9);
+            var previous = from;
 
-            var perpendicular = delta.sqrMagnitude > 0.001f
-                ? new Vector2(-delta.y, delta.x).normalized
-                : Vector2.up;
-            var branchPoint = midpoint + perpendicular * Random.Range(-0.22f, 0.22f);
-            var branchEnd = branchPoint + perpendicular * Random.Range(-0.35f, 0.35f) + delta.normalized * 0.22f;
-            var branchDelta = branchEnd - branchPoint;
-            var branchAngle = Mathf.Atan2(branchDelta.y, branchDelta.x) * Mathf.Rad2Deg;
-            SpawnWorldLine(
-                "ChainLightningBranch",
-                Vector2.Lerp(branchPoint, branchEnd, 0.5f),
-                branchAngle,
-                branchDelta.magnitude,
-                0.035f * intensity,
-                new Color(0.50f, 0.90f, 1f, 0.72f),
-                68,
-                0.09f);
+            for (var i = 1; i <= segments; i++)
+            {
+                var t = i / (float)segments;
+                var point = Vector2.Lerp(from, to, t);
+                if (i < segments)
+                {
+                    var taper = Mathf.Sin(t * Mathf.PI);
+                    point += perpendicular * Random.Range(-0.22f, 0.22f) * taper * intensity;
+                }
+
+                SpawnLightningSegment(previous, point, intensity);
+                previous = point;
+            }
+
+            SpawnImpactBurst(to, 0.68f * intensity, 1.35f);
         }
 
-        private void SpawnSlash(int facing, float angle, float length, float thickness, Vector2 offset, float delay = 0f, Color? color = null)
+        private void SpawnLayeredSlash(
+            int facing,
+            float angle,
+            float length,
+            float thickness,
+            Vector2 offset,
+            Color coreColor,
+            Color glowColor,
+            float duration,
+            float delay = 0f)
+        {
+            SpawnSlash(facing, angle, length, thickness * 2.5f, offset, delay, glowColor, 58, duration * 1.15f);
+            SpawnSlash(facing, angle, length, thickness, offset, delay, coreColor, 61, duration);
+        }
+
+        private void SpawnSlash(
+            int facing,
+            float angle,
+            float length,
+            float thickness,
+            Vector2 offset,
+            float delay,
+            Color color,
+            int sortingOrder,
+            float duration)
         {
             if (_sprite == null)
                 return;
@@ -106,10 +178,71 @@ namespace ArknightsACT.Gameplay.Presentation
 
             var renderer = root.AddComponent<SpriteRenderer>();
             renderer.sprite = _sprite;
-            renderer.sortingOrder = 60;
-            renderer.color = color ?? new Color(0.78f, 0.94f, 1f, 0.92f);
+            renderer.sortingOrder = sortingOrder;
+            renderer.color = color;
             root.transform.localScale = new Vector3(length, thickness, 1f);
-            StartCoroutine(Fade(root, renderer, delay, 0.10f));
+            StartCoroutine(Fade(root, renderer, delay, duration));
+        }
+
+        private void SpawnLightningSegment(Vector2 from, Vector2 to, float intensity)
+        {
+            var delta = to - from;
+            var length = Mathf.Max(0.03f, delta.magnitude);
+            var angle = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
+            var midpoint = Vector2.Lerp(from, to, 0.5f);
+
+            SpawnWorldLine(
+                "ChainLightningGlow",
+                midpoint,
+                angle,
+                length,
+                0.24f * intensity,
+                new Color(0.04f, 0.55f, 1f, 0.52f),
+                70,
+                0.24f);
+            SpawnWorldLine(
+                "ChainLightningCore",
+                midpoint,
+                angle,
+                length,
+                0.085f * intensity,
+                new Color(0.94f, 1f, 1f, 1f),
+                72,
+                0.20f);
+        }
+
+        private void SpawnImpactBurst(Vector2 center, float radius, float intensity)
+        {
+            if (_sprite == null)
+                return;
+
+            var rayCount = 7;
+            for (var i = 0; i < rayCount; i++)
+            {
+                var angle = i * (360f / rayCount) + Random.Range(-8f, 8f);
+                var rad = angle * Mathf.Deg2Rad;
+                var direction = new Vector2(Mathf.Cos(rad), Mathf.Sin(rad));
+                var length = radius * Random.Range(0.55f, 1f);
+                var midpoint = center + direction * length * 0.5f;
+                SpawnWorldLine(
+                    "ImpactBurstGlow",
+                    midpoint,
+                    angle,
+                    length,
+                    0.11f * intensity,
+                    new Color(0.10f, 0.70f, 1f, 0.68f),
+                    73,
+                    0.18f);
+                SpawnWorldLine(
+                    "ImpactBurstCore",
+                    midpoint,
+                    angle,
+                    length,
+                    0.04f * intensity,
+                    new Color(0.96f, 1f, 1f, 1f),
+                    74,
+                    0.15f);
+            }
         }
 
         private void SpawnWorldLine(
@@ -145,8 +278,9 @@ namespace ArknightsACT.Gameplay.Presentation
             {
                 elapsed += Time.deltaTime;
                 var t = Mathf.Clamp01(elapsed / duration);
-                renderer.color = new Color(start.r, start.g, start.b, start.a * (1f - t));
-                root.transform.localScale *= 1f + Time.deltaTime * 1.8f;
+                var alpha = 1f - t * t;
+                renderer.color = new Color(start.r, start.g, start.b, start.a * alpha);
+                root.transform.localScale *= 1f + Time.deltaTime * 0.85f;
                 yield return null;
             }
 
