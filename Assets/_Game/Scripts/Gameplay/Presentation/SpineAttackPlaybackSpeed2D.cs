@@ -15,11 +15,11 @@ namespace ArknightsACT.Gameplay.Presentation
     [RequireComponent(typeof(PlayerAttackController))]
     public sealed class SpineAttackPlaybackSpeed2D : MonoBehaviour, IAttackTimingProvider
     {
-        [SerializeField, Range(1f, 4f)] private float attackPlaybackSpeed = 2.0f;
+        [SerializeField, Range(1f, 4f)] private float attackPlaybackSpeed = 1.6f;
         [SerializeField, Range(0.1f, 0.9f)] private float impactNormalizedTime = 0.58f;
-        [SerializeField, Min(0.05f)] private float chainGraceSeconds = 0.18f;
-        [SerializeField, Min(0.05f)] private float minimumCycleSeconds = 0.12f;
-        [SerializeField, Min(0.05f)] private float maximumCycleSeconds = 0.60f;
+        [SerializeField, Min(0.05f)] private float chainGraceSeconds = 0.20f;
+        [SerializeField, Min(0.05f)] private float minimumCycleSeconds = 0.14f;
+        [SerializeField, Min(0.05f)] private float maximumCycleSeconds = 0.70f;
 
         private PlayerAttackController _attack;
         private PlayerSkillController _skill;
@@ -89,7 +89,7 @@ namespace ArknightsACT.Gameplay.Presentation
 
             var hold = chainGraceSeconds;
             if (TryGetBasicAttackTiming(out var ignoredImpact, out var cycle))
-                hold = Mathf.Max(hold, cycle + 0.04f);
+                hold = Mathf.Max(hold, cycle + 0.05f);
             _boostUntil = Time.time + hold;
         }
 
