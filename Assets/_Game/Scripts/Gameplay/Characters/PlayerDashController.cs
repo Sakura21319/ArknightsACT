@@ -19,6 +19,8 @@ namespace ArknightsACT.Gameplay.Characters
         private IPlayerInputSource _input;
         private PlayerAttackController _attack;
         private float _cooldownUntil;
+        private float _lastDashFinishedAt = -999f;
+        private bool _postDashAttackConsumed = true;
 
         public bool IsDashing { get; private set; }
         public bool IsInvulnerable => IsDashing;
@@ -55,9 +57,25 @@ namespace ArknightsACT.Gameplay.Characters
             return true;
         }
 
+        /// <summary>
+        /// Allows exactly one contextual attack shortly after a completed dash.
+        /// The controller owns consumption so mashing Attack cannot create multiple dash slashes.
+        /// </summary>
+        public bool TryConsumePostDashAttack(float windowSeconds)
+        {
+            if (IsDead || IsDashing || _postDashAttackConsumed)
+                return false;
+            if (Time.time - _lastDashFinishedAt > Mathf.Max(0f, windowSeconds))
+                return false;
+
+            _postDashAttackConsumed = true;
+            return true;
+        }
+
         private IEnumerator DashRoutine()
         {
             IsDashing = true;
+            _postDashAttackConsumed = true;
             _cooldownUntil = Time.time + dashCooldown;
 
             var direction = _motor.FacingSign;
@@ -75,7 +93,15 @@ namespace ArknightsACT.Gameplay.Characters
 
             _body.gravityScale = previousGravity;
             if (IsDead)
+            {
                 _body.linearVelocity = new Vector2(0f, _body.linearVelocity.y);
+            }
+            else
+            {
+                _lastDashFinishedAt = Time.time;
+                _postDashAttackConsumed = false;
+            }
+
             IsDashing = false;
         }
     }
