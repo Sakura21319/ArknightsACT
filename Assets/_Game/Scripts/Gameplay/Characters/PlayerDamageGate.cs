@@ -4,21 +4,29 @@ using UnityEngine;
 namespace ArknightsACT.Gameplay.Characters
 {
     /// <summary>
-    /// Player-specific damage acceptance rule. Dash invulnerability lives here,
-    /// keeping Health and DamageSystem free of player knowledge.
+    /// Player-specific damage acceptance rule. Any component implementing
+    /// IPlayerInvulnerabilitySource can temporarily reject incoming damage.
     /// </summary>
     public sealed class PlayerDamageGate : MonoBehaviour, IDamageGate
     {
-        private PlayerDashController _dash;
+        private MonoBehaviour[] _behaviours;
 
         private void Awake()
         {
-            _dash = GetComponent<PlayerDashController>();
+            _behaviours = GetComponents<MonoBehaviour>();
         }
 
         public bool CanReceiveDamage(in DamageContext context)
         {
-            return _dash == null || !_dash.IsInvulnerable;
+            if (_behaviours == null || _behaviours.Length == 0)
+                _behaviours = GetComponents<MonoBehaviour>();
+
+            for (var i = 0; i < _behaviours.Length; i++)
+            {
+                if (_behaviours[i] is IPlayerInvulnerabilitySource source && source.IsInvulnerable)
+                    return false;
+            }
+            return true;
         }
     }
 }
