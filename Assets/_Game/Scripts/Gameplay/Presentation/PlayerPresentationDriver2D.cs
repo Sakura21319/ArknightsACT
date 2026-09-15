@@ -22,6 +22,7 @@ namespace ArknightsACT.Gameplay.Presentation
         private SpineCharacterPresentation2D _spine;
         private SpineBoneMotionRetarget2D _motionRetarget;
         private float _externalMotionBlockedUntil;
+        private bool _attackRecoveryCancelledToMove;
         private bool _dead;
 
         private void Awake()
@@ -85,8 +86,25 @@ namespace ArknightsACT.Gameplay.Presentation
                 return;
 
             var moving = Mathf.Abs(_body.linearVelocity.x) > movingThreshold;
+            var attackMovementLocked = _attack != null && _attack.IsMovementLocked;
+
+            // Once the real hit has landed and the tiny committed recovery is over, directional
+            // movement is allowed to cancel only the visual recovery tail. Gameplay still keeps
+            // the original attack cycle as the next-swing cadence, so this cannot create hidden
+            // extra hits or faster DPS by animation cancelling.
+            if (moving &&
+                _attack != null &&
+                _attack.IsAttacking &&
+                !attackMovementLocked &&
+                !_attackRecoveryCancelledToMove)
+            {
+                _attackRecoveryCancelledToMove = true;
+                _externalMotionBlockedUntil = Time.time;
+                _spine.CancelBasicAttackPresentation();
+            }
+
             var allowRetarget = moving &&
-                                (_attack == null || !_attack.IsAttacking) &&
+                                !attackMovementLocked &&
                                 Time.time >= _externalMotionBlockedUntil &&
                                 _motionRetarget != null &&
                                 _motionRetarget.IsCompatible;
@@ -100,6 +118,7 @@ namespace ArknightsACT.Gameplay.Presentation
         {
             if (_dead)
                 return;
+            _attackRecoveryCancelledToMove = false;
             _externalMotionBlockedUntil = Mathf.Max(_externalMotionBlockedUntil, Time.time + attackPresentationGrace);
             _motionRetarget?.SetMoving(false);
             _spine?.SetExternalLocomotionActive(false);
@@ -110,6 +129,7 @@ namespace ArknightsACT.Gameplay.Presentation
         {
             if (_dead)
                 return;
+            _attackRecoveryCancelledToMove = false;
             _externalMotionBlockedUntil = Mathf.Max(_externalMotionBlockedUntil, Time.time + skillPresentationLock);
             _motionRetarget?.SetMoving(false);
             _spine?.SetExternalLocomotionActive(false);
@@ -120,6 +140,7 @@ namespace ArknightsACT.Gameplay.Presentation
         {
             if (_dead)
                 return;
+            _attackRecoveryCancelledToMove = false;
             _externalMotionBlockedUntil = Mathf.Max(_externalMotionBlockedUntil, Time.time + hitPresentationLock);
             _motionRetarget?.SetMoving(false);
             _spine?.SetExternalLocomotionActive(false);
@@ -129,6 +150,7 @@ namespace ArknightsACT.Gameplay.Presentation
         private void OnDied()
         {
             _dead = true;
+            _attackRecoveryCancelledToMove = false;
             _motionRetarget?.SetMoving(false);
             _spine?.SetExternalLocomotionActive(false);
             _spine?.PlayDie();
