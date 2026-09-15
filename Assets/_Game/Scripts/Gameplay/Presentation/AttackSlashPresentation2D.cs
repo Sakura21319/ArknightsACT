@@ -22,6 +22,31 @@ namespace ArknightsACT.Gameplay.Presentation
 
         public void PlayBasic(int comboIndex, int facing)
         {
+            if (comboIndex == 3)
+            {
+                SpawnLayeredSlash(
+                    facing,
+                    0f,
+                    3.45f,
+                    0.24f,
+                    new Vector2(1.55f, 0.06f),
+                    new Color(1f, 1f, 1f, 1f),
+                    new Color(0.08f, 0.72f, 1f, 0.90f),
+                    0.22f);
+                SpawnLayeredSlash(
+                    facing,
+                    -8f,
+                    2.75f,
+                    0.11f,
+                    new Vector2(1.38f, -0.05f),
+                    new Color(0.65f, 0.95f, 1f, 1f),
+                    new Color(0.08f, 0.52f, 1f, 0.62f),
+                    0.18f,
+                    0.025f);
+                SpawnImpactBurst((Vector2)transform.position + new Vector2(1.65f * facing, 0.05f), 1.05f, 1.45f);
+                return;
+            }
+
             switch (Mathf.Abs(comboIndex) % 3)
             {
                 case 0:
@@ -37,8 +62,6 @@ namespace ArknightsACT.Gameplay.Presentation
                     break;
 
                 case 1:
-                    // Cross-cut: clearly different from hit 1 even though the underlying Spine
-                    // source only provides one Attack_Loop clip.
                     SpawnLayeredSlash(
                         facing,
                         -30f,
@@ -61,8 +84,6 @@ namespace ArknightsACT.Gameplay.Presentation
                     break;
 
                 default:
-                    // Heavy finisher: wide three-line fan + impact star. This is intentionally
-                    // much louder than hits 1/2 so the 1 -> 2 -> HEAVY rhythm reads instantly.
                     SpawnLayeredSlash(
                         facing,
                         7f,
@@ -216,7 +237,7 @@ namespace ArknightsACT.Gameplay.Presentation
             if (_sprite == null)
                 return;
 
-            var rayCount = 7;
+            const int rayCount = 7;
             for (var i = 0; i < rayCount; i++)
             {
                 var angle = i * (360f / rayCount) + Random.Range(-8f, 8f);
