@@ -23,6 +23,7 @@ namespace ArknightsACT.Editor
         public static void CreateServices()
         {
             var services = new GameObject("[Services]");
+            services.AddComponent<GameplayPauseService>();
             services.AddComponent<HitStopService>();
         }
 
