@@ -10,7 +10,7 @@ using UnityEngine;
 
 namespace ArknightsACT.Gameplay.Combat
 {
-    [RequireComponent(typeof(CombatEntity), typeof(PlayerMotor2D))]
+    [RequireComponent(typeof(CombatEntity))]
     public sealed class PlayerAttackController : MonoBehaviour
     {
         [SerializeField] private AttackDefinition[] combo;
@@ -19,7 +19,8 @@ namespace ArknightsACT.Gameplay.Combat
         [SerializeField, Min(0f)] private float movementUnlockAfterImpactSeconds = 0.04f;
 
         private CombatEntity _entity;
-        private PlayerMotor2D _motor;
+        private IPlayerLocomotion _motor;
+        private PlayerMotor25D _motor25D;
         private PlayerDashController _dash;
         private IPlayerInputSource _input;
         private PlayerSkillController _skills;
@@ -66,7 +67,8 @@ namespace ArknightsACT.Gameplay.Combat
         private void Awake()
         {
             _entity = GetComponent<CombatEntity>();
-            _motor = GetComponent<PlayerMotor2D>();
+            _motor = FindLocomotion();
+            _motor25D = GetComponent<PlayerMotor25D>();
             _dash = GetComponent<PlayerDashController>();
             _input = GetComponent<IPlayerInputSource>();
             _skills = GetComponent<PlayerSkillController>();
@@ -183,6 +185,14 @@ namespace ArknightsACT.Gameplay.Combat
 
         private void PerformHit(AttackDefinition definition)
         {
+            if (_motor25D != null)
+                PerformHit25D(definition);
+            else
+                PerformHit2D(definition);
+        }
+
+        private void PerformHit2D(AttackDefinition definition)
+        {
             var facing = _motor != null ? _motor.FacingSign : 1;
             var offset = definition.hitboxOffset;
             offset.x *= facing;
@@ -199,33 +209,99 @@ namespace ArknightsACT.Gameplay.Combat
                 if (hit == null)
                     continue;
                 var target = hit.GetComponentInParent<CombatEntity>();
-                if (target == null || target == _entity || target.Team == _entity.Team ||
-                    target.Health == null || target.Health.IsDead || !processed.Add(target))
+                if (!CanHit(target, processed))
                     continue;
 
-                var context = new DamageContext(
-                    _entity,
-                    _entity,
-                    target,
-                    baseAttack * definition.damageMultiplier,
-                    DamageType.Physical,
-                    knockback,
-                    sourceId: definition.name);
-                var result = DamageSystem.Apply(context);
-                if (!result.Applied)
-                    continue;
-
-                hitAny = true;
-                target.GetComponentInChildren<HitFlash2D>()?.Flash();
-                AttackHit?.Invoke(target);
+                if (ApplyHit(target, definition, knockback))
+                    hitAny = true;
             }
 
+            ApplyImpactFeedback(definition, hitAny);
+        }
+
+        private void PerformHit25D(AttackDefinition definition)
+        {
+            var forward = _motor != null ? _motor.PlanarForward : Vector3.forward;
+            forward.y = 0f;
+            if (forward.sqrMagnitude < 0.001f)
+                forward = Vector3.forward;
+            forward.Normalize();
+
+            var center = transform.position +
+                         forward * Mathf.Max(0.45f, Mathf.Abs(definition.hitboxOffset.x)) +
+                         Vector3.up * 0.85f;
+            var halfExtents = new Vector3(
+                Mathf.Max(0.55f, definition.hitboxSize.x * 0.5f),
+                0.9f,
+                Mathf.Max(0.50f, definition.hitboxSize.y * 0.35f));
+            var rotation = Quaternion.LookRotation(forward, Vector3.up);
+            var hits = Physics.OverlapBox(center, halfExtents, rotation, ~0, QueryTriggerInteraction.Ignore);
+            var processed = new HashSet<CombatEntity>();
+            var hitAny = false;
+
+            foreach (var hit in hits)
+            {
+                if (hit == null)
+                    continue;
+                var target = hit.GetComponentInParent<CombatEntity>();
+                if (!CanHit(target, processed))
+                    continue;
+
+                if (ApplyHit(target, definition, Vector2.zero))
+                    hitAny = true;
+            }
+
+            ApplyImpactFeedback(definition, hitAny);
+        }
+
+        private bool CanHit(CombatEntity target, HashSet<CombatEntity> processed)
+        {
+            return target != null &&
+                   target != _entity &&
+                   target.Team != _entity.Team &&
+                   target.Health != null &&
+                   !target.Health.IsDead &&
+                   processed.Add(target);
+        }
+
+        private bool ApplyHit(CombatEntity target, AttackDefinition definition, Vector2 knockback)
+        {
+            var context = new DamageContext(
+                _entity,
+                _entity,
+                target,
+                baseAttack * definition.damageMultiplier,
+                DamageType.Physical,
+                knockback,
+                sourceId: definition.name);
+            var result = DamageSystem.Apply(context);
+            if (!result.Applied)
+                return false;
+
+            target.GetComponentInChildren<HitFlash2D>()?.Flash();
+            AttackHit?.Invoke(target);
+            return true;
+        }
+
+        private static void ApplyImpactFeedback(AttackDefinition definition, bool hitAny)
+        {
             if (!hitAny)
                 return;
             if (definition.hitStopSeconds > 0f)
                 HitStopService.Instance?.Request(definition.hitStopSeconds);
             if (definition.cameraShakeAmplitude > 0f)
                 CameraShake2D.Instance?.Shake(definition.cameraShakeAmplitude, 0.06f);
+        }
+
+        private IPlayerLocomotion FindLocomotion()
+        {
+            var behaviours = GetComponents<MonoBehaviour>();
+            for (var i = 0; i < behaviours.Length; i++)
+            {
+                if (behaviours[i] is IPlayerLocomotion locomotion)
+                    return locomotion;
+            }
+            return null;
         }
     }
 }
