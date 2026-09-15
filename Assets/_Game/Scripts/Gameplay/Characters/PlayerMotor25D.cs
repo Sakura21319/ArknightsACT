@@ -14,6 +14,8 @@ namespace ArknightsACT.Gameplay.Characters
     [RequireComponent(typeof(CharacterController), typeof(CombatEntity))]
     public sealed class PlayerMotor25D : MonoBehaviour, IPlayerLocomotion
     {
+        private const float FacingHorizontalDeadzone = 0.30f;
+
         [Header("Movement")]
         [SerializeField, Min(0.1f)] private float moveSpeed = 4.8f;
         [SerializeField, Min(0.1f)] private float acceleration = 24f;
@@ -33,17 +35,21 @@ namespace ArknightsACT.Gameplay.Characters
         private PlayerAttackController _attack;
         private PlayerSkillController _skills;
         private Vector3 _planarVelocity;
-        private Vector3 _planarForward = Vector3.forward;
+        private Vector3 _planarForward = Vector3.right;
         private float _verticalVelocity;
 
         public bool IsGrounded => _controller != null && _controller.isGrounded;
         public bool IsMoving => _planarVelocity.sqrMagnitude > 0.01f;
         public int FacingSign { get; private set; } = 1;
-        public Vector3 PlanarForward => _planarForward.sqrMagnitude > 0.001f ? _planarForward.normalized : Vector3.forward;
+        public Vector3 PlanarForward => _planarForward.sqrMagnitude > 0.001f ? _planarForward.normalized : Vector3.right;
         public float PlanarSpeed => _planarVelocity.magnitude;
         public CharacterController Controller => _controller;
 
-        public void SetCamera(Camera value) => gameplayCamera = value;
+        public void SetCamera(Camera value)
+        {
+            gameplayCamera = value;
+            InitializeDefaultPlanarForward();
+        }
 
         private bool IsDead => _entity != null && _entity.Health != null && _entity.Health.IsDead;
 
@@ -57,6 +63,7 @@ namespace ArknightsACT.Gameplay.Characters
             _skills = GetComponent<PlayerSkillController>();
             if (gameplayCamera == null)
                 gameplayCamera = Camera.main;
+            InitializeDefaultPlanarForward();
         }
 
         private void Update()
@@ -109,14 +116,7 @@ namespace ArknightsACT.Gameplay.Characters
             if (gameplayCamera == null)
                 gameplayCamera = Camera.main;
 
-            var cameraTransform = gameplayCamera != null ? gameplayCamera.transform : null;
-            var forward = cameraTransform != null
-                ? Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up).normalized
-                : Vector3.forward;
-            var right = cameraTransform != null
-                ? Vector3.ProjectOnPlane(cameraTransform.right, Vector3.up).normalized
-                : Vector3.right;
-
+            ResolveCameraAxes(out var forward, out var right);
             var direction = right * input.x + forward * input.y;
             if (direction.sqrMagnitude > 1f)
                 direction.Normalize();
@@ -124,12 +124,44 @@ namespace ArknightsACT.Gameplay.Characters
             if (direction.sqrMagnitude > 0.001f)
             {
                 _planarForward = direction.normalized;
+
+                // Side-view Spine art can only mirror left/right. Preserve the previous mirror
+                // while movement is mostly vertical on screen; only update it once horizontal
+                // intent is strong enough. This removes rapid left/right flicker near Up/Down.
                 var screenHorizontal = Vector3.Dot(_planarForward, right);
-                if (Mathf.Abs(screenHorizontal) > 0.08f)
+                if (Mathf.Abs(screenHorizontal) >= FacingHorizontalDeadzone)
                     FacingSign = screenHorizontal >= 0f ? 1 : -1;
             }
 
             return direction * moveSpeed;
+        }
+
+        private void InitializeDefaultPlanarForward()
+        {
+            ResolveCameraAxes(out _, out var right);
+            if (right.sqrMagnitude > 0.001f)
+                _planarForward = right.normalized;
+        }
+
+        private void ResolveCameraAxes(out Vector3 forward, out Vector3 right)
+        {
+            if (gameplayCamera == null)
+                gameplayCamera = Camera.main;
+
+            var cameraTransform = gameplayCamera != null ? gameplayCamera.transform : null;
+            forward = cameraTransform != null
+                ? Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up)
+                : Vector3.forward;
+            right = cameraTransform != null
+                ? Vector3.ProjectOnPlane(cameraTransform.right, Vector3.up)
+                : Vector3.right;
+
+            if (forward.sqrMagnitude < 0.001f)
+                forward = Vector3.forward;
+            if (right.sqrMagnitude < 0.001f)
+                right = Vector3.right;
+            forward.Normalize();
+            right.Normalize();
         }
 
         private void ApplyGravityOnly()
