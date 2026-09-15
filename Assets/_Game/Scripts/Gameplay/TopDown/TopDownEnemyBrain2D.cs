@@ -18,6 +18,7 @@ namespace ArknightsACT.Gameplay.TopDown
     {
         [SerializeField] private TopDownEnemyArchetype archetype = TopDownEnemyArchetype.Melee;
         [SerializeField] private float moveSpeed = 2.2f;
+        [SerializeField, Range(0.4f, 1f)] private float verticalMoveScale = 0.72f;
         [SerializeField] private float attackRange = 1.15f;
         [SerializeField] private float preferredRange = 4.5f;
         [SerializeField] private float attackWindup = 0.20f;
@@ -225,7 +226,11 @@ namespace ArknightsACT.Gameplay.TopDown
             }
             if (Mathf.Abs(direction.x) > 0.02f)
                 FacingSign = direction.x >= 0f ? 1 : -1;
-            _body.linearVelocity = direction.normalized * moveSpeed;
+
+            var projected = new Vector2(direction.x, direction.y * verticalMoveScale);
+            if (projected.sqrMagnitude > 0.001f)
+                projected.Normalize();
+            _body.linearVelocity = projected * moveSpeed;
             IsMoving = true;
         }
 
