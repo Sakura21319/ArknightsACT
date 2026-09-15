@@ -30,7 +30,7 @@ namespace ArknightsACT.Gameplay.TopDown
 
         private void Update()
         {
-            if (_input != null && _input.DashPressedThisFrame)
+            if (Time.timeScale > 0.001f && _input != null && _input.DashPressedThisFrame)
                 TryDash();
         }
 
@@ -41,12 +41,16 @@ namespace ArknightsACT.Gameplay.TopDown
                 return false;
 
             var move = _input?.Move ?? Vector2.zero;
-            var direction = move.sqrMagnitude > 0.04f ? move.normalized : _motor.FacingDirection;
-            if (direction.sqrMagnitude <= 0.001f)
-                direction = Vector2.right;
+            var facing = move.sqrMagnitude > 0.04f ? move.normalized : _motor.FacingDirection;
+            if (facing.sqrMagnitude <= 0.001f)
+                facing = Vector2.right;
 
-            _motor.SetFacing(direction);
-            StartCoroutine(DashRoutine(direction));
+            _motor.SetFacing(facing);
+            var projected = _motor.ProjectDirection(facing);
+            if (projected.sqrMagnitude <= 0.001f)
+                projected = Vector2.right;
+
+            StartCoroutine(DashRoutine(projected));
             return true;
         }
 
