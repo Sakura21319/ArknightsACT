@@ -42,24 +42,7 @@ namespace ArknightsACT.Editor
             }
             else
             {
-                var hasMotionSource = PrtsGeneratedPresentation.TryAttach(
-                    PrtsPrototypeAssetCatalog.ChenBaseMotion.BaseName,
-                    go.transform,
-                    out var motionSource);
-
-                if (hasMotionSource)
-                {
-                    motionSource.name = "MotionSource_Chen_Base";
-                    var retarget = go.AddComponent<SpineBoneMotionRetarget2D>();
-                    retarget.Configure(combatPresentation.transform, motionSource.transform, "Move");
-                }
-                else
-                {
-                    Debug.LogWarning(
-                        "[ArknightsACT/Spine] Ch'en base motion source prefab is missing. " +
-                        "Movement will use the combat presentation fallback until it is downloaded/built.",
-                        go);
-                }
+                AttachMotionRetarget(go, go.transform, combatPresentation);
             }
 
             var body = go.AddComponent<Rigidbody2D>();
@@ -105,9 +88,20 @@ namespace ArknightsACT.Editor
             billboard.transform.localPosition = new Vector3(0f, 0.02f, 0f);
             billboard.AddComponent<BillboardPresentation25D>().Configure(camera);
 
-            if (PrtsGeneratedPresentation.TryAttach(PrtsPrototypeAssetCatalog.Chen.BaseName, billboard.transform, out var presentation))
+            GameObject combatPresentation = null;
+            if (PrtsGeneratedPresentation.TryAttach(
+                    PrtsPrototypeAssetCatalog.Chen.BaseName,
+                    billboard.transform,
+                    out combatPresentation))
             {
-                presentation.transform.localPosition = new Vector3(0f, -PrtsPrototypeAssetCatalog.Chen.FeetLocalY, 0f);
+                combatPresentation.transform.localPosition =
+                    new Vector3(0f, -PrtsPrototypeAssetCatalog.Chen.FeetLocalY, 0f);
+
+                // Keep the exact movement presentation used by the validated side-view build:
+                // the base/dorm skeleton supplies Move, while the visible combat skeleton keeps
+                // Ch'en's weapons/attachments. Both live under the camera-facing billboard so
+                // the retargeted pose remains in the same local presentation space.
+                AttachMotionRetarget(go, billboard.transform, combatPresentation);
             }
             else
             {
@@ -123,6 +117,28 @@ namespace ArknightsACT.Editor
             go.AddComponent<DamageNumberEmitter2D>();
             go.SetActive(true);
             return go;
+        }
+
+        private static void AttachMotionRetarget(GameObject owner, Transform presentationParent, GameObject combatPresentation)
+        {
+            var hasMotionSource = PrtsGeneratedPresentation.TryAttach(
+                PrtsPrototypeAssetCatalog.ChenBaseMotion.BaseName,
+                presentationParent,
+                out var motionSource);
+
+            if (!hasMotionSource)
+            {
+                Debug.LogWarning(
+                    "[ArknightsACT/Spine] Ch'en base motion source prefab is missing. " +
+                    "Movement will use the combat presentation fallback until it is downloaded/built.",
+                    owner);
+                return;
+            }
+
+            motionSource.name = "MotionSource_Chen_Base";
+            var retarget = owner.GetComponent<SpineBoneMotionRetarget2D>() ??
+                           owner.AddComponent<SpineBoneMotionRetarget2D>();
+            retarget.Configure(combatPresentation.transform, motionSource.transform, "Move");
         }
 
         private static void AddSharedGameplay(GameObject go, AttackDefinition[] attacks)
