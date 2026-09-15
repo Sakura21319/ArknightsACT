@@ -34,7 +34,8 @@ namespace ArknightsACT.Editor
             PrototypeFactory.CreatePlatform(new Vector2(11f, 2.6f), new Vector2(3f, 0.35f));
 
             var enemyTemplates = PrototypeFactory.CreateEnemyTemplates(PrtsPrototypeAssetCatalog.PrototypeEnemies);
-            PrototypeFactory.CreateRoomLoop(player.transform, enemyTemplates);
+            var roomLoop = PrototypeFactory.CreateRoomLoop(player.transform, enemyTemplates);
+            PrototypeRogueliteFactory.Create(roomLoop, player.transform);
             PrototypeFactory.CreateCamera(player.transform);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -44,8 +45,9 @@ namespace ArknightsACT.Editor
             EditorGUIUtility.PingObject(player);
 
             Debug.Log(
-                $"ArknightsACT Chen 2D ACT prototype generated: {ScenePath}. " +
-                "Controls: A/D move, Space jump, J/LMB three-hit combo, K/Shift dash, L skill1, I/RMB skill2.");
+                $"ArknightsACT Chen 2D ACT roguelite prototype generated: {ScenePath}. " +
+                "Controls: A/D move, Space jump, J/LMB three-hit combo, K/Shift dash, L skill1, I/RMB skill2. " +
+                "After clearing a room, choose one collectible with mouse or 1/2/3 before continuing.");
         }
 
         private static AttackDefinition[] BuildChenAttackDefinitions()
