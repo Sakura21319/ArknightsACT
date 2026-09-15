@@ -1,4 +1,5 @@
 using ArknightsACT.Combat;
+using ArknightsACT.Gameplay.Combat;
 using ArknightsACT.Gameplay.Input;
 using UnityEngine;
 
@@ -11,9 +12,14 @@ namespace ArknightsACT.Gameplay.Characters
         [SerializeField] private float moveSpeed = 7f;
         [SerializeField] private float acceleration = 55f;
         [SerializeField] private float deceleration = 70f;
-        [SerializeField] private float jumpVelocity = 9.6f;
-        [SerializeField] private float riseGravityMultiplier = 2.0f;
-        [SerializeField] private float fallGravityMultiplier = 3.2f;
+
+        [Header("Jump")]
+        // Keep roughly the same peak height as the previous prototype, but reach/leave the
+        // apex much faster. 13.6 @ 4x gravity gives about the same ~2.35 world-unit rise as
+        // 9.6 @ 2x gravity, while cutting total airtime to roughly 0.65s.
+        [SerializeField] private float jumpVelocity = 13.6f;
+        [SerializeField] private float riseGravityMultiplier = 4.0f;
+        [SerializeField] private float fallGravityMultiplier = 5.2f;
 
         [Header("Ground")]
         [SerializeField] private float groundCastDistance = 0.08f;
@@ -23,6 +29,7 @@ namespace ArknightsACT.Gameplay.Characters
         private CombatEntity _entity;
         private IPlayerInputSource _input;
         private PlayerDashController _dash;
+        private PlayerAttackController _attack;
         private readonly RaycastHit2D[] _groundHits = new RaycastHit2D[4];
 
         public bool IsGrounded { get; private set; }
@@ -38,6 +45,7 @@ namespace ArknightsACT.Gameplay.Characters
             _entity = GetComponent<CombatEntity>();
             _input = GetComponent<IPlayerInputSource>();
             _dash = GetComponent<PlayerDashController>();
+            _attack = GetComponent<PlayerAttackController>();
         }
 
         private void Update()
@@ -45,6 +53,11 @@ namespace ArknightsACT.Gameplay.Characters
             UpdateGrounded();
 
             if (IsDead || (_dash != null && _dash.IsDashing))
+                return;
+
+            // Basic attacks are committed grounded actions in the prototype. Starting an attack
+            // stops horizontal movement and also prevents jump from being injected mid-swing.
+            if (_attack != null && _attack.IsAttacking)
                 return;
 
             if (_input != null && _input.JumpPressedThisFrame && IsGrounded)
@@ -59,8 +72,6 @@ namespace ArknightsACT.Gameplay.Characters
         {
             if (IsDead)
             {
-                // Death is the highest-priority locomotion state. Preserve vertical physics so a
-                // corpse can finish falling to the floor, but never allow input-driven X movement.
                 var deadVelocity = _body.linearVelocity;
                 deadVelocity.x = 0f;
                 _body.linearVelocity = deadVelocity;
@@ -71,12 +82,23 @@ namespace ArknightsACT.Gameplay.Characters
             if (_dash != null && _dash.IsDashing)
                 return;
 
+            var current = _body.linearVelocity;
+
+            // A normal attack owns horizontal locomotion for its whole visible swing. Pressing J
+            // while running therefore means "plant feet and attack", never run-and-slash.
+            if (_attack != null && _attack.IsAttacking)
+            {
+                current.x = 0f;
+                _body.gravityScale = current.y > 0.05f ? riseGravityMultiplier : fallGravityMultiplier;
+                _body.linearVelocity = current;
+                return;
+            }
+
             var inputX = _input?.Move.x ?? 0f;
             if (Mathf.Abs(inputX) > 0.01f)
                 FacingSign = inputX > 0f ? 1 : -1;
 
             var targetX = inputX * moveSpeed;
-            var current = _body.linearVelocity;
             var rate = Mathf.Abs(targetX) > Mathf.Abs(current.x) ? acceleration : deceleration;
             current.x = Mathf.MoveTowards(current.x, targetX, rate * Time.fixedDeltaTime);
 
