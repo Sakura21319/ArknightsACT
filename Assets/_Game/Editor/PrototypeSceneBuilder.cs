@@ -44,30 +44,69 @@ namespace ArknightsACT.Editor
             Selection.activeGameObject = player;
             EditorGUIUtility.PingObject(player);
             Debug.Log(
-                $"ArknightsACT prototype scene generated: {ScenePath}. Runtime loop is now " +
-                "combat room -> localized three-choice reward -> next room, with enemy count/HP scaling per room.");
+                $"ArknightsACT prototype scene generated: {ScenePath}. Texas now uses a three-hit basic combo " +
+                "with a heavy third-hit finisher, while runtime room/build progression remains active.");
         }
 
         private static AttackDefinition[] BuildTexasAttackDefinitions()
         {
-            // Fallback timings only. When the PRTS Spine presentation is available,
-            // IAttackTimingProvider replaces these timing values with Attack_Loop duration / speed.
+            // Spine supplies the authoritative visible cycle/impact timing at runtime. These three
+            // definitions intentionally share that cadence but vary damage, hit volume, knockback
+            // and feedback so repeated J presses read as a real 1-2-finisher combo instead of one
+            // identical swing forever.
             return new[]
             {
                 GetOrCreateAttack(
-                    "Texas_Basic",
+                    "Texas_Basic_1",
                     startup: 0.095f,
                     active: 0.030f,
+                    recovery: 0.055f,
+                    damageMultiplier: 1.00f,
+                    hitboxOffset: new Vector2(0.90f, 0.02f),
+                    hitboxSize: new Vector2(1.40f, 1.10f),
+                    knockback: new Vector2(2.2f, 0.45f),
+                    dashCancel: 0.34f,
+                    hitStop: 0.018f,
+                    shake: 0.045f),
+                GetOrCreateAttack(
+                    "Texas_Basic_2",
+                    startup: 0.090f,
+                    active: 0.030f,
+                    recovery: 0.050f,
+                    damageMultiplier: 1.10f,
+                    hitboxOffset: new Vector2(0.96f, 0.05f),
+                    hitboxSize: new Vector2(1.55f, 1.18f),
+                    knockback: new Vector2(2.8f, 0.60f),
+                    dashCancel: 0.32f,
+                    hitStop: 0.022f,
+                    shake: 0.055f),
+                GetOrCreateAttack(
+                    "Texas_Basic_3_Heavy",
+                    startup: 0.105f,
+                    active: 0.035f,
                     recovery: 0.060f,
-                    damageMultiplier: 1.0f,
-                    knockback: new Vector2(3.0f, 0.85f),
-                    dashCancel: 0.38f,
-                    hitStop: 0.025f,
-                    shake: 0.065f)
+                    damageMultiplier: 1.60f,
+                    hitboxOffset: new Vector2(1.05f, 0.08f),
+                    hitboxSize: new Vector2(2.05f, 1.42f),
+                    knockback: new Vector2(5.0f, 1.15f),
+                    dashCancel: 0.42f,
+                    hitStop: 0.045f,
+                    shake: 0.11f)
             };
         }
 
-        private static AttackDefinition GetOrCreateAttack(string name, float startup, float active, float recovery, float damageMultiplier, Vector2 knockback, float dashCancel, float hitStop = 0.035f, float shake = 0.07f)
+        private static AttackDefinition GetOrCreateAttack(
+            string name,
+            float startup,
+            float active,
+            float recovery,
+            float damageMultiplier,
+            Vector2 hitboxOffset,
+            Vector2 hitboxSize,
+            Vector2 knockback,
+            float dashCancel,
+            float hitStop = 0.035f,
+            float shake = 0.07f)
         {
             var path = $"{DataDir}/{name}.asset";
             var asset = AssetDatabase.LoadAssetAtPath<AttackDefinition>(path);
@@ -82,8 +121,8 @@ namespace ArknightsACT.Editor
             asset.active = active;
             asset.recovery = recovery;
             asset.damageMultiplier = damageMultiplier;
-            asset.hitboxOffset = new Vector2(0.95f, 0f);
-            asset.hitboxSize = new Vector2(1.45f, 1.15f);
+            asset.hitboxOffset = hitboxOffset;
+            asset.hitboxSize = hitboxSize;
             asset.knockback = knockback;
             asset.dashCancelNormalizedTime = dashCancel;
             asset.hitStopSeconds = hitStop;
