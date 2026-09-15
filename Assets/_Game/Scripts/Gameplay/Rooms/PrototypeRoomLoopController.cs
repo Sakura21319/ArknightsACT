@@ -2,6 +2,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using ArknightsACT.Combat;
+using ArknightsACT.Gameplay.Abilities;
+using ArknightsACT.Gameplay.Characters;
+using ArknightsACT.Gameplay.Combat;
 using UnityEngine;
 
 namespace ArknightsACT.Gameplay.Rooms
@@ -29,6 +32,9 @@ namespace ArknightsACT.Gameplay.Rooms
         private readonly List<CombatEntity> _activeEnemies = new();
         private Coroutine _transitionRoutine;
         private bool _roomClearHandled;
+        private PlayerAttackController _playerAttack;
+        private PlayerSkillController _playerSkills;
+        private PlayerDashController _playerDash;
 
         public int CurrentRoom { get; private set; }
         public int LivingEnemies => CountLivingEnemies();
@@ -43,7 +49,10 @@ namespace ArknightsACT.Gameplay.Rooms
             enemyTemplates = templates;
             spawnPoints = points;
             if (player != null)
+            {
                 playerRoomStartPosition = player.position;
+                CachePlayerActionState();
+            }
         }
 
         public void SetExternalContinueGate(bool enabled) => waitForExternalContinue = enabled;
@@ -68,6 +77,7 @@ namespace ArknightsACT.Gameplay.Rooms
                 return;
             }
 
+            CachePlayerActionState();
             SpawnRoom(1);
         }
 
@@ -87,6 +97,12 @@ namespace ArknightsACT.Gameplay.Rooms
                 return;
 
             if (_activeEnemies.Count == 0 || CountLivingEnemies() > 0)
+                return;
+
+            // Do not freeze or transition the player in the middle of an authored action.
+            // A killing Skill 2 must finish all strikes / recovery before reward UI can pause
+            // gameplay, otherwise its coroutine would resume in the next room.
+            if (!IsPlayerActionSettled())
                 return;
 
             _roomClearHandled = true;
@@ -206,6 +222,29 @@ namespace ArknightsACT.Gameplay.Rooms
                     living++;
             }
             return living;
+        }
+
+        private void CachePlayerActionState()
+        {
+            if (player == null)
+                return;
+
+            _playerAttack = player.GetComponent<PlayerAttackController>();
+            _playerSkills = player.GetComponent<PlayerSkillController>();
+            _playerDash = player.GetComponent<PlayerDashController>();
+        }
+
+        private bool IsPlayerActionSettled()
+        {
+            if (player == null)
+                return true;
+
+            if (_playerAttack == null && _playerSkills == null && _playerDash == null)
+                CachePlayerActionState();
+
+            return !(_playerAttack?.IsAttacking ?? false) &&
+                   !(_playerSkills?.IsCasting ?? false) &&
+                   !(_playerDash?.IsDashing ?? false);
         }
 
         private void ResetPlayerForRoom()
