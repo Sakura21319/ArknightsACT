@@ -35,7 +35,8 @@ namespace ArknightsACT.Gameplay.Characters.Texas
 
         public bool TryCast()
         {
-            if (_casting || Time.time < _readyAt)
+            if (_casting || Time.time < _readyAt ||
+                _entity == null || _entity.Health == null || _entity.Health.IsDead)
                 return false;
 
             _readyAt = Time.time + cooldown;
@@ -54,16 +55,23 @@ namespace ArknightsACT.Gameplay.Characters.Texas
         {
             _casting = true;
             _presentation?.PlayCast(radius);
-            yield return new WaitForSeconds(0.08f);
+
+            // The first wave lands after the falling blades have visibly reached the floor.
+            yield return new WaitForSeconds(0.16f);
             ResolveWave(0.95f);
-            yield return new WaitForSeconds(0.13f);
+
+            // A short second thunder burst gives the skill a readable two-hit signature.
+            yield return new WaitForSeconds(0.12f);
             ResolveWave(1.10f);
+
             _casting = false;
             CastResolved?.Invoke(transform.position, radius);
         }
 
         private void ResolveWave(float multiplier)
         {
+            _presentation?.PlayImpact(transform.position, radius, multiplier);
+
             var colliders = Physics2D.OverlapCircleAll(transform.position, radius);
             var hitCount = AreaDamageResolver.ApplyUnique(
                 colliders,
@@ -83,7 +91,7 @@ namespace ArknightsACT.Gameplay.Characters.Texas
                 return;
 
             HitStopService.Instance?.Request(0.04f);
-            CameraShake2D.Instance?.Shake(0.10f, 0.10f);
+            CameraShake2D.Instance?.Shake(0.10f * multiplier, 0.10f);
         }
     }
 }
