@@ -96,6 +96,8 @@ namespace ArknightsACT.Editor
 
             go.AddComponent<ChenPresentationDriver2D>();
             go.AddComponent<DamageTintFlash2D>();
+            go.AddComponent<WorldHealthBar2D>();
+            go.AddComponent<DamageNumberEmitter2D>();
             return go;
         }
 
