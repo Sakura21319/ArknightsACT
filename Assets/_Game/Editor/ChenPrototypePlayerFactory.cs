@@ -7,6 +7,8 @@ using ArknightsACT.Gameplay.Characters.Chen;
 using ArknightsACT.Gameplay.Combat;
 using ArknightsACT.Gameplay.Input;
 using ArknightsACT.Gameplay.Presentation;
+using ArknightsACT.Gameplay.Roguelite;
+using ArknightsACT.Gameplay.Roguelite.Collectibles;
 using UnityEngine;
 
 namespace ArknightsACT.Editor
@@ -82,6 +84,15 @@ namespace ArknightsACT.Editor
             go.AddComponent<ChenSkill1>();
             go.AddComponent<ChenSkill2>();
             go.AddComponent<PlayerSkillController>();
+
+            var profile = go.AddComponent<PlayerCombatProfile>();
+            profile.Configure(
+                CombatFeature.BasicAttack |
+                CombatFeature.ActiveSkills |
+                CombatFeature.Dash |
+                CombatFeature.PhysicalDamage |
+                CombatFeature.ArtsDamage);
+            go.AddComponent<CollectibleInventory>();
 
             go.AddComponent<ChenPresentationDriver2D>();
             go.AddComponent<DamageTintFlash2D>();
