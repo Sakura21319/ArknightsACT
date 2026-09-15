@@ -26,6 +26,11 @@ namespace ArknightsACT.Gameplay.TopDown
             _health = GetComponent<Health>();
             _presentation = GetComponentInChildren<SpineCharacterPresentation2D>(true);
             _retarget = GetComponent<SpineBoneMotionRetarget2D>();
+
+            // Presentation helper only: keep fast top-down melee cadence visually aligned with
+            // the authored tower-defense attack clip without touching the source Spine asset.
+            if (GetComponent<TopDownSpineAttackPlaybackSpeed2D>() == null && _melee != null)
+                gameObject.AddComponent<TopDownSpineAttackPlaybackSpeed2D>();
         }
 
         private void OnEnable()
