@@ -172,8 +172,18 @@ namespace ArknightsACT.Gameplay.Rooms
             var living = 0;
             for (var i = _activeEnemies.Count - 1; i >= 0; i--)
             {
+                // UnityEngine.Object uses a custom null operator. A destroyed component can still
+                // exist as a managed C# reference, so null-conditional access (entity?.Health)
+                // is unsafe here and can throw MissingReferenceException after Destroy(gameObject).
                 var entity = _activeEnemies[i];
-                if (entity?.Health != null && !entity.Health.IsDead)
+                if (entity == null)
+                {
+                    _activeEnemies.RemoveAt(i);
+                    continue;
+                }
+
+                var health = entity.Health;
+                if (health != null && !health.IsDead)
                     living++;
             }
             return living;
@@ -185,7 +195,7 @@ namespace ArknightsACT.Gameplay.Rooms
                 return;
 
             var entity = player.GetComponent<CombatEntity>();
-            if (entity?.Health != null && entity.Health.IsDead)
+            if (entity != null && entity.Health != null && entity.Health.IsDead)
                 return;
 
             player.position = playerRoomStartPosition;
