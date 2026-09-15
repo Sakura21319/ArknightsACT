@@ -47,6 +47,18 @@ namespace ArknightsACT.Gameplay.Prototype25D
             _entity = GetComponent<CombatEntity>();
         }
 
+        private void OnEnable()
+        {
+            if (_entity != null && _entity.Health != null)
+                _entity.Health.Died += OnDied;
+        }
+
+        private void OnDisable()
+        {
+            if (_entity != null && _entity.Health != null)
+                _entity.Health.Died -= OnDied;
+        }
+
         private void Update()
         {
             if (_entity == null || _entity.Health == null || _entity.Health.IsDead)
@@ -125,6 +137,14 @@ namespace ArknightsACT.Gameplay.Prototype25D
                 DamageType.Physical,
                 Vector2.zero,
                 sourceId: "Prototype25D_EnemyBasic"));
+        }
+
+        private void OnDied()
+        {
+            _alerted = false;
+            if (_controller != null)
+                _controller.enabled = false;
+            Destroy(gameObject, 0.12f);
         }
     }
 }
