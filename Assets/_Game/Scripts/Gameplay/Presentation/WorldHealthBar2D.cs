@@ -34,7 +34,15 @@ namespace ArknightsACT.Gameplay.Presentation
 
             _entity.Health.Changed += OnHealthChanged;
             _entity.Health.Died += OnDied;
-            UpdateVisual(_entity.Health.CurrentHealth, _entity.Health.MaxHealth);
+            SyncFromHealth();
+        }
+
+        private void Start()
+        {
+            // Component Awake/OnEnable ordering is not guaranteed across siblings. Health.Awake
+            // may initialize CurrentHealth after this component first observes it, so sync once
+            // more after every Awake has completed to guarantee the initial full bar is visible.
+            SyncFromHealth();
         }
 
         private void OnDisable()
@@ -43,6 +51,13 @@ namespace ArknightsACT.Gameplay.Presentation
                 return;
             _entity.Health.Changed -= OnHealthChanged;
             _entity.Health.Died -= OnDied;
+        }
+
+        private void SyncFromHealth()
+        {
+            if (_entity?.Health == null)
+                return;
+            UpdateVisual(_entity.Health.CurrentHealth, _entity.Health.MaxHealth);
         }
 
         private void OnHealthChanged(float current, float max) => UpdateVisual(current, max);
