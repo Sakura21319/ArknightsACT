@@ -1,9 +1,10 @@
 #if UNITY_EDITOR
 using ArknightsACT.Combat;
 using ArknightsACT.Editor.PRTS;
+using ArknightsACT.Gameplay.Abilities;
 using ArknightsACT.Gameplay.Characters;
+using ArknightsACT.Gameplay.Characters.Chen;
 using ArknightsACT.Gameplay.Combat;
-using ArknightsACT.Gameplay.Feedback;
 using ArknightsACT.Gameplay.Input;
 using ArknightsACT.Gameplay.Presentation;
 using UnityEngine;
@@ -11,9 +12,8 @@ using UnityEngine;
 namespace ArknightsACT.Editor
 {
     /// <summary>
-    /// Ch'en-specific prototype composition. It intentionally does not inherit Texas abilities or
-    /// Texas build effects. We first discover and validate Ch'en's authored PRTS action library,
-    /// then add character-specific gameplay on top of the generic ACT controllers.
+    /// Ch'en-specific horizontal ACT composition. Character-specific skills and presentation
+    /// mapping live under Gameplay/Characters/Chen; generic movement/combat stays reusable.
     /// </summary>
     internal static class ChenPrototypePlayerFactory
     {
@@ -49,16 +49,12 @@ namespace ArknightsACT.Editor
                     motionSource.name = "MotionSource_Chen_Base";
                     var retarget = go.AddComponent<SpineBoneMotionRetarget2D>();
                     retarget.Configure(combatPresentation.transform, motionSource.transform, "Move");
-                    Debug.Log(
-                        "[ArknightsACT/Spine] Ch'en combat model + base motion source attached. " +
-                        "Runtime retarget will validate shared bones in Play Mode.",
-                        go);
                 }
                 else
                 {
                     Debug.LogWarning(
                         "[ArknightsACT/Spine] Ch'en base motion source prefab is missing. " +
-                        "Movement will fall back to the combat presentation until it is downloaded/built.",
+                        "Movement will use the combat presentation fallback until it is downloaded/built.",
                         go);
                 }
             }
@@ -80,13 +76,15 @@ namespace ArknightsACT.Editor
             go.AddComponent<PlayerInputReader>();
             go.AddComponent<PlayerMotor2D>();
             go.AddComponent<PlayerDashController>();
-            go.AddComponent<AttackSlashPresentation2D>();
             go.AddComponent<PlayerAttackController>().Configure(attacks, 10f);
             go.AddComponent<PlayerDamageGate>();
-            go.AddComponent<PlayerPresentationDriver2D>();
-            go.AddComponent<SpineAttackPlaybackSpeed2D>();
-            go.AddComponent<DamageTintFlash2D>();
 
+            go.AddComponent<ChenSkill1>();
+            go.AddComponent<ChenSkill2>();
+            go.AddComponent<PlayerSkillController>();
+
+            go.AddComponent<ChenPresentationDriver2D>();
+            go.AddComponent<DamageTintFlash2D>();
             return go;
         }
 
