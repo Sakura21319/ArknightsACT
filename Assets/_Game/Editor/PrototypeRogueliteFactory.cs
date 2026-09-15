@@ -32,12 +32,20 @@ namespace ArknightsACT.Editor
             }
 
             roomLoop.SetExternalContinueGate(true);
+
+            // AddComponent invokes OnEnable immediately on an active GameObject. Keep the
+            // Roguelite root inactive until every component has been configured so route/event
+            // subscriptions see valid references on their first OnEnable.
             var root = new GameObject("[Roguelite]");
+            root.SetActive(false);
+
             var runState = root.AddComponent<RogueliteRunState>();
             var rewards = root.AddComponent<RogueliteRewardController>();
             rewards.Configure(inventory, profile, pool);
             var routes = root.AddComponent<RogueliteRouteController>();
             routes.Configure(roomLoop, rewards, runState, player);
+
+            root.SetActive(true);
         }
 
         private static CollectibleDefinition[] BuildCollectiblePool()
