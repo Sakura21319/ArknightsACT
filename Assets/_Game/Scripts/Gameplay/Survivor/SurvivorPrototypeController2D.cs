@@ -11,6 +11,14 @@ namespace ArknightsACT.Gameplay.Survivor
     /// </summary>
     public sealed class SurvivorPrototypeController2D : MonoBehaviour
     {
+        [Header("Scene references")]
+        [SerializeField] private Transform player;
+        [SerializeField] private TexasUpgradeChoicePanel upgradePanel;
+        [SerializeField] private GameObject[] enemyTemplates;
+        [SerializeField] private float worldMinX = -8f;
+        [SerializeField] private float worldMaxX = 112f;
+        [SerializeField] private float enemyGroundY = -0.37f;
+
         [Header("Spawning")]
         [SerializeField, Min(0.1f)] private float initialSpawnInterval = 0.85f;
         [SerializeField, Min(0.05f)] private float minimumSpawnInterval = 0.22f;
@@ -25,15 +33,8 @@ namespace ArknightsACT.Gameplay.Survivor
         [SerializeField, Min(1)] private int startingXpRequirement = 12;
         [SerializeField, Min(1.05f)] private float xpRequirementGrowth = 1.28f;
 
-        private Transform _player;
         private CombatEntity _playerEntity;
-        private TexasUpgradeChoicePanel _upgradePanel;
-        private GameObject[] _enemyTemplates;
         private Transform _runtimeEnemyRoot;
-        private float _worldMinX;
-        private float _worldMaxX;
-        private float _enemyGroundY;
-
         private float _startedAt;
         private float _nextSpawnAt;
         private int _livingEnemies;
@@ -49,40 +50,42 @@ namespace ArknightsACT.Gameplay.Survivor
         public int XpRequired => _xpRequired;
 
         public void Configure(
-            Transform player,
-            TexasUpgradeChoicePanel upgradePanel,
-            GameObject[] enemyTemplates,
-            float worldMinX,
-            float worldMaxX,
-            float enemyGroundY)
+            Transform playerTransform,
+            TexasUpgradeChoicePanel panel,
+            GameObject[] templates,
+            float minX,
+            float maxX,
+            float groundY)
         {
-            _player = player;
+            player = playerTransform;
+            upgradePanel = panel;
+            enemyTemplates = templates;
+            worldMinX = Mathf.Min(minX, maxX);
+            worldMaxX = Mathf.Max(minX, maxX);
+            enemyGroundY = groundY;
             _playerEntity = player != null ? player.GetComponent<CombatEntity>() : null;
-            _upgradePanel = upgradePanel;
-            _enemyTemplates = enemyTemplates;
-            _worldMinX = Mathf.Min(worldMinX, worldMaxX);
-            _worldMaxX = Mathf.Max(worldMinX, worldMaxX);
-            _enemyGroundY = enemyGroundY;
         }
 
         private void Awake()
         {
+            _playerEntity = player != null ? player.GetComponent<CombatEntity>() : null;
             _xpRequired = Mathf.Max(1, startingXpRequirement);
             _startedAt = Time.time;
             _nextSpawnAt = Time.time + 0.6f;
 
             var root = new GameObject("[SurvivorEnemies]");
+            root.transform.SetParent(transform, false);
             _runtimeEnemyRoot = root.transform;
         }
 
         private void Update()
         {
-            if (_player == null || _playerEntity == null || _playerEntity.Health == null || _playerEntity.Health.IsDead)
+            if (player == null || _playerEntity == null || _playerEntity.Health == null || _playerEntity.Health.IsDead)
                 return;
 
             TryConsumeLevelUps();
 
-            if (_upgradePanel != null && _upgradePanel.IsOpen)
+            if (upgradePanel != null && upgradePanel.IsOpen)
                 return;
 
             if (Time.time < _nextSpawnAt)
@@ -103,24 +106,24 @@ namespace ArknightsACT.Gameplay.Survivor
 
         private void SpawnOne()
         {
-            if (_enemyTemplates == null || _enemyTemplates.Length == 0 || _player == null)
+            if (enemyTemplates == null || enemyTemplates.Length == 0 || player == null)
                 return;
 
             var templateIndex = ChooseTemplateIndex();
-            templateIndex = Mathf.Clamp(templateIndex, 0, _enemyTemplates.Length - 1);
-            var template = _enemyTemplates[templateIndex];
+            templateIndex = Mathf.Clamp(templateIndex, 0, enemyTemplates.Length - 1);
+            var template = enemyTemplates[templateIndex];
             if (template == null)
                 return;
 
             var side = Random.value < 0.5f ? -1f : 1f;
             var distance = Random.Range(spawnDistanceMin, Mathf.Max(spawnDistanceMin, spawnDistanceMax));
-            var x = Mathf.Clamp(_player.position.x + side * distance, _worldMinX + 0.8f, _worldMaxX - 0.8f);
+            var x = Mathf.Clamp(player.position.x + side * distance, worldMinX + 0.8f, worldMaxX - 0.8f);
 
             // If clamping placed the spawn too close, try the opposite side once.
-            if (Mathf.Abs(x - _player.position.x) < spawnDistanceMin * 0.65f)
-                x = Mathf.Clamp(_player.position.x - side * distance, _worldMinX + 0.8f, _worldMaxX - 0.8f);
+            if (Mathf.Abs(x - player.position.x) < spawnDistanceMin * 0.65f)
+                x = Mathf.Clamp(player.position.x - side * distance, worldMinX + 0.8f, worldMaxX - 0.8f);
 
-            var clone = Instantiate(template, new Vector3(x, _enemyGroundY, 0f), Quaternion.identity, _runtimeEnemyRoot);
+            var clone = Instantiate(template, new Vector3(x, enemyGroundY, 0f), Quaternion.identity, _runtimeEnemyRoot);
             clone.name = "Survivor_" + template.name.Replace("EnemyTemplate_", string.Empty);
             clone.SetActive(true);
 
@@ -141,14 +144,14 @@ namespace ArknightsACT.Gameplay.Survivor
 
         private int ChooseTemplateIndex()
         {
-            if (_enemyTemplates == null || _enemyTemplates.Length <= 1)
+            if (enemyTemplates == null || enemyTemplates.Length <= 1)
                 return 0;
 
             var roll = Random.value;
-            if (ElapsedSeconds >= rangedUnlockSeconds && _enemyTemplates.Length >= 3 && roll < 0.24f)
+            if (ElapsedSeconds >= rangedUnlockSeconds && enemyTemplates.Length >= 3 && roll < 0.24f)
                 return 2;
             if (roll < 0.50f)
-                return Mathf.Min(1, _enemyTemplates.Length - 1);
+                return Mathf.Min(1, enemyTemplates.Length - 1);
             return 0;
         }
 
@@ -161,20 +164,20 @@ namespace ArknightsACT.Gameplay.Survivor
 
         private void TryConsumeLevelUps()
         {
-            if (_xp < _xpRequired || (_upgradePanel != null && _upgradePanel.IsOpen))
+            if (_xp < _xpRequired || (upgradePanel != null && upgradePanel.IsOpen))
                 return;
 
             _xp -= _xpRequired;
             _level++;
             _xpRequired = Mathf.Max(_xpRequired + 1, Mathf.RoundToInt(_xpRequired * xpRequirementGrowth));
 
-            if (_upgradePanel != null && _upgradePanel.HasAvailableUpgrade)
-                _upgradePanel.OpenForRoom(_level);
+            if (upgradePanel != null && upgradePanel.HasAvailableUpgrade)
+                upgradePanel.OpenForRoom(_level);
         }
 
         private void OnGUI()
         {
-            if (_player == null)
+            if (player == null)
                 return;
 
             var elapsed = ElapsedSeconds;
