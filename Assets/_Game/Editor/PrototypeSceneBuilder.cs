@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using ArknightsACT.Editor.PRTS;
 using ArknightsACT.Gameplay.Combat;
+using ArknightsACT.Gameplay.Presentation;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -26,6 +27,15 @@ namespace ArknightsACT.Editor
             PrototypeFactory.CreateServices();
             PrototypeBackdropFactory.Create();
             var player = PrototypeFactory.CreatePlayer(attacks);
+
+            // Replace the old whole-presentation Transform accent with real Texas Spine bone
+            // posing now that the local PRTS rig has been mapped. This keeps only one action
+            // authoring layer active at a time and makes move differences readable without VFX.
+            var legacyAccent = player.GetComponent<PlayerComboMotionAccent2D>();
+            if (legacyAccent != null)
+                UnityEngine.Object.DestroyImmediate(legacyAccent);
+            player.AddComponent<TexasProceduralActionAnimator2D>();
+
             PrototypeFactory.CreateFloor();
             PrototypeFactory.CreateWorldBounds();
             PrototypeFactory.CreatePlatform(new Vector2(5f, 1.5f), new Vector2(4f, 0.35f));
@@ -44,8 +54,8 @@ namespace ArknightsACT.Editor
             Selection.activeGameObject = player;
             EditorGUIUtility.PingObject(player);
             Debug.Log(
-                $"ArknightsACT prototype scene generated: {ScenePath}. Texas now uses a three-hit basic combo " +
-                "with a heavy third-hit finisher, while runtime room/build progression remains active.");
+                $"ArknightsACT prototype scene generated: {ScenePath}. Texas now uses mapped Spine bone poses " +
+                "for ground combo, dash slash, air slash and plunge actions.");
         }
 
         private static AttackDefinition[] BuildTexasAttackDefinitions()
