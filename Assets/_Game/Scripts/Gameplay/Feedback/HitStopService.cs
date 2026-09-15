@@ -10,6 +10,8 @@ namespace ArknightsACT.Gameplay.Feedback
         private Coroutine _routine;
         private float _baseFixedDelta;
 
+        public bool IsActive => _routine != null;
+
         private void Awake()
         {
             if (Instance != null && Instance != this)
@@ -26,8 +28,7 @@ namespace ArknightsACT.Gameplay.Feedback
         {
             if (Instance == this)
             {
-                Time.timeScale = 1f;
-                Time.fixedDeltaTime = _baseFixedDelta;
+                Cancel();
                 Instance = null;
             }
         }
@@ -43,13 +44,29 @@ namespace ArknightsACT.Gameplay.Feedback
             _routine = StartCoroutine(Routine(duration));
         }
 
+        public void Cancel()
+        {
+            if (_routine != null)
+            {
+                StopCoroutine(_routine);
+                _routine = null;
+            }
+
+            RestoreNormalTime();
+        }
+
         private IEnumerator Routine(float duration)
         {
             Time.timeScale = 0f;
             yield return new WaitForSecondsRealtime(duration);
+            RestoreNormalTime();
+            _routine = null;
+        }
+
+        private void RestoreNormalTime()
+        {
             Time.timeScale = 1f;
             Time.fixedDeltaTime = _baseFixedDelta;
-            _routine = null;
         }
     }
 }
