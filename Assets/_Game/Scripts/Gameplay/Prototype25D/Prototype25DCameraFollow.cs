@@ -9,7 +9,7 @@ namespace ArknightsACT.Gameplay.Prototype25D
     public sealed class Prototype25DCameraFollow : MonoBehaviour
     {
         [SerializeField] private Transform target;
-        [SerializeField] private Vector3 offset = new(-8.5f, 10.5f, -8.5f);
+        [SerializeField] private Vector3 offset = new(-10.5f, 6.8f, -10.5f);
 
         public void Configure(Transform targetValue, Vector3 offsetValue)
         {
