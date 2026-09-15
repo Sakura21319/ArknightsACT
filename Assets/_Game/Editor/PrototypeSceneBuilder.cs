@@ -1,7 +1,6 @@
 #if UNITY_EDITOR
 using ArknightsACT.Editor.PRTS;
 using ArknightsACT.Gameplay.Combat;
-using ArknightsACT.Gameplay.Presentation;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -11,9 +10,10 @@ namespace ArknightsACT.Editor
 {
     public static class PrototypeSceneBuilder
     {
-        private const string DataDir = "Assets/_Game/Data/Attacks/Texas";
+        private const string DataDir = "Assets/_Game/Data/Attacks/Chen";
         private const string SceneDir = "Assets/_Game/Scenes";
         private const string ScenePath = SceneDir + "/PrototypeRun.unity";
+        private const float PlayerSpawnY = -0.34f;
 
         [MenuItem("ArknightsACT/Build Prototype Scene")]
         public static void Build()
@@ -21,31 +21,18 @@ namespace ArknightsACT.Editor
             PrototypePlayerSettings.Apply();
             EnsureFolder(DataDir);
             EnsureFolder(SceneDir);
-            var attacks = BuildTexasAttackDefinitions();
+            var attacks = BuildChenPlaceholderAttackDefinitions();
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             PrototypeFactory.CreateServices();
             PrototypeBackdropFactory.Create();
-            var player = PrototypeFactory.CreatePlayer(attacks);
-
-            // Use the authored PRTS Spine clips as the only character animation source for now.
-            // PrototypeFactory still adds the legacy transform accent for compatibility with older
-            // scenes, so remove it here. Do not add the experimental procedural bone animator.
-            var legacyAccent = player.GetComponent<PlayerComboMotionAccent2D>();
-            if (legacyAccent != null)
-                UnityEngine.Object.DestroyImmediate(legacyAccent);
-
-            var experimentalBoneAnimator = player.GetComponent<TexasProceduralActionAnimator2D>();
-            if (experimentalBoneAnimator != null)
-                UnityEngine.Object.DestroyImmediate(experimentalBoneAnimator);
+            var player = ChenPrototypePlayerFactory.Create(attacks, PlayerSpawnY);
 
             PrototypeFactory.CreateFloor();
             PrototypeFactory.CreateWorldBounds();
             PrototypeFactory.CreatePlatform(new Vector2(5f, 1.5f), new Vector2(4f, 0.35f));
             PrototypeFactory.CreatePlatform(new Vector2(11f, 2.6f), new Vector2(3f, 0.35f));
 
-            // Keep local PRTS enemy objects as inactive scene templates. Runtime room progression
-            // clones these templates instead of hardcoding one disposable wave into the scene.
             var enemies = PrtsPrototypeAssetCatalog.PrototypeEnemies;
             var enemyTemplates = PrototypeFactory.CreateEnemyTemplates(enemies);
             PrototypeFactory.CreateRoomLoop(player.transform, enemyTemplates);
@@ -57,19 +44,20 @@ namespace ArknightsACT.Editor
             Selection.activeGameObject = player;
             EditorGUIUtility.PingObject(player);
             Debug.Log(
-                $"ArknightsACT prototype scene generated: {ScenePath}. " +
-                "Texas presentation uses the original authored PRTS Spine animations only.");
+                $"ArknightsACT 2D ACT prototype generated: {ScenePath}. " +
+                "Player is now Ch'en. Texas-specific skill/build components are intentionally not attached. " +
+                "Current attack data is a temporary gameplay shell until Ch'en's authored PRTS clips are catalogued.");
         }
 
-        private static AttackDefinition[] BuildTexasAttackDefinitions()
+        private static AttackDefinition[] BuildChenPlaceholderAttackDefinitions()
         {
-            // Gameplay keeps the three-step combo data, but presentation is intentionally back on
-            // the original authored Spine attack clip. Different actions may still have different
-            // hitboxes/damage/knockback while animation experimentation is paused.
+            // Temporary collision/timing shell only. Do not treat these as Ch'en's final combo.
+            // The next step is to inspect her complete authored PRTS animation catalog and map
+            // gameplay actions to real clips before tuning startup/recovery/hit timing.
             return new[]
             {
                 GetOrCreateAttack(
-                    "Texas_Basic_1",
+                    "Chen_Basic_1_Placeholder",
                     startup: 0.095f,
                     active: 0.030f,
                     recovery: 0.055f,
@@ -81,29 +69,29 @@ namespace ArknightsACT.Editor
                     hitStop: 0.018f,
                     shake: 0.045f),
                 GetOrCreateAttack(
-                    "Texas_Basic_2",
-                    startup: 0.090f,
+                    "Chen_Basic_2_Placeholder",
+                    startup: 0.095f,
                     active: 0.030f,
-                    recovery: 0.050f,
-                    damageMultiplier: 1.10f,
-                    hitboxOffset: new Vector2(0.96f, 0.05f),
-                    hitboxSize: new Vector2(1.55f, 1.18f),
-                    knockback: new Vector2(2.8f, 0.60f),
-                    dashCancel: 0.32f,
-                    hitStop: 0.022f,
-                    shake: 0.055f),
+                    recovery: 0.055f,
+                    damageMultiplier: 1.00f,
+                    hitboxOffset: new Vector2(0.90f, 0.02f),
+                    hitboxSize: new Vector2(1.40f, 1.10f),
+                    knockback: new Vector2(2.2f, 0.45f),
+                    dashCancel: 0.34f,
+                    hitStop: 0.018f,
+                    shake: 0.045f),
                 GetOrCreateAttack(
-                    "Texas_Basic_3_Heavy",
-                    startup: 0.105f,
-                    active: 0.035f,
-                    recovery: 0.060f,
-                    damageMultiplier: 1.60f,
-                    hitboxOffset: new Vector2(1.05f, 0.08f),
-                    hitboxSize: new Vector2(2.05f, 1.42f),
-                    knockback: new Vector2(5.0f, 1.15f),
-                    dashCancel: 0.42f,
-                    hitStop: 0.045f,
-                    shake: 0.11f)
+                    "Chen_Basic_3_Placeholder",
+                    startup: 0.095f,
+                    active: 0.030f,
+                    recovery: 0.055f,
+                    damageMultiplier: 1.00f,
+                    hitboxOffset: new Vector2(0.90f, 0.02f),
+                    hitboxSize: new Vector2(1.40f, 1.10f),
+                    knockback: new Vector2(2.2f, 0.45f),
+                    dashCancel: 0.34f,
+                    hitStop: 0.018f,
+                    shake: 0.045f)
             };
         }
 
