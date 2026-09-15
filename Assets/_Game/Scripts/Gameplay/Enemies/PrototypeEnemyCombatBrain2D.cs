@@ -17,7 +17,7 @@ namespace ArknightsACT.Gameplay.Enemies
     {
         [SerializeField] private PrototypeEnemyArchetype archetype = PrototypeEnemyArchetype.Melee;
         [SerializeField] private float aggroRange = 12f;
-        [SerializeField] private float moveSpeed = 2.7f;
+        [SerializeField] private float moveSpeed = 2.3f;
         [SerializeField] private float attackRange = 1.25f;
         [SerializeField] private float preferredRange = 4.6f;
         [SerializeField] private float attackWindup = 0.20f;
@@ -263,7 +263,7 @@ namespace ArknightsACT.Gameplay.Enemies
             switch (archetype)
             {
                 case PrototypeEnemyArchetype.FastMelee:
-                    moveSpeed = 4.2f;
+                    moveSpeed = 3.4f;
                     attackRange = 1.05f;
                     attackWindup = 0.14f;
                     attackRecovery = 0.12f;
@@ -272,7 +272,7 @@ namespace ArknightsACT.Gameplay.Enemies
                     hitStaggerSeconds = 0.15f;
                     break;
                 case PrototypeEnemyArchetype.Ranged:
-                    moveSpeed = 2.2f;
+                    moveSpeed = 1.8f;
                     preferredRange = 4.8f;
                     attackWindup = 0.28f;
                     attackRecovery = 0.20f;
@@ -281,7 +281,7 @@ namespace ArknightsACT.Gameplay.Enemies
                     hitStaggerSeconds = 0.17f;
                     break;
                 default:
-                    moveSpeed = 2.7f;
+                    moveSpeed = 2.3f;
                     attackRange = 1.25f;
                     attackWindup = 0.22f;
                     attackRecovery = 0.20f;
