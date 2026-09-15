@@ -37,10 +37,6 @@ namespace ArknightsACT.Gameplay.Combat
 
         public bool IsAttacking => _attackRoutine != null;
 
-        /// <summary>
-        /// Movement is committed only through startup, impact, and a tiny post-hit recovery.
-        /// This keeps attacks grounded without making the player wait for the whole visual tail.
-        /// </summary>
         public bool IsMovementLocked
         {
             get
@@ -111,8 +107,6 @@ namespace ArknightsACT.Gameplay.Combat
 
             if (IsAttacking)
             {
-                // One-slot input queue. Mashing J cannot create invisible extra damage pulses;
-                // it can only request the next complete swing.
                 _attackQueued = true;
                 return;
             }
@@ -165,13 +159,17 @@ namespace ArknightsACT.Gameplay.Combat
             _currentImpactSeconds = impactSeconds;
             _currentCycleSeconds = cycleSeconds;
 
+            // Spine/body motion begins immediately. Slash VFX waits for the authoritative impact
+            // frame so the bright arc, damage, hit flash and hit stop all happen together.
             AttackStarted?.Invoke(comboIndex);
-            _presentation?.PlayBasic(comboIndex, _motor.FacingSign);
 
             yield return WaitScaled(impactSeconds);
 
             if (_entity != null && _entity.Health != null && !_entity.Health.IsDead)
+            {
+                _presentation?.PlayBasic(comboIndex, _motor.FacingSign);
                 PerformHit(definition);
+            }
 
             yield return WaitScaled(Mathf.Max(0f, cycleSeconds - impactSeconds));
 
