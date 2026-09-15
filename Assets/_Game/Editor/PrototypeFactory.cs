@@ -11,6 +11,7 @@ using ArknightsACT.Gameplay.Enemies;
 using ArknightsACT.Gameplay.Feedback;
 using ArknightsACT.Gameplay.Input;
 using ArknightsACT.Gameplay.Presentation;
+using ArknightsACT.Gameplay.Rooms;
 using UnityEngine;
 
 namespace ArknightsACT.Editor
@@ -23,6 +24,7 @@ namespace ArknightsACT.Editor
         private const float FloorTopY = -1.10f;
         private const float FloorLeftX = -9f;
         private const float FloorRightX = 21f;
+        private const float EnemyGroundY = FloorTopY + 0.73f;
 
         public static void CreateServices()
         {
@@ -128,8 +130,6 @@ namespace ArknightsACT.Editor
             var wallCenterY = FloorTopY + wallHeight * 0.5f;
             var wallColor = new Color(0.12f, 0.13f, 0.17f);
 
-            // Visible side walls define the playable room. They are real static colliders, so both
-            // player and enemies stay inside the prototype arena instead of walking off the floor.
             CreateStaticBlock(
                 "Boundary_Left",
                 new Vector2(FloorLeftX + wallThickness * 0.5f, wallCenterY),
@@ -141,8 +141,6 @@ namespace ArknightsACT.Editor
                 new Vector2(wallThickness, wallHeight),
                 wallColor);
 
-            // Invisible safety catch below the room. This is not the intended walking surface; it
-            // only prevents a physics/tunnelling edge case from sending actors into the void.
             CreateStaticCollider(
                 "Boundary_BottomSafety",
                 new Vector2(FloorCenterX, -4.25f),
@@ -181,11 +179,15 @@ namespace ArknightsACT.Editor
             collider.size = size;
         }
 
-        public static void CreateDummy(Vector2 position, PrtsAssetDescriptor descriptor = null)
+        public static GameObject CreateDummy(
+            Vector2 position,
+            PrtsAssetDescriptor descriptor = null,
+            bool active = true,
+            string namePrefix = "DummyEnemy_")
         {
             var displayName = descriptor != null ? descriptor.DisplayName : "DummyEnemy";
-            var go = new GameObject("DummyEnemy_" + displayName);
-            go.transform.position = new Vector3(position.x, FloorTopY + 0.73f, 0f);
+            var go = new GameObject(namePrefix + displayName);
+            go.transform.position = new Vector3(position.x, active ? EnemyGroundY : position.y, 0f);
             go.transform.localScale = Vector3.one;
 
             var hasPrtsPresentation = descriptor != null &&
@@ -215,6 +217,47 @@ namespace ArknightsACT.Editor
             go.AddComponent<EnemyHitReaction2D>();
             go.AddComponent<DamageTintFlash2D>();
             go.AddComponent<EnemyPresentationDriver2D>();
+
+            go.SetActive(active);
+            return go;
+        }
+
+        public static GameObject[] CreateEnemyTemplates(PrtsAssetDescriptor[] enemies)
+        {
+            var root = new GameObject("[EnemyTemplates]");
+            var templates = new GameObject[3];
+            templates[0] = CreateDummy(new Vector2(0f, -20f), enemies.Length > 1 ? enemies[1] : null, false, "EnemyTemplate_");
+            templates[1] = CreateDummy(new Vector2(0f, -20f), enemies.Length > 3 ? enemies[3] : null, false, "EnemyTemplate_");
+            templates[2] = CreateDummy(new Vector2(0f, -20f), enemies.Length > 2 ? enemies[2] : null, false, "EnemyTemplate_");
+
+            for (var i = 0; i < templates.Length; i++)
+            {
+                if (templates[i] != null)
+                    templates[i].transform.SetParent(root.transform, true);
+            }
+
+            return templates;
+        }
+
+        public static PrototypeRoomLoopController CreateRoomLoop(Transform player, GameObject[] enemyTemplates)
+        {
+            var go = new GameObject("[RoomLoop]");
+            var controller = go.AddComponent<PrototypeRoomLoopController>();
+            var rewardPanel = player != null ? player.GetComponent<TexasUpgradeChoicePanel>() : null;
+            controller.Configure(
+                player,
+                rewardPanel,
+                enemyTemplates,
+                new[]
+                {
+                    new Vector2(4.0f, EnemyGroundY),
+                    new Vector2(6.8f, EnemyGroundY),
+                    new Vector2(9.6f, EnemyGroundY),
+                    new Vector2(12.4f, EnemyGroundY),
+                    new Vector2(15.2f, EnemyGroundY),
+                    new Vector2(18.0f, EnemyGroundY)
+                });
+            return controller;
         }
 
         public static void CreateCamera(Transform target)
