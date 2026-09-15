@@ -19,7 +19,7 @@ namespace ArknightsACT.Editor.PRTS
         [MenuItem("ArknightsACT/Assets/PRTS/Download Full Prototype Pack")]
         private static async void DownloadFullPrototypePack()
         {
-            await DownloadPack(PrtsPrototypeAssetCatalog.GetFullPrototypePack(), "完整 Demo 素材包（陈 + 小兵）");
+            await DownloadPack(PrtsPrototypeAssetCatalog.GetFullPrototypePack(), "完整 Demo 素材包");
         }
 
         [MenuItem("ArknightsACT/Assets/PRTS/Download Ch'en")]
@@ -34,27 +34,14 @@ namespace ArknightsACT.Editor.PRTS
             await DownloadPack(new[] { PrtsPrototypeAssetCatalog.ChenBaseMotion }, "陈·基建动作源");
         }
 
-        [MenuItem("ArknightsACT/Assets/PRTS/Open Ch'en Source Page")]
-        private static void OpenChenPage() => Application.OpenURL(PrtsPrototypeAssetCatalog.Chen.SourcePage);
-
-        // Texas remains downloadable as a comparison/reference asset, but it is no longer the prototype player.
-        [MenuItem("ArknightsACT/Assets/PRTS/Reference/Download Texas")]
-        private static async void DownloadTexas()
-        {
-            await DownloadPack(new[] { PrtsPrototypeAssetCatalog.Texas }, "德克萨斯·战斗模型（参考）");
-        }
-
-        [MenuItem("ArknightsACT/Assets/PRTS/Reference/Download Texas Base Motion Source")]
-        private static async void DownloadTexasBaseMotion()
-        {
-            await DownloadPack(new[] { PrtsPrototypeAssetCatalog.TexasBaseMotion }, "德克萨斯·基建动作源（参考）");
-        }
-
         [MenuItem("ArknightsACT/Assets/PRTS/Download Prototype Enemies")]
         private static async void DownloadPrototypeEnemies()
         {
             await DownloadPack(PrtsPrototypeAssetCatalog.PrototypeEnemies, "Demo 小兵素材包");
         }
+
+        [MenuItem("ArknightsACT/Assets/PRTS/Open Ch'en Source Page")]
+        private static void OpenChenPage() => Application.OpenURL(PrtsPrototypeAssetCatalog.Chen.SourcePage);
 
         private static async Task DownloadPack(IReadOnlyList<PrtsAssetDescriptor> assets, string packName)
         {
@@ -116,7 +103,7 @@ namespace ArknightsACT.Editor.PRTS
                 }
 
                 message.AppendLine();
-                message.AppendLine("这些是 Spine 源素材；实际播放动画仍由 Presentation 层接入兼容的 Spine Runtime。下载目录已被 .gitignore 排除。 ");
+                message.AppendLine("这些是 Spine 源素材；实际播放动画仍由 Presentation 层接入兼容的 Spine Runtime。下载目录已被 .gitignore 排除。");
                 EditorUtility.DisplayDialog("PRTS 素材下载", message.ToString(), "OK");
             }
             finally
