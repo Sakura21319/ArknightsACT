@@ -1,11 +1,10 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace ArknightsACT.Gameplay.Characters.Texas
 {
     /// <summary>
-    /// Phase-2 only: keyboard switches for validating build feel before the roguelite reward system exists.
-    /// Production upgrades will call the Set* methods instead of reading keyboard state.
+    /// Prototype holder for Texas build flags. Upgrade/reward UI owns selection now; this
+    /// component only exposes explicit setters so gameplay effects remain decoupled from UI.
     /// </summary>
     public sealed class TexasBuildLab : MonoBehaviour
     {
@@ -22,20 +21,6 @@ namespace ArknightsACT.Gameplay.Characters.Texas
             _swiftBlade = GetComponent<TexasSwiftBladeEffect>();
             _residualThunder = GetComponent<TexasResidualThunderEffect>();
             _conductive = GetComponent<TexasConductiveEffect>();
-        }
-
-        private void Update()
-        {
-            var keyboard = Keyboard.current;
-            if (keyboard == null)
-                return;
-
-            if (keyboard.digit1Key.wasPressedThisFrame)
-                SetSwiftBlade(!SwiftBlade);
-            if (keyboard.digit2Key.wasPressedThisFrame)
-                SetResidualThunder(!ResidualThunder);
-            if (keyboard.digit3Key.wasPressedThisFrame)
-                SetConductive(!Conductive);
         }
 
         public void SetSwiftBlade(bool active)
