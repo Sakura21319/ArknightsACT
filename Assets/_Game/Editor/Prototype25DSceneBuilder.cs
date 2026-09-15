@@ -19,12 +19,15 @@ namespace ArknightsACT.Editor
         private const string ScenePath = SceneDir + "/Prototype25D.unity";
         private const string DataRoot = "Assets/_Game/Data/Prototype25D";
         private const string MaterialDir = DataRoot + "/Materials";
+        private const string TextureDir = DataRoot + "/Textures";
+        private static readonly Vector3 CameraOffset = new(-10.5f, 6.8f, -10.5f);
 
         [MenuItem("ArknightsACT/Build 2.5D Demo Scene")]
         public static void Build()
         {
             EnsureFolder(SceneDir);
             EnsureFolder(MaterialDir);
+            EnsureFolder(TextureDir);
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             var materials = BuildMaterials();
@@ -34,9 +37,7 @@ namespace ArknightsACT.Editor
 
             var camera = BuildCamera();
             var player = BuildPlayer(camera);
-            camera.GetComponent<Prototype25DCameraFollow>()?.Configure(
-                player.transform,
-                new Vector3(-8.5f, 10.5f, -8.5f));
+            camera.GetComponent<Prototype25DCameraFollow>()?.Configure(player.transform, CameraOffset);
 
             BuildStaticCharacter(
                 "Preview_Soldier",
@@ -66,7 +67,7 @@ namespace ArknightsACT.Editor
             Debug.Log(
                 $"ArknightsACT 2.5D demo generated: {ScenePath}. " +
                 "Use WASD / Arrow Keys to move on the 3D XZ ground plane. " +
-                "This scene is isolated and does not modify PrototypeRun.unity.");
+                "Materials are rebuilt for the active render pipeline and use generated repeat textures.");
         }
 
         private static void ConfigureEnvironment()
@@ -75,12 +76,12 @@ namespace ArknightsACT.Editor
             RenderSettings.ambientLight = new Color(0.50f, 0.53f, 0.58f);
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogColor = new Color(0.10f, 0.12f, 0.15f);
-            RenderSettings.fogStartDistance = 18f;
-            RenderSettings.fogEndDistance = 42f;
+            RenderSettings.fogColor = new Color(0.11f, 0.125f, 0.15f);
+            RenderSettings.fogStartDistance = 20f;
+            RenderSettings.fogEndDistance = 46f;
 
             var lightObject = new GameObject("Directional Light");
-            lightObject.transform.rotation = Quaternion.Euler(48f, -35f, 0f);
+            lightObject.transform.rotation = Quaternion.Euler(43f, -35f, 0f);
             var light = lightObject.AddComponent<Light>();
             light.type = LightType.Directional;
             light.color = new Color(0.94f, 0.96f, 1f);
@@ -126,12 +127,13 @@ namespace ArknightsACT.Editor
         {
             var go = new GameObject("Main Camera");
             go.tag = "MainCamera";
-            go.transform.position = new Vector3(-8.5f, 10.5f, -8.5f);
-            go.transform.rotation = Quaternion.LookRotation(new Vector3(8.5f, -9.7f, 8.5f), Vector3.up);
+            go.transform.position = CameraOffset;
+            var lookTarget = new Vector3(0f, 0.75f, 0f);
+            go.transform.rotation = Quaternion.LookRotation(lookTarget - CameraOffset, Vector3.up);
 
             var camera = go.AddComponent<Camera>();
             camera.orthographic = true;
-            camera.orthographicSize = 6.2f;
+            camera.orthographicSize = 6.0f;
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = new Color(0.085f, 0.10f, 0.13f);
             camera.allowDynamicResolution = false;
@@ -213,8 +215,9 @@ namespace ArknightsACT.Editor
             var renderer = quad.GetComponent<Renderer>();
             if (renderer != null)
             {
-                var material = new Material(FindLitShader()) { color = color };
+                var material = new Material(FindCompatibleLitShader());
                 material.name = name + "_RuntimeMaterial";
+                SetMaterialColor(material, color);
                 renderer.sharedMaterial = material;
             }
         }
@@ -256,41 +259,187 @@ namespace ArknightsACT.Editor
 
         private static MaterialSet BuildMaterials()
         {
+            var groundTexture = GetOrCreatePatternTexture("GroundNoise", TexturePattern.Noise);
+            var roadTexture = GetOrCreatePatternTexture("RoadAsphalt", TexturePattern.Asphalt);
+            var sidewalkTexture = GetOrCreatePatternTexture("SidewalkGrid", TexturePattern.Grid);
+            var buildingTexture = GetOrCreatePatternTexture("BuildingPanels", TexturePattern.Panels);
+            var concreteTexture = GetOrCreatePatternTexture("ConcreteSpeckle", TexturePattern.Noise);
+            var crateTexture = GetOrCreatePatternTexture("CratePlanks", TexturePattern.Planks);
+            var barrierTexture = GetOrCreatePatternTexture("BarrierStripes", TexturePattern.Stripes);
+
             return new MaterialSet
             {
-                Ground = GetOrCreateMaterial("Ground", new Color(0.19f, 0.21f, 0.24f)),
-                Road = GetOrCreateMaterial("Road", new Color(0.105f, 0.115f, 0.13f)),
-                Sidewalk = GetOrCreateMaterial("Sidewalk", new Color(0.31f, 0.33f, 0.36f)),
-                BuildingDark = GetOrCreateMaterial("BuildingDark", new Color(0.20f, 0.23f, 0.29f)),
-                BuildingLight = GetOrCreateMaterial("BuildingLight", new Color(0.30f, 0.34f, 0.40f)),
-                Concrete = GetOrCreateMaterial("Concrete", new Color(0.42f, 0.44f, 0.46f)),
-                Crate = GetOrCreateMaterial("Crate", new Color(0.39f, 0.29f, 0.20f)),
-                Accent = GetOrCreateMaterial("Accent", new Color(0.73f, 0.43f, 0.16f)),
-                Invisible = GetOrCreateMaterial("Invisible", new Color(0f, 0f, 0f, 0f))
+                Ground = GetOrCreateMaterial("Ground", new Color(0.37f, 0.40f, 0.38f), groundTexture, new Vector2(8f, 6f)),
+                Road = GetOrCreateMaterial("Road", new Color(0.24f, 0.26f, 0.29f), roadTexture, new Vector2(10f, 4f)),
+                Sidewalk = GetOrCreateMaterial("Sidewalk", new Color(0.56f, 0.57f, 0.58f), sidewalkTexture, new Vector2(8f, 2f)),
+                BuildingDark = GetOrCreateMaterial("BuildingDark", new Color(0.32f, 0.36f, 0.42f), buildingTexture, new Vector2(3f, 4f)),
+                BuildingLight = GetOrCreateMaterial("BuildingLight", new Color(0.48f, 0.51f, 0.55f), buildingTexture, new Vector2(3f, 4f)),
+                Concrete = GetOrCreateMaterial("Concrete", new Color(0.60f, 0.60f, 0.58f), concreteTexture, new Vector2(3f, 2f)),
+                Crate = GetOrCreateMaterial("Crate", new Color(0.53f, 0.36f, 0.20f), crateTexture, new Vector2(2f, 2f)),
+                Accent = GetOrCreateMaterial("Accent", new Color(0.88f, 0.55f, 0.14f), barrierTexture, new Vector2(4f, 2f)),
+                Invisible = GetOrCreateMaterial("Invisible", Color.black, null, Vector2.one)
             };
         }
 
-        private static Material GetOrCreateMaterial(string name, Color color)
+        private static Material GetOrCreateMaterial(
+            string name,
+            Color color,
+            Texture2D texture,
+            Vector2 textureScale)
         {
             var path = $"{MaterialDir}/{name}.mat";
             var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            var shader = FindCompatibleLitShader();
             if (material == null)
             {
-                material = new Material(FindLitShader());
-                material.name = name;
+                material = new Material(shader) { name = name };
                 AssetDatabase.CreateAsset(material, path);
             }
+            else if (material.shader != shader)
+            {
+                material.shader = shader;
+            }
 
-            material.color = color;
+            SetMaterialColor(material, color);
+            SetMaterialTexture(material, texture, textureScale);
+            material.enableInstancing = true;
             EditorUtility.SetDirty(material);
             return material;
         }
 
-        private static Shader FindLitShader()
+        private static void SetMaterialColor(Material material, Color color)
         {
-            return Shader.Find("Universal Render Pipeline/Lit") ??
-                   Shader.Find("Standard") ??
+            if (material == null)
+                return;
+            if (material.HasProperty("_BaseColor"))
+                material.SetColor("_BaseColor", color);
+            if (material.HasProperty("_Color"))
+                material.SetColor("_Color", color);
+        }
+
+        private static void SetMaterialTexture(Material material, Texture2D texture, Vector2 scale)
+        {
+            if (material == null)
+                return;
+
+            if (material.HasProperty("_BaseMap"))
+            {
+                material.SetTexture("_BaseMap", texture);
+                material.SetTextureScale("_BaseMap", scale);
+            }
+            if (material.HasProperty("_MainTex"))
+            {
+                material.SetTexture("_MainTex", texture);
+                material.SetTextureScale("_MainTex", scale);
+            }
+        }
+
+        private static Shader FindCompatibleLitShader()
+        {
+            var hasScriptablePipeline = GraphicsSettings.currentRenderPipeline != null;
+            if (hasScriptablePipeline)
+            {
+                var urp = Shader.Find("Universal Render Pipeline/Lit");
+                if (urp != null)
+                    return urp;
+            }
+
+            return Shader.Find("Standard") ??
+                   Shader.Find("Unlit/Texture") ??
                    Shader.Find("Unlit/Color");
+        }
+
+        private static Texture2D GetOrCreatePatternTexture(string name, TexturePattern pattern)
+        {
+            var path = $"{TextureDir}/{name}.asset";
+            var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            const int size = 64;
+            if (texture == null)
+            {
+                texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+                {
+                    name = name,
+                    wrapMode = TextureWrapMode.Repeat,
+                    filterMode = FilterMode.Bilinear
+                };
+                AssetDatabase.CreateAsset(texture, path);
+            }
+            else if (texture.width != size || texture.height != size)
+            {
+                texture.Reinitialize(size, size, TextureFormat.RGBA32, false);
+            }
+
+            for (var y = 0; y < size; y++)
+            {
+                for (var x = 0; x < size; x++)
+                    texture.SetPixel(x, y, PatternColor(pattern, x, y));
+            }
+
+            texture.wrapMode = TextureWrapMode.Repeat;
+            texture.filterMode = FilterMode.Bilinear;
+            texture.Apply(false, false);
+            EditorUtility.SetDirty(texture);
+            return texture;
+        }
+
+        private static Color PatternColor(TexturePattern pattern, int x, int y)
+        {
+            var noise = Hash01(x, y);
+            switch (pattern)
+            {
+                case TexturePattern.Asphalt:
+                {
+                    var value = 0.72f + (noise - 0.5f) * 0.18f;
+                    if ((x + y * 3) % 29 == 0)
+                        value -= 0.16f;
+                    return new Color(value, value, value, 1f);
+                }
+                case TexturePattern.Grid:
+                {
+                    var line = x % 16 == 0 || y % 16 == 0;
+                    var value = line ? 0.60f : 0.88f + (noise - 0.5f) * 0.05f;
+                    return new Color(value, value, value, 1f);
+                }
+                case TexturePattern.Panels:
+                {
+                    var seam = x % 16 == 0 || y % 20 == 0;
+                    var window = (x % 16 > 4 && x % 16 < 12) && (y % 20 > 5 && y % 20 < 14);
+                    if (seam)
+                        return new Color(0.48f, 0.50f, 0.53f, 1f);
+                    if (window)
+                        return new Color(0.72f, 0.79f, 0.84f, 1f);
+                    return new Color(0.90f, 0.91f, 0.92f, 1f);
+                }
+                case TexturePattern.Planks:
+                {
+                    var seam = y % 12 == 0 || x % 31 == 0;
+                    var value = seam ? 0.55f : 0.88f + (noise - 0.5f) * 0.08f;
+                    return new Color(value, value * 0.95f, value * 0.86f, 1f);
+                }
+                case TexturePattern.Stripes:
+                {
+                    var stripe = ((x + y) / 9) % 2 == 0;
+                    return stripe
+                        ? new Color(1f, 0.94f, 0.72f, 1f)
+                        : new Color(0.45f, 0.45f, 0.43f, 1f);
+                }
+                default:
+                {
+                    var value = 0.84f + (noise - 0.5f) * 0.14f;
+                    return new Color(value, value, value, 1f);
+                }
+            }
+        }
+
+        private static float Hash01(int x, int y)
+        {
+            unchecked
+            {
+                var n = x * 374761393 + y * 668265263;
+                n = (n ^ (n >> 13)) * 1274126177;
+                n ^= n >> 16;
+                return (n & 0x7fffffff) / (float)int.MaxValue;
+            }
         }
 
         private static void EnsureFolder(string path)
@@ -304,6 +453,16 @@ namespace ArknightsACT.Editor
                     AssetDatabase.CreateFolder(current, parts[i]);
                 current = next;
             }
+        }
+
+        private enum TexturePattern
+        {
+            Noise,
+            Asphalt,
+            Grid,
+            Panels,
+            Planks,
+            Stripes
         }
 
         private sealed class MaterialSet
