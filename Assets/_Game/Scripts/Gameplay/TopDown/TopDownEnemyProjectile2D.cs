@@ -57,7 +57,14 @@ namespace ArknightsACT.Gameplay.TopDown
                 return;
 
             var target = other.GetComponentInParent<CombatEntity>();
-            if (target == null || target == _source || target.Team == _source.Team ||
+            if (target == null)
+            {
+                if (!other.isTrigger)
+                    Destroy(gameObject);
+                return;
+            }
+
+            if (target == _source || target.Team == _source.Team ||
                 target.Health == null || target.Health.IsDead)
                 return;
 
