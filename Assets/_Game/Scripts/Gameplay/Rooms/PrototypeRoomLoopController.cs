@@ -7,9 +7,8 @@ using UnityEngine;
 namespace ArknightsACT.Gameplay.Rooms
 {
     /// <summary>
-    /// Minimal horizontal ACT room loop used to validate Ch'en combat only:
-    /// spawn enemies -> clear -> heal -> short delay -> next room.
-    /// Build/reward selection is intentionally out of scope until Ch'en's combat is validated.
+    /// Horizontal ACT combat-room loop. Room completion can be gated by an external system
+    /// (roguelite rewards, route selection, events) before the next room starts.
     /// </summary>
     public sealed class PrototypeRoomLoopController : MonoBehaviour
     {
@@ -23,8 +22,9 @@ namespace ArknightsACT.Gameplay.Rooms
         [SerializeField, Min(3)] private int maxEnemyCount = 6;
         [SerializeField, Min(0f)] private float healthGrowthPerRoom = 0.10f;
         [SerializeField, Min(1)] private int rangedUnlockRoom = 4;
-        [SerializeField, Range(0f, 1f)] private float roomClearHealFraction = 0.20f;
-        [SerializeField, Min(0f)] private float nextRoomDelay = 1.0f;
+        [SerializeField, Range(0f, 1f)] private float roomClearHealFraction = 0f;
+        [SerializeField, Min(0f)] private float nextRoomDelay = 0.35f;
+        [SerializeField] private bool waitForExternalContinue = true;
 
         private readonly List<CombatEntity> _activeEnemies = new();
         private Coroutine _transitionRoutine;
@@ -32,6 +32,7 @@ namespace ArknightsACT.Gameplay.Rooms
 
         public int CurrentRoom { get; private set; }
         public int LivingEnemies => CountLivingEnemies();
+        public bool IsWaitingForContinue { get; private set; }
 
         public event Action<int> RoomStarted;
         public event Action<int> RoomCleared;
@@ -43,6 +44,18 @@ namespace ArknightsACT.Gameplay.Rooms
             spawnPoints = points;
             if (player != null)
                 playerRoomStartPosition = player.position;
+        }
+
+        public void SetExternalContinueGate(bool enabled) => waitForExternalContinue = enabled;
+
+        public bool ContinueToNextRoom()
+        {
+            if (!_roomClearHandled || _transitionRoutine != null || CurrentRoom <= 0)
+                return false;
+
+            IsWaitingForContinue = false;
+            _transitionRoutine = StartCoroutine(NextRoomRoutine());
+            return true;
         }
 
         private void Start()
@@ -65,6 +78,7 @@ namespace ArknightsACT.Gameplay.Rooms
                 StopCoroutine(_transitionRoutine);
                 _transitionRoutine = null;
             }
+            IsWaitingForContinue = false;
         }
 
         private void Update()
@@ -78,6 +92,13 @@ namespace ArknightsACT.Gameplay.Rooms
             _roomClearHandled = true;
             HealPlayerAfterRoomClear();
             RoomCleared?.Invoke(CurrentRoom);
+
+            if (waitForExternalContinue)
+            {
+                IsWaitingForContinue = true;
+                return;
+            }
+
             _transitionRoutine = StartCoroutine(NextRoomRoutine());
         }
 
@@ -97,6 +118,7 @@ namespace ArknightsACT.Gameplay.Rooms
 
             CurrentRoom = Mathf.Max(1, roomIndex);
             _roomClearHandled = false;
+            IsWaitingForContinue = false;
             _activeEnemies.Clear();
             ResetPlayerForRoom();
 
@@ -172,9 +194,6 @@ namespace ArknightsACT.Gameplay.Rooms
             var living = 0;
             for (var i = _activeEnemies.Count - 1; i >= 0; i--)
             {
-                // UnityEngine.Object uses a custom null operator. A destroyed component can still
-                // exist as a managed C# reference, so null-conditional access (entity?.Health)
-                // is unsafe here and can throw MissingReferenceException after Destroy(gameObject).
                 var entity = _activeEnemies[i];
                 if (entity == null)
                 {
