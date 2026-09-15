@@ -8,7 +8,7 @@ using UnityEngine;
 namespace ArknightsACT.Gameplay.Characters
 {
     [RequireComponent(typeof(Rigidbody2D), typeof(PlayerMotor2D))]
-    public sealed class PlayerDashController : MonoBehaviour
+    public sealed class PlayerDashController : MonoBehaviour, IPlayerInvulnerabilitySource
     {
         [SerializeField] private float dashSpeed = 14f;
         [SerializeField] private float dashDuration = 0.16f;
