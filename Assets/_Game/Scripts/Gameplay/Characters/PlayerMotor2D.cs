@@ -52,9 +52,9 @@ namespace ArknightsACT.Gameplay.Characters
             if (IsDead || (_dash != null && _dash.IsDashing))
                 return;
 
-            // Only the committed startup/impact window blocks jump. Once the hit has landed,
-            // the short recovery can be cancelled into movement or jump for a snappier ACT feel.
-            if (_attack != null && _attack.IsMovementLocked)
+            // Jump remains a committed action boundary: do not jump out of a basic attack.
+            // Horizontal movement, however, can cancel the post-hit recovery in FixedUpdate.
+            if (_attack != null && _attack.IsAttacking)
                 return;
 
             if (_input != null && _input.JumpPressedThisFrame && IsGrounded)
@@ -81,8 +81,8 @@ namespace ArknightsACT.Gameplay.Characters
 
             var current = _body.linearVelocity;
 
-            // Starting a normal attack still plants the player in place. The lock now ends shortly
-            // after the real hit frame instead of lasting for the entire visible follow-through.
+            // Starting a normal attack still plants the player in place. The lock ends shortly
+            // after the real hit frame, so directional input can cancel only the recovery tail.
             if (_attack != null && _attack.IsMovementLocked)
             {
                 current.x = 0f;
