@@ -27,6 +27,7 @@ namespace ArknightsACT.Editor
             PrototypeBackdropFactory.Create();
             var player = PrototypeFactory.CreatePlayer(attacks);
             PrototypeFactory.CreateFloor();
+            PrototypeFactory.CreateWorldBounds();
             PrototypeFactory.CreatePlatform(new Vector2(5f, 1.5f), new Vector2(4f, 0.35f));
             PrototypeFactory.CreatePlatform(new Vector2(11f, 2.6f), new Vector2(3f, 0.35f));
 
@@ -42,9 +43,8 @@ namespace ArknightsACT.Editor
             Selection.activeGameObject = player;
             EditorGUIUtility.PingObject(player);
             Debug.Log(
-                $"ArknightsACT prototype scene generated: {ScenePath}. Texas uses one buffered attack per visible Spine swing; " +
-                "actual runtime cadence/impact is supplied by the 2x Spine Attack_Loop timing provider when available. " +
-                "Fatal hits no longer add corpse knockback, and presentation quality diagnostics will print at Play start.");
+                $"ArknightsACT prototype scene generated: {ScenePath}. Room bounds are active, enemy prototype health is reduced, " +
+                "and Texas uses one buffered attack per visible Spine swing with 2x animation timing.");
         }
 
         private static AttackDefinition[] BuildTexasAttackDefinitions()
