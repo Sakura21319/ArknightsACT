@@ -18,6 +18,7 @@ namespace ArknightsACT.Editor
         public static GameObject Create(AttackDefinition[] attacks, float spawnY)
         {
             var go = new GameObject("Player_Chen");
+            go.SetActive(false);
             go.transform.position = new Vector3(0f, spawnY, 0f);
             go.transform.localScale = Vector3.one;
 
@@ -60,18 +61,20 @@ namespace ArknightsACT.Editor
             collider.direction = CapsuleDirection2D.Vertical;
             collider.size = new Vector2(0.72f, 1.45f);
 
-            AddSharedGameplay(go, attacks);
             go.AddComponent<PlayerMotor2D>();
+            AddSharedGameplay(go, attacks);
             go.AddComponent<ChenPresentationDriver2D>();
             go.AddComponent<DamageTintFlash2D>();
             go.AddComponent<WorldHealthBar2D>();
             go.AddComponent<DamageNumberEmitter2D>();
+            go.SetActive(true);
             return go;
         }
 
         public static GameObject Create25D(AttackDefinition[] attacks, Camera camera)
         {
             var go = new GameObject("Player_Chen");
+            go.SetActive(false);
             go.transform.position = Vector3.zero;
             go.transform.localScale = Vector3.one;
 
@@ -82,10 +85,9 @@ namespace ArknightsACT.Editor
             controller.stepOffset = 0.28f;
             controller.slopeLimit = 45f;
 
-            AddSharedGameplay(go, attacks);
-
             var motor = go.AddComponent<PlayerMotor25D>();
             motor.SetCamera(camera);
+            AddSharedGameplay(go, attacks);
 
             var billboard = new GameObject("PresentationBillboard");
             billboard.transform.SetParent(go.transform, false);
@@ -108,6 +110,7 @@ namespace ArknightsACT.Editor
             go.AddComponent<DamageTintFlash2D>();
             go.AddComponent<WorldHealthBar2D>();
             go.AddComponent<DamageNumberEmitter2D>();
+            go.SetActive(true);
             return go;
         }
 
