@@ -18,8 +18,11 @@ namespace ArknightsACT.Editor
     internal static class PrototypeFactory
     {
         private static readonly Vector2 FloorSize = new(30f, 0.5f);
+        private const float FloorCenterX = 6f;
         private const float FloorCenterY = -1.35f;
         private const float FloorTopY = -1.10f;
+        private const float FloorLeftX = -9f;
+        private const float FloorRightX = 21f;
 
         public static void CreateServices()
         {
@@ -115,9 +118,39 @@ namespace ArknightsACT.Editor
             return go;
         }
 
-        public static void CreateFloor() => CreateStaticBlock("Floor", new Vector2(6f, FloorCenterY), FloorSize, new Color(0.20f, 0.21f, 0.24f));
+        public static void CreateFloor() =>
+            CreateStaticBlock("Floor", new Vector2(FloorCenterX, FloorCenterY), FloorSize, new Color(0.20f, 0.21f, 0.24f));
 
-        public static void CreatePlatform(Vector2 position, Vector2 size) => CreateStaticBlock("Platform", position, size, new Color(0.34f, 0.37f, 0.43f));
+        public static void CreateWorldBounds()
+        {
+            const float wallThickness = 0.55f;
+            const float wallHeight = 9.0f;
+            var wallCenterY = FloorTopY + wallHeight * 0.5f;
+            var wallColor = new Color(0.12f, 0.13f, 0.17f);
+
+            // Visible side walls define the playable room. They are real static colliders, so both
+            // player and enemies stay inside the prototype arena instead of walking off the floor.
+            CreateStaticBlock(
+                "Boundary_Left",
+                new Vector2(FloorLeftX + wallThickness * 0.5f, wallCenterY),
+                new Vector2(wallThickness, wallHeight),
+                wallColor);
+            CreateStaticBlock(
+                "Boundary_Right",
+                new Vector2(FloorRightX - wallThickness * 0.5f, wallCenterY),
+                new Vector2(wallThickness, wallHeight),
+                wallColor);
+
+            // Invisible safety catch below the room. This is not the intended walking surface; it
+            // only prevents a physics/tunnelling edge case from sending actors into the void.
+            CreateStaticCollider(
+                "Boundary_BottomSafety",
+                new Vector2(FloorCenterX, -4.25f),
+                new Vector2(FloorSize.x + 1.5f, 0.65f));
+        }
+
+        public static void CreatePlatform(Vector2 position, Vector2 size) =>
+            CreateStaticBlock("Platform", position, size, new Color(0.34f, 0.37f, 0.43f));
 
         private static void CreateStaticBlock(string name, Vector2 position, Vector2 size, Color color)
         {
@@ -125,6 +158,20 @@ namespace ArknightsACT.Editor
             go.transform.position = position;
             go.transform.localScale = Vector3.one;
             CreateVisualChild(go.transform, "Visual", size, color, 0, false);
+
+            var body = go.AddComponent<Rigidbody2D>();
+            body.bodyType = RigidbodyType2D.Static;
+            body.simulated = true;
+
+            var collider = go.AddComponent<BoxCollider2D>();
+            collider.size = size;
+        }
+
+        private static void CreateStaticCollider(string name, Vector2 position, Vector2 size)
+        {
+            var go = new GameObject(name);
+            go.transform.position = position;
+            go.transform.localScale = Vector3.one;
 
             var body = go.AddComponent<Rigidbody2D>();
             body.bodyType = RigidbodyType2D.Static;
@@ -156,14 +203,15 @@ namespace ArknightsACT.Editor
             collider.direction = CapsuleDirection2D.Vertical;
             collider.size = new Vector2(0.72f, 1.40f);
 
-            go.AddComponent<Health>().SetMaxHealth(180f);
+            var archetype = ResolvePrototypeArchetype(descriptor);
+            go.AddComponent<Health>().SetMaxHealth(ResolvePrototypeHealth(archetype));
             var entity = go.AddComponent<CombatEntity>();
             entity.SetTeam(Team.Enemy);
             go.AddComponent<StatusIndicator2D>();
             go.AddComponent<DummyEnemy>();
 
             var brain = go.AddComponent<PrototypeEnemyCombatBrain2D>();
-            brain.Configure(ResolvePrototypeArchetype(descriptor));
+            brain.Configure(archetype);
             go.AddComponent<EnemyHitReaction2D>();
             go.AddComponent<DamageTintFlash2D>();
             go.AddComponent<EnemyPresentationDriver2D>();
@@ -200,6 +248,16 @@ namespace ArknightsACT.Editor
                 case "FastMelee": return PrototypeEnemyArchetype.FastMelee;
                 case "Ranged": return PrototypeEnemyArchetype.Ranged;
                 default: return PrototypeEnemyArchetype.Melee;
+            }
+        }
+
+        private static float ResolvePrototypeHealth(PrototypeEnemyArchetype archetype)
+        {
+            switch (archetype)
+            {
+                case PrototypeEnemyArchetype.FastMelee: return 45f;
+                case PrototypeEnemyArchetype.Ranged: return 50f;
+                default: return 60f;
             }
         }
 
