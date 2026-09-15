@@ -479,7 +479,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             {
                 alignment = TextAnchor.MiddleCenter,
                 wordWrap = true,
-                fontSize = Mathf.Clamp(width / 90, 14, 21),
+                fontSize = Mathf.Clamp(Mathf.RoundToInt(width / 90f), 14, 21),
                 padding = new RectOffset(18, 18, 18, 18)
             };
 
@@ -522,7 +522,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             {
                 alignment = TextAnchor.MiddleCenter,
                 wordWrap = true,
-                fontSize = Mathf.Clamp(width / 92, 14, 20)
+                fontSize = Mathf.Clamp(Mathf.RoundToInt(width / 92f), 14, 20)
             };
 
             for (var i = 0; i < options.Length; i++)
