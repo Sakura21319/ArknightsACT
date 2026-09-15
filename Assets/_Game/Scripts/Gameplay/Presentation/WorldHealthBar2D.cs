@@ -4,8 +4,8 @@ using UnityEngine;
 namespace ArknightsACT.Gameplay.Presentation
 {
     /// <summary>
-    /// Lightweight world-space health bar for the prototype. Presentation only: it observes
-    /// Health and never owns combat state.
+    /// Lightweight world-space health bar. In 2.5D it billboards toward the gameplay camera;
+    /// in the legacy side-view camera the same code resolves to the original orientation.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(CombatEntity))]
@@ -37,12 +37,15 @@ namespace ArknightsACT.Gameplay.Presentation
             SyncFromHealth();
         }
 
-        private void Start()
+        private void Start() => SyncFromHealth();
+
+        private void LateUpdate()
         {
-            // Component Awake/OnEnable ordering is not guaranteed across siblings. Health.Awake
-            // may initialize CurrentHealth after this component first observes it, so sync once
-            // more after every Awake has completed to guarantee the initial full bar is visible.
-            SyncFromHealth();
+            if (_root == null)
+                return;
+            var camera = Camera.main;
+            if (camera != null && GetComponent<CharacterController>() != null)
+                _root.transform.rotation = camera.transform.rotation;
         }
 
         private void OnDisable()
@@ -84,7 +87,7 @@ namespace ArknightsACT.Gameplay.Presentation
             var width = isPlayer ? 1.48f : 1.08f;
             var height = isPlayer ? 0.11f : 0.085f;
             var border = isPlayer ? 0.025f : 0.020f;
-            var y = isPlayer ? 1.24f : 1.08f;
+            var y = isPlayer ? 1.62f : 1.48f;
 
             _root = new GameObject("WorldHealthBar");
             _root.transform.SetParent(transform, false);
@@ -120,10 +123,7 @@ namespace ArknightsACT.Gameplay.Presentation
             var ratio = max > 0f ? Mathf.Clamp01(current / max) : 0f;
             var fillWidth = _innerWidth * ratio;
             _fill.localScale = new Vector3(Mathf.Max(0.001f, fillWidth), _innerHeight, 1f);
-            _fill.localPosition = new Vector3(
-                -_innerWidth * 0.5f + fillWidth * 0.5f,
-                0f,
-                -0.01f);
+            _fill.localPosition = new Vector3(-_innerWidth * 0.5f + fillWidth * 0.5f, 0f, -0.01f);
             _root.SetActive(current > 0f);
         }
 
