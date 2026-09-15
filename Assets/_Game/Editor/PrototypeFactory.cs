@@ -105,6 +105,7 @@ namespace ArknightsACT.Editor
             go.AddComponent<PlayerSkillController>();
             go.AddComponent<PlayerPresentationDriver2D>();
             go.AddComponent<SpineAttackPlaybackSpeed2D>();
+            go.AddComponent<PlayerComboMotionAccent2D>();
             go.AddComponent<DamageTintFlash2D>();
 
             var swiftBlade = go.AddComponent<TexasSwiftBladeEffect>();
