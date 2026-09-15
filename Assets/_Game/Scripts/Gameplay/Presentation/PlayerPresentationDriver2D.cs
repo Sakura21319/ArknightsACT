@@ -87,11 +87,22 @@ namespace ArknightsACT.Gameplay.Presentation
 
             var moving = Mathf.Abs(_body.linearVelocity.x) > movingThreshold;
             var attackMovementLocked = _attack != null && _attack.IsMovementLocked;
+            var attackOwnsAirPose = _attack != null &&
+                                    _attack.IsAttacking &&
+                                    (_attack.CurrentActionType == PlayerAttackActionType.AirSlash ||
+                                     _attack.CurrentActionType == PlayerAttackActionType.Plunge);
 
-            // Once the real hit has landed and the tiny committed recovery is over, directional
-            // movement is allowed to cancel only the visual recovery tail. Gameplay still keeps
-            // the original attack cycle as the next-swing cadence, so this cannot create hidden
-            // extra hits or faster DPS by animation cancelling.
+            // Air actions are full movement states, not recovery tails. Never let horizontal
+            // velocity swap them back to walking/retargeted locomotion before the action ends.
+            if (attackOwnsAirPose)
+            {
+                _motionRetarget?.SetMoving(false);
+                _spine.SetExternalLocomotionActive(false);
+                return;
+            }
+
+            // Grounded attacks may cancel only their visual recovery tail after the authoritative
+            // impact has landed. Gameplay cadence is unchanged, so this remains feel-only.
             if (moving &&
                 _attack != null &&
                 _attack.IsAttacking &&
