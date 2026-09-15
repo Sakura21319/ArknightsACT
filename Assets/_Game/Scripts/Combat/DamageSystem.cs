@@ -22,7 +22,17 @@ namespace ArknightsACT.Combat
                     return DamageResult.Rejected;
             }
 
-            var dealt = context.Target.Health.TakeDamage(context.BaseDamage);
+            var damage = context.BaseDamage;
+            damage = ApplyOutgoingModifiers(context.Source, context, damage);
+            if (context.Owner != null && context.Owner != context.Source)
+                damage = ApplyOutgoingModifiers(context.Owner, context, damage);
+            damage = ApplyIncomingModifiers(context.Target, context, damage);
+            damage = Mathf.Max(0f, damage);
+
+            if (damage <= 0f)
+                return DamageResult.Rejected;
+
+            var dealt = context.Target.Health.TakeDamage(damage);
             if (dealt <= 0f)
                 return DamageResult.Rejected;
 
@@ -39,6 +49,34 @@ namespace ArknightsACT.Combat
             }
 
             return result;
+        }
+
+        private static float ApplyOutgoingModifiers(CombatEntity entity, in DamageContext context, float damage)
+        {
+            if (entity == null)
+                return damage;
+
+            var behaviours = entity.GetComponents<MonoBehaviour>();
+            for (var i = 0; i < behaviours.Length; i++)
+            {
+                if (behaviours[i] is IDamageModifier modifier)
+                    damage = modifier.ModifyOutgoingDamage(context, damage);
+            }
+            return damage;
+        }
+
+        private static float ApplyIncomingModifiers(CombatEntity entity, in DamageContext context, float damage)
+        {
+            if (entity == null)
+                return damage;
+
+            var behaviours = entity.GetComponents<MonoBehaviour>();
+            for (var i = 0; i < behaviours.Length; i++)
+            {
+                if (behaviours[i] is IDamageModifier modifier)
+                    damage = modifier.ModifyIncomingDamage(context, damage);
+            }
+            return damage;
         }
     }
 }

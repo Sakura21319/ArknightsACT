@@ -8,7 +8,9 @@ namespace ArknightsACT.Gameplay.Feedback
         public static HitStopService Instance { get; private set; }
 
         private Coroutine _routine;
-        private float _baseFixedDelta;
+        private GameplayPauseService _pause;
+
+        public bool IsActive => _routine != null;
 
         private void Awake()
         {
@@ -19,15 +21,18 @@ namespace ArknightsACT.Gameplay.Feedback
             }
 
             Instance = this;
-            _baseFixedDelta = Time.fixedDeltaTime;
+            _pause = GameplayPauseService.Instance;
+            if (_pause == null)
+                _pause = GetComponent<GameplayPauseService>();
+            if (_pause == null)
+                _pause = gameObject.AddComponent<GameplayPauseService>();
         }
 
         private void OnDestroy()
         {
             if (Instance == this)
             {
-                Time.timeScale = 1f;
-                Time.fixedDeltaTime = _baseFixedDelta;
+                Cancel();
                 Instance = null;
             }
         }
@@ -43,12 +48,22 @@ namespace ArknightsACT.Gameplay.Feedback
             _routine = StartCoroutine(Routine(duration));
         }
 
+        public void Cancel()
+        {
+            if (_routine != null)
+            {
+                StopCoroutine(_routine);
+                _routine = null;
+            }
+
+            _pause?.Resume(this);
+        }
+
         private IEnumerator Routine(float duration)
         {
-            Time.timeScale = 0f;
+            _pause?.Pause(this);
             yield return new WaitForSecondsRealtime(duration);
-            Time.timeScale = 1f;
-            Time.fixedDeltaTime = _baseFixedDelta;
+            _pause?.Resume(this);
             _routine = null;
         }
     }

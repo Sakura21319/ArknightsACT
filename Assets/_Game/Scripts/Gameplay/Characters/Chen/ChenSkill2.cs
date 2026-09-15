@@ -1,13 +1,14 @@
 using System.Collections;
 using ArknightsACT.Combat;
 using ArknightsACT.Gameplay.Abilities;
+using ArknightsACT.Gameplay.Characters;
 using ArknightsACT.Gameplay.Feedback;
 using UnityEngine;
 
 namespace ArknightsACT.Gameplay.Characters.Chen
 {
     [RequireComponent(typeof(CombatEntity))]
-    public sealed class ChenSkill2 : MonoBehaviour, IPlayerSkill
+    public sealed class ChenSkill2 : MonoBehaviour, IPlayerSkill, IPlayerInvulnerabilitySource
     {
         [SerializeField, Min(0.1f)] private float cooldownSeconds = 14f;
         [SerializeField, Min(0f)] private float startupSeconds = 0.28f;
@@ -25,6 +26,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         public string DisplayName => "赤霄·绝影";
         public float CooldownRemaining => Mathf.Max(0f, _readyAt - Time.time);
         public bool IsCasting { get; private set; }
+        public bool IsInvulnerable => IsCasting;
 
         private void Awake()
         {

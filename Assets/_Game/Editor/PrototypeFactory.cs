@@ -23,6 +23,7 @@ namespace ArknightsACT.Editor
         public static void CreateServices()
         {
             var services = new GameObject("[Services]");
+            services.AddComponent<GameplayPauseService>();
             services.AddComponent<HitStopService>();
         }
 
@@ -86,6 +87,8 @@ namespace ArknightsACT.Editor
             var entity = go.AddComponent<CombatEntity>();
             entity.SetTeam(Team.Enemy);
             go.AddComponent<StatusIndicator2D>();
+            go.AddComponent<WorldHealthBar2D>();
+            go.AddComponent<DamageNumberEmitter2D>();
             go.AddComponent<DummyEnemy>();
 
             var brain = go.AddComponent<PrototypeEnemyCombatBrain2D>();
