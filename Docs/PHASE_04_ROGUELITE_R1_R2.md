@@ -9,6 +9,7 @@ Current loop:
 ```text
 combat room
 -> clear enemies
+-> wait for the player's current authored action to finish
 -> pause
 -> roll up to 3 compatible collectibles
 -> choose 1
@@ -59,9 +60,35 @@ ContinueToNextRoom()
 IsWaitingForContinue
 ```
 
-`RogueliteRewardController` subscribes to `RoomCleared`, pauses `Time.timeScale`, builds compatible choices, and resumes only after a successful selection.
+Room clear is now finalized only when:
+
+```text
+all enemies are dead
+AND basic attack is no longer active
+AND active skill casting has finished
+AND dash has finished
+```
+
+This prevents reward UI from freezing a killing move halfway through and prevents skill coroutines from leaking into the next room.
+
+`RogueliteRewardController` subscribes to `RoomCleared`, pauses gameplay, builds compatible choices, and resumes only after a successful selection.
 
 The current reward UI intentionally uses `OnGUI` so R1 can be validated without creating Canvas/prefab art. Replace this presentation later; do not move reward rules into UI code.
+
+## Pause ownership
+
+`GameplayPauseService` is the only gameplay-level owner of `Time.timeScale`.
+
+Systems pause by owner token:
+
+```text
+GameplayPauseService.Pause(owner)
+GameplayPauseService.Resume(owner)
+```
+
+This allows HitStop, reward choice, future shops, events and pause menus to overlap without one system accidentally unpausing another.
+
+`HitStopService` now uses the same pause service with realtime duration.
 
 ## R2 — generic collectible framework
 
@@ -133,6 +160,18 @@ ArtsDamage
 
 No TrueDamage flag.
 
+## Ch'en Skill 2 invulnerability
+
+`赤霄·绝影` is invulnerable for its entire `IsCasting` window.
+
+This is implemented through generic `IPlayerInvulnerabilitySource`; `PlayerDamageGate` no longer has dash-specific or Ch'en-specific knowledge. Dash and Skill 2 both expose the same interface, and future skills/buffs can do the same.
+
+## Combat readability stabilization
+
+- player and enemy world-space HP bars
+- floating damage numbers by damage type
+- HP bars force an initial `Start`-phase sync after all component `Awake` calls, preventing the player bar from remaining hidden until first damage
+
 ## Local validation required
 
 This phase was source-edited through GitHub and has not been executed in Unity by the assistant.
@@ -148,19 +187,25 @@ Then in Unity:
 ```text
 1. Wait for compilation.
 2. Fix only the first red compiler error if one exists.
-3. ArknightsACT > Build Prototype Scene.
-4. Play PrototypeRun.
+3. Existing PrototypeRun can be used for script-only validation.
+4. Rebuild Prototype Scene when you want the explicit GameplayPauseService component persisted in the generated scene.
+5. Play PrototypeRun.
 ```
 
 Validate:
 
 ```text
+[ ] Player HP bar is visible immediately on entering Play Mode.
 [ ] Existing Ch'en movement / combo / dash / skills still work.
+[ ] Ch'en Skill 2 rejects incoming damage for the full cast.
+[ ] Killing the final enemy during Skill 2 does not open rewards until Skill 2 fully finishes.
+[ ] Skill 2 never continues attacking after entering the next room.
 [ ] Clearing room 1 does not auto-start room 2.
-[ ] Reward overlay appears after the last enemy dies.
+[ ] Reward overlay appears after combat action settles.
 [ ] Game action is paused while reward overlay is open.
 [ ] Mouse and 1/2/3 can choose rewards.
 [ ] Choosing a reward closes the overlay and starts the next room.
+[ ] HitStop cannot permanently freeze the next room.
 [ ] Ch'en never receives the True-damage collectible.
 [ ] Physical bonus increases basic attacks and physical skill hits.
 [ ] Arts bonus increases the Arts portion of 赤霄·拔刀 only.
