@@ -2,21 +2,18 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using ArknightsACT.Combat;
-using ArknightsACT.Gameplay.Characters.Texas;
 using UnityEngine;
 
 namespace ArknightsACT.Gameplay.Rooms
 {
     /// <summary>
-    /// Small prototype Roguelite loop:
-    /// spawn room -> clear enemies -> optional reward -> spawn next room.
-    /// The reward panel is optional so animation/gameplay character experiments do not have to
-    /// depend on Texas-specific build UI.
+    /// Minimal horizontal ACT room loop used to validate Ch'en combat only:
+    /// spawn enemies -> clear -> heal -> short delay -> next room.
+    /// Build/reward selection is intentionally out of scope until Ch'en's combat is validated.
     /// </summary>
     public sealed class PrototypeRoomLoopController : MonoBehaviour
     {
         [SerializeField] private Transform player;
-        [SerializeField] private TexasUpgradeChoicePanel upgradePanel;
         [SerializeField] private GameObject[] enemyTemplates;
         [SerializeField] private Vector2[] spawnPoints;
         [SerializeField] private Vector3 playerRoomStartPosition;
@@ -39,34 +36,17 @@ namespace ArknightsACT.Gameplay.Rooms
         public event Action<int> RoomStarted;
         public event Action<int> RoomCleared;
 
-        public void Configure(
-            Transform playerTransform,
-            TexasUpgradeChoicePanel rewardPanel,
-            GameObject[] templates,
-            Vector2[] points)
+        public void Configure(Transform playerTransform, GameObject[] templates, Vector2[] points)
         {
             player = playerTransform;
-            upgradePanel = rewardPanel;
             enemyTemplates = templates;
             spawnPoints = points;
             if (player != null)
                 playerRoomStartPosition = player.position;
         }
 
-        private void OnEnable()
-        {
-            if (upgradePanel != null)
-                upgradePanel.UpgradeChosen += OnUpgradeChosen;
-        }
-
         private void Start()
         {
-            if (upgradePanel != null)
-            {
-                upgradePanel.UpgradeChosen -= OnUpgradeChosen;
-                upgradePanel.UpgradeChosen += OnUpgradeChosen;
-            }
-
             if (!CanSpawn())
             {
                 Debug.LogWarning(
@@ -80,9 +60,6 @@ namespace ArknightsACT.Gameplay.Rooms
 
         private void OnDisable()
         {
-            if (upgradePanel != null)
-                upgradePanel.UpgradeChosen -= OnUpgradeChosen;
-
             if (_transitionRoutine != null)
             {
                 StopCoroutine(_transitionRoutine);
@@ -101,22 +78,7 @@ namespace ArknightsACT.Gameplay.Rooms
             _roomClearHandled = true;
             HealPlayerAfterRoomClear();
             RoomCleared?.Invoke(CurrentRoom);
-
-            if (upgradePanel != null && upgradePanel.HasAvailableUpgrade && upgradePanel.OpenForRoom(CurrentRoom))
-                return;
-
-            BeginNextRoomTransition();
-        }
-
-        private void OnUpgradeChosen(int _)
-        {
-            BeginNextRoomTransition();
-        }
-
-        private void BeginNextRoomTransition()
-        {
-            if (_transitionRoutine == null)
-                _transitionRoutine = StartCoroutine(NextRoomRoutine());
+            _transitionRoutine = StartCoroutine(NextRoomRoutine());
         }
 
         private IEnumerator NextRoomRoutine()
@@ -156,7 +118,6 @@ namespace ArknightsACT.Gameplay.Rooms
                     health.SetMaxHealth(health.MaxHealth * healthMultiplier);
 
                 instance.SetActive(true);
-
                 IgnoreActorCollision(instance, player != null ? player.gameObject : null);
                 for (var previous = 0; previous < _activeEnemies.Count; previous++)
                 {
@@ -186,7 +147,6 @@ namespace ArknightsACT.Gameplay.Rooms
             var availableTemplateCount = CurrentRoom < rangedUnlockRoom
                 ? Mathf.Min(2, enemyTemplates.Length)
                 : enemyTemplates.Length;
-
             if (availableTemplateCount <= 0)
                 return null;
 
@@ -204,14 +164,7 @@ namespace ArknightsACT.Gameplay.Rooms
             if (health == null || health.IsDead)
                 return;
 
-            var healed = health.Heal(health.MaxHealth * roomClearHealFraction);
-            if (healed > 0.01f)
-            {
-                Debug.Log(
-                    $"[ArknightsACT/RoomLoop] Room {CurrentRoom} clear heal: +{healed:0.#} HP " +
-                    $"({health.CurrentHealth:0.#}/{health.MaxHealth:0.#}).",
-                    this);
-            }
+            health.Heal(health.MaxHealth * roomClearHealFraction);
         }
 
         private int CountLivingEnemies()
@@ -220,9 +173,7 @@ namespace ArknightsACT.Gameplay.Rooms
             for (var i = _activeEnemies.Count - 1; i >= 0; i--)
             {
                 var entity = _activeEnemies[i];
-                if (entity == null)
-                    continue;
-                if (entity.Health != null && !entity.Health.IsDead)
+                if (entity?.Health != null && !entity.Health.IsDead)
                     living++;
             }
             return living;
@@ -234,7 +185,7 @@ namespace ArknightsACT.Gameplay.Rooms
                 return;
 
             var entity = player.GetComponent<CombatEntity>();
-            if (entity != null && entity.Health != null && entity.Health.IsDead)
+            if (entity?.Health != null && entity.Health.IsDead)
                 return;
 
             player.position = playerRoomStartPosition;
@@ -253,15 +204,12 @@ namespace ArknightsACT.Gameplay.Rooms
 
             var firstColliders = first.GetComponentsInChildren<Collider2D>(true);
             var secondColliders = second.GetComponentsInChildren<Collider2D>(true);
-            for (var i = 0; i < firstColliders.Length; i++)
+            foreach (var firstCollider in firstColliders)
             {
-                var firstCollider = firstColliders[i];
                 if (firstCollider == null || firstCollider.isTrigger)
                     continue;
-
-                for (var j = 0; j < secondColliders.Length; j++)
+                foreach (var secondCollider in secondColliders)
                 {
-                    var secondCollider = secondColliders[j];
                     if (secondCollider == null || secondCollider.isTrigger)
                         continue;
                     Physics2D.IgnoreCollision(firstCollider, secondCollider, true);
