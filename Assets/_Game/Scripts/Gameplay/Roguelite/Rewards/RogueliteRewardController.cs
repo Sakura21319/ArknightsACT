@@ -1,39 +1,38 @@
+using System;
 using System.Collections.Generic;
 using ArknightsACT.Gameplay.Feedback;
 using ArknightsACT.Gameplay.Roguelite.Collectibles;
-using ArknightsACT.Gameplay.Rooms;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace ArknightsACT.Gameplay.Roguelite.Rewards
 {
     /// <summary>
-    /// R1 prototype reward gate: clear a combat room -> pause -> choose one of three
-    /// compatible collectibles -> continue the existing room loop.
-    /// Uses immediate-mode GUI intentionally so the prototype has no prefab/UI asset dependency.
+    /// Reusable collectible reward screen. Route / node orchestration decides when it opens,
+    /// which rarity floor applies, and what happens after selection.
     /// </summary>
     public sealed class RogueliteRewardController : MonoBehaviour
     {
-        [SerializeField] private PrototypeRoomLoopController roomLoop;
         [SerializeField] private CollectibleInventory inventory;
         [SerializeField] private PlayerCombatProfile combatProfile;
         [SerializeField] private CollectibleDefinition[] rewardPool;
-        [SerializeField, Range(1, 3)] private int choiceCount = 3;
+        [SerializeField, Range(1, 3)] private int defaultChoiceCount = 3;
 
         private readonly List<CollectibleDefinition> _choices = new();
         private bool _isOpen;
-        private int _clearedRoom;
         private GameplayPauseService _pause;
+        private CollectibleRarity _minimumRarity;
+        private int _activeChoiceCount;
+        private string _title = "选择一件收藏品";
+        private Action _completed;
 
         public bool IsOpen => _isOpen;
 
         public void Configure(
-            PrototypeRoomLoopController loop,
             CollectibleInventory targetInventory,
             PlayerCombatProfile profile,
             CollectibleDefinition[] pool)
         {
-            roomLoop = loop;
             inventory = targetInventory;
             combatProfile = profile;
             rewardPool = pool;
@@ -42,15 +41,47 @@ namespace ArknightsACT.Gameplay.Roguelite.Rewards
         private void OnEnable()
         {
             _pause = GameplayPauseService.Instance;
-            if (roomLoop != null)
-                roomLoop.RoomCleared += OnRoomCleared;
         }
 
         private void OnDisable()
         {
-            if (roomLoop != null)
-                roomLoop.RoomCleared -= OnRoomCleared;
-            CloseWithoutContinuing();
+            CloseWithoutCallback();
+            _completed = null;
+        }
+
+        public bool OpenReward(
+            string title,
+            CollectibleRarity minimumRarity,
+            int requestedChoiceCount,
+            Action completed)
+        {
+            if (_isOpen)
+                return false;
+
+            _title = string.IsNullOrWhiteSpace(title) ? "选择一件收藏品" : title;
+            _minimumRarity = minimumRarity;
+            _activeChoiceCount = Mathf.Clamp(requestedChoiceCount > 0 ? requestedChoiceCount : defaultChoiceCount, 1, 3);
+            _completed = completed;
+            BuildChoices();
+
+            if (_choices.Count == 0)
+            {
+                Debug.LogWarning(
+                    $"[ArknightsACT/Roguelite] No compatible rewards remain for rarity >= {_minimumRarity}.",
+                    this);
+                var callback = _completed;
+                _completed = null;
+                callback?.Invoke();
+                return false;
+            }
+
+            _pause ??= GameplayPauseService.Instance;
+            if (_pause != null)
+                _pause.Pause(this);
+            else
+                Time.timeScale = 0f;
+            _isOpen = true;
+            return true;
         }
 
         private void Update()
@@ -70,30 +101,6 @@ namespace ArknightsACT.Gameplay.Roguelite.Rewards
                 Choose(2);
         }
 
-        private void OnRoomCleared(int roomIndex)
-        {
-            if (_isOpen)
-                return;
-
-            _clearedRoom = roomIndex;
-            BuildChoices();
-            if (_choices.Count == 0)
-            {
-                Debug.LogWarning(
-                    "[ArknightsACT/Roguelite] No compatible collectible rewards remain; continuing room loop.",
-                    this);
-                roomLoop?.ContinueToNextRoom();
-                return;
-            }
-
-            _pause ??= GameplayPauseService.Instance;
-            if (_pause != null)
-                _pause.Pause(this);
-            else
-                Time.timeScale = 0f;
-            _isOpen = true;
-        }
-
         private void BuildChoices()
         {
             _choices.Clear();
@@ -106,12 +113,14 @@ namespace ArknightsACT.Gameplay.Roguelite.Rewards
                 var definition = rewardPool[i];
                 if (definition == null || !inventory.CanAcquire(definition))
                     continue;
+                if ((int)definition.Rarity < (int)_minimumRarity)
+                    continue;
                 if (combatProfile != null && !combatProfile.Supports(definition.RequiredFeatures))
                     continue;
                 candidates.Add(definition);
             }
 
-            var wanted = Mathf.Min(choiceCount, candidates.Count);
+            var wanted = Mathf.Min(_activeChoiceCount, candidates.Count);
             for (var i = 0; i < wanted; i++)
             {
                 var picked = WeightedPick(candidates);
@@ -131,7 +140,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Rewards
             for (var i = 0; i < candidates.Count; i++)
                 totalWeight += Mathf.Max(0.01f, candidates[i].RewardWeight);
 
-            var roll = Random.value * totalWeight;
+            var roll = UnityEngine.Random.value * totalWeight;
             for (var i = 0; i < candidates.Count; i++)
             {
                 roll -= Mathf.Max(0.01f, candidates[i].RewardWeight);
@@ -150,11 +159,13 @@ namespace ArknightsACT.Gameplay.Roguelite.Rewards
             if (!inventory.Acquire(selected))
                 return;
 
-            CloseWithoutContinuing();
-            roomLoop?.ContinueToNextRoom();
+            var callback = _completed;
+            _completed = null;
+            CloseWithoutCallback();
+            callback?.Invoke();
         }
 
-        private void CloseWithoutContinuing()
+        private void CloseWithoutCallback()
         {
             if (!_isOpen)
                 return;
@@ -182,10 +193,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Rewards
                 fontSize = Mathf.Clamp(width / 45, 22, 38),
                 fontStyle = FontStyle.Bold
             };
-            GUI.Label(
-                new Rect(0f, height * 0.10f, width, 60f),
-                $"作战 {_clearedRoom} 完成  ·  选择一件收藏品",
-                titleStyle);
+            GUI.Label(new Rect(0f, height * 0.10f, width, 60f), _title, titleStyle);
 
             var cardWidth = Mathf.Min(310f, width * 0.27f);
             var cardHeight = Mathf.Min(330f, height * 0.52f);
