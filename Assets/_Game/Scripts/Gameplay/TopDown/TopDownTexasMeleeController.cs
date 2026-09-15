@@ -44,7 +44,8 @@ namespace ArknightsACT.Gameplay.TopDown
 
         private void Update()
         {
-            if (_entity == null || _entity.Health == null || _entity.Health.IsDead || _input == null)
+            if (Time.timeScale <= 0.001f ||
+                _entity == null || _entity.Health == null || _entity.Health.IsDead || _input == null)
                 return;
 
             if ((_input.AttackPressedThisFrame || _input.AttackHeld) && Time.time >= _readyAt && _attackRoutine == null)
