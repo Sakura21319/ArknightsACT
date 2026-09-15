@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using ArknightsACT.Combat;
+using ArknightsACT.Combat.Status;
 using ArknightsACT.Editor.PRTS;
 using ArknightsACT.Gameplay.CameraSystem;
 using ArknightsACT.Gameplay.Enemies;
@@ -94,9 +95,15 @@ namespace ArknightsACT.Editor
             controller.stepOffset = 0.25f;
             controller.slopeLimit = 45f;
 
-            var health = go.AddComponent<Health>();
+            // Keep the CombatEntity dependency graph explicit for inactive editor-built templates.
+            // This avoids Unity having to inject StatusController through RequireComponent while
+            // the template is inactive, matching the production player composition path.
+            var health = go.GetComponent<Health>() ?? go.AddComponent<Health>();
             health.SetMaxHealth(healthOverride ?? ResolveHealth(archetype));
-            var entity = go.AddComponent<CombatEntity>();
+            if (go.GetComponent<StatusController>() == null)
+                go.AddComponent<StatusController>();
+
+            var entity = go.GetComponent<CombatEntity>() ?? go.AddComponent<CombatEntity>();
             entity.SetTeam(Team.Enemy);
 
             var brain = go.AddComponent<PrototypeEnemyCombatBrain25D>();
