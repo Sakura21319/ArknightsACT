@@ -1,3 +1,4 @@
+using System.Collections;
 using ArknightsACT.Combat;
 using UnityEngine;
 
@@ -23,7 +24,7 @@ namespace ArknightsACT.Gameplay.TopDown
         private int _livingEnemies;
         private bool _battleActive;
         private bool _completed;
-        private float _roomStartedAt;
+        private bool _rewardPending;
 
         public void Configure(
             Transform player,
@@ -60,7 +61,7 @@ namespace ArknightsACT.Gameplay.TopDown
 
         private void Update()
         {
-            if (_completed || _battleActive || _player == null || _roomCenters == null)
+            if (_completed || _battleActive || _rewardPending || _player == null || _roomCenters == null)
                 return;
             if (_upgradePanel != null && _upgradePanel.IsOpen)
                 return;
@@ -81,9 +82,7 @@ namespace ArknightsACT.Gameplay.TopDown
             _currentRoom = index;
             _battleActive = true;
             _livingEnemies = 0;
-            _roomStartedAt = Time.time;
 
-            // Lock entrance and exit while enemies are alive.
             SetDoor(index - 1, true);
             SetDoor(index, true);
 
@@ -175,7 +174,18 @@ namespace ArknightsACT.Gameplay.TopDown
             }
 
             if (_upgradePanel != null && _upgradePanel.HasAvailableUpgrade)
-                _upgradePanel.OpenForRoom(_currentRoom + 1);
+            {
+                _rewardPending = true;
+                StartCoroutine(OpenRewardAfterHitStop(_currentRoom + 1));
+            }
+        }
+
+        private IEnumerator OpenRewardAfterHitStop(int clearedRoom)
+        {
+            yield return new WaitForSecondsRealtime(0.12f);
+            _rewardPending = false;
+            if (_upgradePanel != null && !_upgradePanel.IsOpen && _upgradePanel.HasAvailableUpgrade)
+                _upgradePanel.OpenForRoom(clearedRoom);
         }
 
         private bool InsideRoom(Vector2 position, Vector2 center)
@@ -203,9 +213,7 @@ namespace ArknightsACT.Gameplay.TopDown
             GUI.Label(new Rect(24f, 62f, 460f, 22f), "WASD move · Mouse aim · LMB/J melee · Space/Shift/K dash · RMB/L Sword Rain");
             GUI.Label(new Rect(24f, 86f, 460f, 22f), "No auto attack · no auto movement · aim assist only snaps slightly toward nearby targets");
             if (_build != null)
-            {
                 GUI.Label(new Rect(24f, 110f, 460f, 22f), $"迅刃 Lv.{_build.SwiftBladeLevel}   余雷 Lv.{_build.ResidualThunderLevel}   导电 Lv.{_build.ConductiveLevel}");
-            }
             GUI.Label(new Rect(24f, 134f, 460f, 22f), _battleActive ? "Doors locked: clear the room." : "Room clear: move through the open door.");
             if (_completed)
                 GUI.Label(new Rect(24f, 158f, 460f, 24f), "BOSS CLEAR · top-down prototype complete");
