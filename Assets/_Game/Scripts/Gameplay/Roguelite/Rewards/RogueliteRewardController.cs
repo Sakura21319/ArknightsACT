@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using ArknightsACT.Gameplay.Feedback;
 using ArknightsACT.Gameplay.Roguelite.Collectibles;
 using ArknightsACT.Gameplay.Rooms;
 using UnityEngine;
@@ -84,7 +85,11 @@ namespace ArknightsACT.Gameplay.Roguelite.Rewards
                 return;
             }
 
-            _previousTimeScale = Time.timeScale;
+            // The killing blow may still be inside HitStop (Time.timeScale == 0).
+            // Cancel that transient pause first so the reward screen never records 0 as the
+            // value it should restore when continuing to the next room.
+            HitStopService.Instance?.Cancel();
+            _previousTimeScale = Time.timeScale > 0.001f ? Time.timeScale : 1f;
             Time.timeScale = 0f;
             _isOpen = true;
         }
@@ -156,7 +161,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Rewards
 
             _isOpen = false;
             _choices.Clear();
-            Time.timeScale = _previousTimeScale;
+            Time.timeScale = _previousTimeScale > 0.001f ? _previousTimeScale : 1f;
         }
 
         private void OnGUI()
