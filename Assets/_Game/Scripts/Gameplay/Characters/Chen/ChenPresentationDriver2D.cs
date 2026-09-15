@@ -60,12 +60,8 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                 _attack.AttackStarted += OnAttackStarted;
             if (_skills != null)
                 _skills.SkillCastSucceeded += OnSkillCast;
-            if (_entity != null)
-            {
-                _entity.Damaged += OnDamaged;
-                if (_entity.Health != null)
-                    _entity.Health.Died += OnDied;
-            }
+            if (_entity?.Health != null)
+                _entity.Health.Died += OnDied;
         }
 
         private void OnDisable()
@@ -74,12 +70,8 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                 _attack.AttackStarted -= OnAttackStarted;
             if (_skills != null)
                 _skills.SkillCastSucceeded -= OnSkillCast;
-            if (_entity != null)
-            {
-                _entity.Damaged -= OnDamaged;
-                if (_entity.Health != null)
-                    _entity.Health.Died -= OnDied;
-            }
+            if (_entity?.Health != null)
+                _entity.Health.Died -= OnDied;
             _retarget?.SetMoving(false);
         }
 
@@ -150,13 +142,6 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                 PlayOneShot("Skill_3", "Skill_End_3", Skill2PlaybackSpeed);
         }
 
-        private void OnDamaged(DamageContext _, DamageResult __)
-        {
-            if (_dead || (_skills != null && _skills.IsCasting))
-                return;
-            _presentation?.PlayHit();
-        }
-
         private void OnDied()
         {
             _dead = true;
@@ -221,7 +206,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             }
             catch
             {
-                // The generic presentation will recover locomotion on the next frame.
+                // Generic locomotion presentation will recover on the next frame.
             }
         }
 
