@@ -45,9 +45,9 @@ namespace ArknightsACT.Editor
             EditorGUIUtility.PingObject(player);
 
             Debug.Log(
-                $"ArknightsACT Chen 2D ACT roguelite prototype generated: {ScenePath}. " +
+                $"ArknightsACT Chen 2D ACT roguelite R3 prototype generated: {ScenePath}. " +
                 "Controls: A/D move, Space jump, J/LMB three-hit combo, K/Shift dash, L skill1, I/RMB skill2. " +
-                "After clearing a room, choose one collectible with mouse or 1/2/3 before continuing.");
+                "After combat rewards, choose route nodes with mouse or 1/2/3: Combat, Emergency, Encounter, Safe House, Trader, Boss.");
         }
 
         private static AttackDefinition[] BuildChenAttackDefinitions()
