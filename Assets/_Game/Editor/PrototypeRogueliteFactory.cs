@@ -2,6 +2,7 @@
 using ArknightsACT.Gameplay.Roguelite;
 using ArknightsACT.Gameplay.Roguelite.Collectibles;
 using ArknightsACT.Gameplay.Roguelite.Rewards;
+using ArknightsACT.Gameplay.Roguelite.Routing;
 using ArknightsACT.Gameplay.Rooms;
 using UnityEditor;
 using UnityEngine;
@@ -32,8 +33,11 @@ namespace ArknightsACT.Editor
 
             roomLoop.SetExternalContinueGate(true);
             var root = new GameObject("[Roguelite]");
+            var runState = root.AddComponent<RogueliteRunState>();
             var rewards = root.AddComponent<RogueliteRewardController>();
-            rewards.Configure(roomLoop, inventory, profile, pool);
+            rewards.Configure(inventory, profile, pool);
+            var routes = root.AddComponent<RogueliteRouteController>();
+            routes.Configure(roomLoop, rewards, runState, player);
         }
 
         private static CollectibleDefinition[] BuildCollectiblePool()
