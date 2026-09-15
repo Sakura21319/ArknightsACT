@@ -33,16 +33,16 @@ namespace ArknightsACT.Gameplay.Debugging
             var room = _roomLoop != null ? _roomLoop.CurrentRoom : 0;
             var enemies = _roomLoop != null ? _roomLoop.LivingEnemies : 0;
 
-            GUI.Box(new Rect(12, 12, 410, 188), "Texas Combat Prototype");
-            GUI.Label(new Rect(24, 38, 370, 22), $"HP: {currentHealth:0}/{maxHealth:0}");
-            GUI.Label(new Rect(24, 60, 370, 22), $"L / RMB  Sword Rain   CD: {cooldown:0.0}s");
-            GUI.Label(new Rect(24, 82, 370, 22), $"Room: {room}   Living Enemies: {enemies}");
-            GUI.Label(new Rect(24, 104, 370, 22), "Clear room -> choose upgrade -> next room");
-            GUI.Label(new Rect(24, 126, 370, 22), $"Swift Blade: {OnOff(_buildLab != null && _buildLab.SwiftBlade)}");
-            GUI.Label(new Rect(24, 146, 370, 22), $"Residual Thunder: {OnOff(_buildLab != null && _buildLab.ResidualThunder)}");
-            GUI.Label(new Rect(24, 166, 370, 22), $"Conductive: {OnOff(_buildLab != null && _buildLab.Conductive)}");
+            GUI.Box(new Rect(12, 12, 430, 188), "Texas Combat Prototype");
+            GUI.Label(new Rect(24, 38, 390, 22), $"HP: {currentHealth:0}/{maxHealth:0}");
+            GUI.Label(new Rect(24, 60, 390, 22), $"L / RMB  Sword Rain   CD: {cooldown:0.0}s");
+            GUI.Label(new Rect(24, 82, 390, 22), $"Room: {room}   Living Enemies: {enemies}");
+            GUI.Label(new Rect(24, 104, 390, 22), "Basic combo: 1 -> 2 -> HEAVY 3");
+            GUI.Label(new Rect(24, 126, 390, 22), $"Swift Blade Lv.{Level(_buildLab?.SwiftBladeLevel ?? 0)}");
+            GUI.Label(new Rect(24, 146, 390, 22), $"Residual Thunder Lv.{Level(_buildLab?.ResidualThunderLevel ?? 0)}");
+            GUI.Label(new Rect(24, 166, 390, 22), $"Conductive Lv.{Level(_buildLab?.ConductiveLevel ?? 0)}");
         }
 
-        private static string OnOff(bool value) => value ? "ON" : "OFF";
+        private static string Level(int value) => $"{value}/{TexasBuildLab.MaxUpgradeLevel}";
     }
 }
