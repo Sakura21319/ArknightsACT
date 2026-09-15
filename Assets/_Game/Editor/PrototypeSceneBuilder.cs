@@ -21,13 +21,11 @@ namespace ArknightsACT.Editor
             EnsureFolder(SceneDir);
             var attacks = BuildChenAttackDefinitions();
 
-            // Reuse the approved 2.5D visual world as the production scene shell, then replace
-            // demo-only actors with the real combat/roguelite composition.
             Prototype25DSceneBuilder.Build();
             RemoveDemoActor("Player_Chen_25D");
-            RemoveDemoActor("Preview_Soldier");
-            RemoveDemoActor("Preview_Hound");
-            RemoveDemoActor("Preview_Crossbowman");
+            RemoveDemoActor("Enemy_Soldier");
+            RemoveDemoActor("Enemy_Hound");
+            RemoveDemoActor("Enemy_Crossbowman");
 
             var camera = GameObject.Find("Main Camera")?.GetComponent<Camera>();
             if (camera == null)
