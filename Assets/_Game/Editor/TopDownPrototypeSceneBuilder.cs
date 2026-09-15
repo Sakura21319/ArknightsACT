@@ -149,7 +149,7 @@ namespace ArknightsACT.Editor
             var name = descriptor != null ? descriptor.DisplayName : archetype.ToString();
             var go = new GameObject("TopDownTemplate_" + name);
             go.transform.SetParent(parent, false);
-            go.transform.position = new Vector3(0f, -30f, 0f);
+            go.transform.localPosition = new Vector3(0f, -30f, 0f);
 
             var hasPresentation = descriptor != null && PrtsGeneratedPresentation.TryAttach(descriptor.BaseName, go.transform, out _);
             if (!hasPresentation)
@@ -182,6 +182,7 @@ namespace ArknightsACT.Editor
         {
             var root = new GameObject("[TopDownMap]");
             var doors = new GameObject[RoomCenters.Length - 1];
+            var corridorWallColor = new Color(0.26f, 0.29f, 0.36f);
 
             for (var i = 0; i < RoomCenters.Length; i++)
             {
@@ -195,8 +196,11 @@ namespace ArknightsACT.Editor
                 {
                     var rightEdge = center.x + RoomHalfSize.x;
                     var nextLeft = RoomCenters[i + 1].x - RoomHalfSize.x;
+                    var corridorWidth = nextLeft - rightEdge;
                     var corridorCenter = new Vector2((rightEdge + nextLeft) * 0.5f, 0f);
-                    CreateFloor(root.transform, $"Corridor_{i + 1}", corridorCenter, new Vector2(nextLeft - rightEdge, 2.5f), new Color(0.12f, 0.14f, 0.18f));
+                    CreateFloor(root.transform, $"Corridor_{i + 1}", corridorCenter, new Vector2(corridorWidth, 2.5f), new Color(0.12f, 0.14f, 0.18f));
+                    CreateWall(root.transform, $"Corridor_{i + 1}_Top", corridorCenter + Vector2.up * 1.25f, new Vector2(corridorWidth, 0.32f), corridorWallColor);
+                    CreateWall(root.transform, $"Corridor_{i + 1}_Bottom", corridorCenter + Vector2.down * 1.25f, new Vector2(corridorWidth, 0.32f), corridorWallColor);
                     doors[i] = CreateDoor(root.transform, $"Door_{i + 1}_{i + 2}", new Vector2(rightEdge, 0f));
                 }
             }
@@ -271,9 +275,8 @@ namespace ArknightsACT.Editor
         {
             var door = new GameObject(name);
             door.transform.SetParent(parent, false);
-            door.transform.position = position;
-            var visual = CreatePanel(door.transform, "Visual", Vector2.zero, new Vector2(0.40f, 2.5f), new Color(0.82f, 0.34f, 0.22f), 20);
-            visual.transform.localPosition = Vector3.zero;
+            door.transform.localPosition = position;
+            CreatePanel(door.transform, "Visual", Vector2.zero, new Vector2(0.40f, 2.5f), new Color(0.82f, 0.34f, 0.22f), 20);
             var collider = door.AddComponent<BoxCollider2D>();
             collider.size = new Vector2(0.40f, 2.5f);
             return door;
@@ -288,7 +291,7 @@ namespace ArknightsACT.Editor
         {
             var go = new GameObject(name);
             go.transform.SetParent(parent, false);
-            go.transform.position = center;
+            go.transform.localPosition = center;
             CreatePanel(go.transform, "Visual", Vector2.zero, size, color, 5);
             var collider = go.AddComponent<BoxCollider2D>();
             collider.size = size;
@@ -298,7 +301,7 @@ namespace ArknightsACT.Editor
         {
             var go = new GameObject(name);
             go.transform.SetParent(parent, false);
-            go.transform.position = position;
+            go.transform.localPosition = position;
             go.transform.localScale = new Vector3(size.x, size.y, 1f);
             var renderer = go.AddComponent<SpriteRenderer>();
             renderer.sortingOrder = order;
