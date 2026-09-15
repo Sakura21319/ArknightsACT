@@ -1,3 +1,5 @@
+using System;
+using System.Collections;
 using ArknightsACT.Combat;
 using UnityEngine;
 
@@ -24,6 +26,8 @@ namespace ArknightsACT.Gameplay.Enemies
         [SerializeField, Min(0.1f)] private float moveSpeed = 2.4f;
         [SerializeField, Min(0.1f)] private float attackRange = 1.25f;
         [SerializeField, Min(0.1f)] private float preferredRange = 4.6f;
+        [SerializeField, Min(0f)] private float attackWindup = 0.20f;
+        [SerializeField, Min(0f)] private float attackRecovery = 0.18f;
         [SerializeField, Min(0.1f)] private float attackDamage = 5f;
         [SerializeField, Min(0.1f)] private float attackCooldown = 0.8f;
         [SerializeField] private float gravity = -24f;
@@ -32,10 +36,13 @@ namespace ArknightsACT.Gameplay.Enemies
         private CombatEntity _entity;
         private CombatEntity _target;
         private Vector3 _forward;
+        private Coroutine _attackRoutine;
         private float _lastVisibleAt = float.NegativeInfinity;
         private float _nextAttackAt;
         private float _nextSearchAt;
         private float _verticalVelocity;
+
+        public event Action<int> AttackStarted;
 
         public PrototypeEnemyArchetype Archetype => archetype;
         public Vector3 LogicForward => _forward.sqrMagnitude > 0.001f ? _forward.normalized : Vector3.back;
@@ -43,6 +50,7 @@ namespace ArknightsACT.Gameplay.Enemies
         public float ViewAngle => viewAngle;
         public bool IsAlerted { get; private set; }
         public bool IsMoving { get; private set; }
+        public bool IsAttacking => _attackRoutine != null;
         public int FacingSign { get; private set; } = -1;
 
         public void Configure(PrototypeEnemyArchetype value, Vector3 forward)
@@ -59,6 +67,16 @@ namespace ArknightsACT.Gameplay.Enemies
             _entity = GetComponent<CombatEntity>();
             ApplyArchetypeDefaults();
             ResetForward();
+        }
+
+        private void OnDisable()
+        {
+            if (_attackRoutine != null)
+            {
+                StopCoroutine(_attackRoutine);
+                _attackRoutine = null;
+            }
+            IsMoving = false;
         }
 
         private void Update()
@@ -105,6 +123,12 @@ namespace ArknightsACT.Gameplay.Enemies
             {
                 _forward = delta / distance;
                 UpdateFacingSign();
+            }
+
+            if (IsAttacking)
+            {
+                IsMoving = false;
+                return;
             }
 
             if (archetype == PrototypeEnemyArchetype.Ranged)
@@ -156,24 +180,46 @@ namespace ArknightsACT.Gameplay.Enemies
 
         private void TryAttack()
         {
-            if (Time.time < _nextAttackAt || _target == null)
+            if (Time.time < _nextAttackAt || _target == null || _attackRoutine != null)
                 return;
 
+            IsMoving = false;
+            _attackRoutine = StartCoroutine(AttackRoutine());
+        }
+
+        private IEnumerator AttackRoutine()
+        {
+            AttackStarted?.Invoke(FacingSign);
+
+            if (attackWindup > 0f)
+                yield return new WaitForSeconds(attackWindup);
+
+            if (_target != null && _target.Health != null && !_target.Health.IsDead)
+            {
+                var delta = _target.transform.position - transform.position;
+                delta.y = 0f;
+                var maxRange = archetype == PrototypeEnemyArchetype.Ranged
+                    ? preferredRange * 1.45f
+                    : attackRange + 0.3f;
+
+                if (delta.magnitude <= maxRange)
+                {
+                    DamageSystem.Apply(new DamageContext(
+                        _entity,
+                        _entity,
+                        _target,
+                        attackDamage,
+                        DamageType.Physical,
+                        Vector2.zero,
+                        sourceId: "PrototypeEnemy25D_" + archetype));
+                }
+            }
+
+            if (attackRecovery > 0f)
+                yield return new WaitForSeconds(attackRecovery);
+
+            _attackRoutine = null;
             _nextAttackAt = Time.time + attackCooldown;
-            var delta = _target.transform.position - transform.position;
-            delta.y = 0f;
-            var maxRange = archetype == PrototypeEnemyArchetype.Ranged ? preferredRange * 1.45f : attackRange + 0.3f;
-            if (delta.magnitude > maxRange)
-                return;
-
-            DamageSystem.Apply(new DamageContext(
-                _entity,
-                _entity,
-                _target,
-                attackDamage,
-                DamageType.Physical,
-                Vector2.zero,
-                sourceId: "PrototypeEnemy25D_" + archetype));
         }
 
         private void AcquirePlayerCandidate()
@@ -254,6 +300,8 @@ namespace ArknightsACT.Gameplay.Enemies
                 case PrototypeEnemyArchetype.FastMelee:
                     moveSpeed = 3.5f;
                     attackRange = 1.05f;
+                    attackWindup = 0.12f;
+                    attackRecovery = 0.12f;
                     attackDamage = 4f;
                     attackCooldown = 0.58f;
                     viewDistance = 7.5f;
@@ -262,6 +310,8 @@ namespace ArknightsACT.Gameplay.Enemies
                 case PrototypeEnemyArchetype.Ranged:
                     moveSpeed = 2.0f;
                     preferredRange = 4.8f;
+                    attackWindup = 0.32f;
+                    attackRecovery = 0.20f;
                     attackDamage = 4f;
                     attackCooldown = 1.05f;
                     viewDistance = 8.5f;
@@ -270,6 +320,8 @@ namespace ArknightsACT.Gameplay.Enemies
                 default:
                     moveSpeed = 2.5f;
                     attackRange = 1.25f;
+                    attackWindup = 0.20f;
+                    attackRecovery = 0.18f;
                     attackDamage = 5f;
                     attackCooldown = 0.82f;
                     viewDistance = 7f;
