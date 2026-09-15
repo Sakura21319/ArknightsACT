@@ -9,9 +9,14 @@ namespace ArknightsACT.Gameplay.Enemies
     [RequireComponent(typeof(PrototypeEnemyCombatBrain25D), typeof(CombatEntity))]
     public sealed class EnemyPresentationDriver25D : MonoBehaviour
     {
+        private const float IdleDirectionStrength = 0.30f;
+        private const float MoveDirectionStrength = 0.65f;
+        private const float AttackDirectionStrength = 1.00f;
+
         private PrototypeEnemyCombatBrain25D _brain;
         private CombatEntity _entity;
         private SpineCharacterPresentation2D _presentation;
+        private BillboardPresentation25D _billboard;
         private bool _dead;
 
         private void Awake()
@@ -20,6 +25,7 @@ namespace ArknightsACT.Gameplay.Enemies
             _entity = GetComponent<CombatEntity>();
             _presentation = GetComponentsInChildren<SpineCharacterPresentation2D>(true)
                 .FirstOrDefault(item => item != null && item.enabled);
+            _billboard = GetComponentInChildren<BillboardPresentation25D>(true);
         }
 
         private void OnEnable()
@@ -46,11 +52,15 @@ namespace ArknightsACT.Gameplay.Enemies
 
             if (_brain != null)
                 _brain.AttackStarted -= OnAttackStarted;
+            _billboard?.ResetDirectionalCue();
         }
 
         private void Start()
         {
-            _presentation?.SetLocomotion(false, _brain != null ? _brain.FacingSign : -1);
+            var facing = _brain != null ? _brain.FacingSign : -1;
+            _presentation?.SetLocomotion(false, facing);
+            if (_brain != null)
+                _billboard?.SetPlanarDirection(_brain.LogicForward, facing, IdleDirectionStrength);
         }
 
         private void Update()
@@ -61,18 +71,29 @@ namespace ArknightsACT.Gameplay.Enemies
                     .FirstOrDefault(item => item != null && item.enabled);
             }
 
-            if (_dead || _brain == null || _presentation == null)
-                return;
-            if (_brain.IsAttacking)
+            if (_dead || _brain == null)
                 return;
 
-            _presentation.SetLocomotion(_brain.IsMoving, _brain.FacingSign);
+            var facing = _brain.FacingSign;
+            _billboard?.SetPlanarDirection(
+                _brain.LogicForward,
+                facing,
+                _brain.IsAttacking
+                    ? AttackDirectionStrength
+                    : (_brain.IsMoving ? MoveDirectionStrength : IdleDirectionStrength));
+
+            if (_presentation == null || _brain.IsAttacking)
+                return;
+
+            _presentation.SetLocomotion(_brain.IsMoving, facing);
         }
 
         private void OnAttackStarted(int facing)
         {
             if (_dead)
                 return;
+            if (_brain != null)
+                _billboard?.SetPlanarDirection(_brain.LogicForward, facing, AttackDirectionStrength);
             _presentation?.PlayAttack(0, facing);
         }
 
@@ -91,6 +112,7 @@ namespace ArknightsACT.Gameplay.Enemies
             _dead = true;
             if (_brain != null)
                 _brain.enabled = false;
+            _billboard?.ResetDirectionalCue();
             _presentation?.SetExternalLocomotionActive(false);
             _presentation?.PlayDie();
         }
