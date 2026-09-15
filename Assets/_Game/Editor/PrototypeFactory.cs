@@ -110,6 +110,7 @@ namespace ArknightsACT.Editor
             conductive.enabled = false;
 
             go.AddComponent<TexasBuildLab>();
+            go.AddComponent<TexasUpgradeChoicePanel>();
             go.AddComponent<TexasPrototypeHud>();
             return go;
         }
