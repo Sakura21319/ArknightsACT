@@ -26,6 +26,7 @@ namespace ArknightsACT.Gameplay.Enemies
         [SerializeField, Min(0.1f)] private float preferredRange = 4.6f;
         [SerializeField, Min(0.1f)] private float attackDamage = 5f;
         [SerializeField, Min(0.1f)] private float attackCooldown = 0.8f;
+        [SerializeField] private float gravity = -24f;
 
         private CharacterController _controller;
         private CombatEntity _entity;
@@ -34,6 +35,7 @@ namespace ArknightsACT.Gameplay.Enemies
         private float _lastVisibleAt = float.NegativeInfinity;
         private float _nextAttackAt;
         private float _nextSearchAt;
+        private float _verticalVelocity;
 
         public PrototypeEnemyArchetype Archetype => archetype;
         public Vector3 LogicForward => _forward.sqrMagnitude > 0.001f ? _forward.normalized : Vector3.back;
@@ -64,6 +66,7 @@ namespace ArknightsACT.Gameplay.Enemies
             if (_entity?.Health == null || _entity.Health.IsDead)
                 return;
 
+            ApplyGravity();
             AcquirePlayerCandidate();
             if (_target == null || _target.Health == null || _target.Health.IsDead)
             {
@@ -118,7 +121,6 @@ namespace ArknightsACT.Gameplay.Enemies
                 TryAttack();
                 return;
             }
-
             Move(_forward);
         }
 
@@ -230,6 +232,19 @@ namespace ArknightsACT.Gameplay.Enemies
                 return entity == _target;
             }
             return true;
+        }
+
+        private void ApplyGravity()
+        {
+            if (_controller == null)
+                return;
+
+            if (_controller.isGrounded && _verticalVelocity < 0f)
+                _verticalVelocity = -2f;
+            else
+                _verticalVelocity += gravity * Time.deltaTime;
+
+            _controller.Move(Vector3.up * (_verticalVelocity * Time.deltaTime));
         }
 
         private void ApplyArchetypeDefaults()
