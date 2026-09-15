@@ -1,156 +1,123 @@
-# Phase 03 — PRTS Spine Presentation
+# Phase 03 — Ch'en PRTS Spine Presentation
 
-## Goal
+## Current direction
 
-Replace graybox presentation with local PRTS Spine battle models while keeping gameplay independent from a concrete Spine runtime.
+The active prototype is a horizontal 2D ACT with Ch'en as the player character.
+
+Abandoned experiments have been removed from the active branch:
+
+- Texas-specific build / sword-rain code
+- procedural Texas action animation
+- survivor prototype
+- top-down prototype
+- auto melee
+- extra basic-attack slash VFX
+- HD atlas upscale experiment
+
+## PRTS animation catalog
+
+The local `char_010_chen` combat skeleton currently exposes:
 
 ```text
-Combat / Gameplay
-      ↓ events / interfaces
-Presentation adapters
-      ↓ reflection
-Spine runtime
-      ↓
-PRTS local-only assets
+Attack        1.5000s
+Attack_End    0.6000s
+Attack_Pre    0.6000s
+Default       0
+Die           1.0000s
+Idle          2.0000s
+Skill         1.0000s
+Skill_2       1.1667s
+Skill_3       2.9333s
+Skill_End     0.6000s
+Skill_End_2   0.6000s
+Skill_End_3   0.3000s
+Start         0.8333s
 ```
 
-## Current runtime
+The current ACT mapping is intentionally based on the authored clips instead of inventing extra actions:
 
-The prototype uses the pinned multi-version-compatible Spine runtime recorded in `Packages/manifest.json` and `Packages/packages-lock.json`.
+```text
+Basic 1 -> Attack 0%..50%
+Basic 2 -> Attack 50%..100%
+Basic 3 -> Skill
 
-PRTS binaries, generated prefabs and generated prototype scenes remain local-only and are ignored by Git.
+Skill 1 -> Skill_2 + Skill_End_2
+Skill 2 -> Skill_3 + Skill_End_3
+```
+
+No air slash, plunge or post-dash attack exists in the current moveset.
+
+## Presentation ownership
+
+`ChenPresentationDriver2D` owns clip names and playback speed. Generic combat code does not know that the clips are named `Attack`, `Skill_2`, etc.
+
+```text
+PlayerAttackController / ChenSkill1 / ChenSkill2
+        ↓ gameplay events
+ChenPresentationDriver2D
+        ↓ reflection adapter
+Spine SkeletonAnimation
+```
+
+Gameplay remains authoritative for damage and timing. Spine is visual presentation only.
+
+## Locomotion
+
+The visible model is always `char_010_chen` so combat weapons/attachments remain visible.
+
+`build_char_010_chen` is attached as a hidden motion source. `SpineBoneMotionRetarget2D` transfers its `Move` bone motion onto the combat skeleton when compatible.
+
+## Basic attack feedback
+
+The old generated slash-line / sword-wave basic-attack VFX has been removed.
+
+Current hit feedback is deliberately limited to:
+
+- enemy hit tint/flash
+- HitStop
+- small Camera Shake
+- knockback from the gameplay attack definition
+
+This keeps the authored Ch'en sword animation readable while still providing impact feedback.
+
+## Skills
+
+### Skill 1 — 赤霄·拔刀
+
+Presentation: `Skill_2` + `Skill_End_2`.
+
+Prototype gameplay: wide frontal hit, physical + Arts damage, short cooldown.
+
+### Skill 2 — 赤霄·绝影
+
+Presentation: `Skill_3` + `Skill_End_3`.
+
+Prototype gameplay: multiple strikes against nearby valid targets, then a stronger final hit, longer cooldown.
+
+These numbers are prototype-only and should be tuned after animation/gameplay feel is validated.
 
 ## Local setup
 
-If the earlier experimental 2x atlas step was used, restore the raw local PRTS files first:
-
 ```text
-ArknightsACT > Assets > PRTS > 2.7 Restore Original Local Atlases
-```
-
-Then use the normal path:
-
-```text
+ArknightsACT > Assets > PRTS > Download Full Prototype Pack
 ArknightsACT > Assets > PRTS > 2.5 Apply High Quality Texture Settings
 ArknightsACT > Assets > PRTS > 3. Build Presentation Prefabs
 ArknightsACT > Assets > PRTS > 4. Validate Presentation Setup
 ArknightsACT > Build Prototype Scene
 ```
 
-Texas also needs the base/dorm motion source for walking retargeting.
-
-## Texas locomotion
-
-The battle model keeps combat attachments/weapons. The base model is hidden and supplies only `Move` bone deltas through `SpineBoneMotionRetarget2D`.
-
-## Texas basic attack: one visible swing = one gameplay attack
-
-The battle skeleton contains:
+To inspect Ch'en clips again in Play Mode:
 
 ```text
-Attack_Start
-Attack_Loop
-Attack_End
+ArknightsACT > Diagnostics > Dump Ch'en Animation Catalog
 ```
-
-They are phases of one attack state, not different combo attacks.
-
-The authoritative prototype rule is:
-
-```text
-one complete Attack_Loop swing
-= one gameplay attack cycle
-= at most one damage pulse
-```
-
-`SpineAttackPlaybackSpeed2D` implements `IAttackTimingProvider` and reads the real `Attack_Loop` duration from Spine at runtime.
-
-Default attack animation speed:
-
-```text
-2.0x
-```
-
-Runtime timing:
-
-```text
-cycleSeconds  = Attack_Loop duration / playbackSpeed
-impactSeconds = cycleSeconds * impactNormalizedTime
-```
-
-The current impact marker starts at about 58% of the visible swing. This replaces the old fixed `0.095s` guess and keeps impact phase proportional if attack speed changes.
-
-Expected diagnostic:
-
-```text
-[ArknightsACT/AttackTiming] Spine cycle=... raw, speed=2x, impact=58%.
-```
-
-Repeated J input uses a one-slot queue. Mashing cannot create invisible extra hits while the current sword animation is still playing; it only requests the next complete swing.
-
-Future AttackSpeed upgrades must scale visible Spine playback and gameplay cadence together.
-
-## Damage feedback
-
-`DamageTintFlash2D` tints both players and enemies red on `CombatEntity.Damaged`.
-
-It supports:
-
-```text
-Skeleton.R/G/B/A
-Skeleton.Color.R/G/B/A
-```
-
-Base color is captured once. Rapid repeated hits extend the red window but never re-capture red as the new base color, fixing the permanent-red bug.
-
-Enemies without a dedicated Hit clip also use a short physical fallback reaction.
-
-## Death state
-
-Death is higher priority than movement, dash, attack and skill input.
-
-Player movement/dash/attack/skill controllers check `Health.IsDead`; presentation stops locomotion updates and keeps `Die` active.
-
-Enemy presentation/AI locks on death. `DamageSystem` does not apply a knockback impulse after a hit has already become lethal, preventing corpses from sliding while `Die` plays.
-
-## Enemy prototype behavior
-
-- Soldier: chase + melee Attack.
-- Hound: faster chase + fast melee Attack.
-- Crossbowman: spacing + ranged Attack prototype.
-- Attack windup/recovery locks horizontal movement.
-- Damage interrupts attacks and exposes knockback/stagger.
-
-## Texture/render quality investigation
-
-Because the PRTS web viewer renders the same source clearly, the project no longer assumes the source atlas is the root problem.
-
-Current raw-atlas import settings:
-
-```text
-Filter          Bilinear
-MipMap          OFF
-Compression     Uncompressed
-Max Texture     8192
-NPOT Scale      None
-Wrap            Clamp
-```
-
-The prototype is now windowed `1600x900` by default and the camera uses orthographic size `3.40`, increasing the number of actual screen pixels devoted to each chibi compared with the old `1280x720 / 4.25` setup.
-
-`PresentationQualityDiagnostics2D` logs the runtime truth after layout settles:
-
-```text
-[ArknightsACT/PresentationQuality]
-Screen=...
-Display=...
-CameraPixels=...
-Character≈...px high
-Texture '...' WIDTHxHEIGHT, filter=...
-```
-
-Use these values before changing atlas data again. The local `2.6 Build 2x Sharp Local Atlases` tool remains available only as a reversible experiment, not the default path.
 
 ## Architecture rule
 
-Spine does not own damage logic. Gameplay owns the authoritative attack and asks an optional timing provider for the visible animation cycle length and impact phase. This keeps combat testable and allows final art/runtime replacement later.
+Do not add character-specific clip names or PRTS paths to generic movement/combat systems. New Ch'en-only behavior belongs under:
+
+```text
+Assets/_Game/Scripts/Gameplay/Characters/Chen/
+```
+
+Presentation must never directly own HP changes.
