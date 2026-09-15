@@ -23,7 +23,7 @@ namespace ArknightsACT.Gameplay.Enemies
         [SerializeField] private float attackWindup = 0.20f;
         [SerializeField] private float attackRecovery = 0.18f;
         [SerializeField] private float attackCooldown = 0.80f;
-        [SerializeField] private float attackDamage = 8f;
+        [SerializeField] private float attackDamage = 5f;
         [SerializeField] private float hitStaggerSeconds = 0.14f;
 
         private CombatEntity _entity;
@@ -151,8 +151,6 @@ namespace ArknightsACT.Gameplay.Enemies
             if (Time.time < _nextAttackAt || _target == null || _attackRoutine != null)
                 return;
 
-            // Stop on the exact frame attack state begins. Do not wait for the next FixedUpdate,
-            // otherwise interpolation can make the enemy visibly slide during its first attack frames.
             StopHorizontal();
             _attackRoutine = StartCoroutine(AttackRoutine());
         }
@@ -212,8 +210,6 @@ namespace ArknightsACT.Gameplay.Enemies
                 _attackRoutine = null;
                 _nextAttackAt = Time.time + Mathf.Max(0.15f, attackCooldown * 0.35f);
             }
-            // Do not zero X here: DamageSystem has just applied knockback and stagger should
-            // allow that impulse to remain visible instead of immediately cancelling it.
             IsMoving = false;
         }
 
@@ -272,7 +268,7 @@ namespace ArknightsACT.Gameplay.Enemies
                     attackWindup = 0.14f;
                     attackRecovery = 0.12f;
                     attackCooldown = 0.55f;
-                    attackDamage = 7f;
+                    attackDamage = 4f;
                     hitStaggerSeconds = 0.15f;
                     break;
                 case PrototypeEnemyArchetype.Ranged:
@@ -281,7 +277,7 @@ namespace ArknightsACT.Gameplay.Enemies
                     attackWindup = 0.28f;
                     attackRecovery = 0.20f;
                     attackCooldown = 1.05f;
-                    attackDamage = 6f;
+                    attackDamage = 4f;
                     hitStaggerSeconds = 0.17f;
                     break;
                 default:
@@ -290,7 +286,7 @@ namespace ArknightsACT.Gameplay.Enemies
                     attackWindup = 0.22f;
                     attackRecovery = 0.20f;
                     attackCooldown = 0.80f;
-                    attackDamage = 8f;
+                    attackDamage = 5f;
                     hitStaggerSeconds = 0.18f;
                     break;
             }
