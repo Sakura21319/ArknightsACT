@@ -36,6 +36,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
         private RogueliteRouteNodeType _currentCombatNode = RogueliteRouteNodeType.Combat;
         private GameplayPauseService _pause;
         private string _statusMessage = string.Empty;
+        private int _inputUnlockFrame;
 
         public bool IsOpen => _mode != OverlayMode.None;
         public RogueliteRouteNodeType CurrentCombatNode => _currentCombatNode;
@@ -69,7 +70,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
         private void Update()
         {
-            if (_mode == OverlayMode.None)
+            if (_mode == OverlayMode.None || Time.frameCount < _inputUnlockFrame)
                 return;
 
             var keyboard = Keyboard.current;
@@ -132,6 +133,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             BuildRouteChoices();
             _statusMessage = string.Empty;
             _mode = OverlayMode.Route;
+            ArmInputDelay();
             _pause ??= GameplayPauseService.Instance;
             if (_pause != null)
                 _pause.Pause(this);
@@ -227,6 +229,9 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
         private void ActivateOption(int index)
         {
+            if (Time.frameCount < _inputUnlockFrame)
+                return;
+
             switch (_mode)
             {
                 case OverlayMode.Route:
@@ -257,12 +262,15 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             {
                 case RogueliteRouteNodeType.Encounter:
                     _mode = OverlayMode.Encounter;
+                    ArmInputDelay();
                     return;
                 case RogueliteRouteNodeType.SafeHouse:
                     _mode = OverlayMode.SafeHouse;
+                    ArmInputDelay();
                     return;
                 case RogueliteRouteNodeType.Trader:
                     _mode = OverlayMode.Trader;
+                    ArmInputDelay();
                     return;
             }
 
@@ -378,6 +386,12 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
         {
             BuildRouteChoices();
             _mode = OverlayMode.Route;
+            ArmInputDelay();
+        }
+
+        private void ArmInputDelay()
+        {
+            _inputUnlockFrame = Time.frameCount + 1;
         }
 
         private float HealPlayer(float fraction)
@@ -474,7 +488,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                 var choice = _routeChoices[i];
                 var text = $"[{i + 1}]  {choice.Title}\n\n{choice.Description}";
                 if (GUI.Button(new Rect(startX + i * (cardWidth + gap), startY, cardWidth, cardHeight), text, cardStyle))
-                    ChooseRoute(i);
+                    ActivateOption(i);
             }
         }
 
@@ -503,7 +517,6 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             var buttonWidth = Mathf.Min(390f, width * 0.34f);
             var buttonHeight = 92f;
             var gap = 18f;
-            var totalHeight = options.Length * buttonHeight + (options.Length - 1) * gap;
             var startY = height * 0.28f;
             var style = new GUIStyle(GUI.skin.button)
             {
