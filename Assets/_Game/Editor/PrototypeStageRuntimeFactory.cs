@@ -30,6 +30,10 @@ namespace ArknightsACT.Editor
                 return null;
             }
 
+            // The selected visual direction now has a persistent modular asset kit. Ensure it exists
+            // before the generated scene serializes references to its meshes/materials/prefabs.
+            var environmentKit = ChernobogEnvironmentKitBuilder.EnsureBuilt();
+
             var go = new GameObject("[StageRuntime]");
             var controller = go.AddComponent<RogueliteStageRuntimeController>();
             controller.Configure(
@@ -48,14 +52,15 @@ namespace ArknightsACT.Editor
                 Load("TacticalAccent"),
                 Load("HazardBand"));
 
-            // Keep route/encounter code stable. These passes decorate the freshly materialized stage:
-            // physical floor/layout -> cold palette -> legacy authenticity base -> selected Concept-01
-            // modular kit -> beveled mesh upgrade -> PBR/lighting quality -> real pit binding ->
+            // Keep route/encounter code stable. Presentation is layered deliberately:
+            // physical floor/layout -> palette -> legacy base -> Concept-01 placement hints ->
+            // persistent modular assets -> bevel fallback -> PBR/lighting -> real pit binding ->
             // iconic terrain -> optional PRTS backdrop.
             go.AddComponent<RogueliteStageLayoutController>().Configure(stageMap);
             go.AddComponent<RogueliteStagePaletteController>().Configure(stageMap);
             go.AddComponent<RogueliteStageAuthenticityController>().Configure(stageMap);
             go.AddComponent<RogueliteStageConceptOneController>().Configure(stageMap);
+            go.AddComponent<RogueliteStageModularKitController>().Configure(stageMap, environmentKit);
             go.AddComponent<RogueliteStageMeshUpgradeController>().Configure(stageMap);
             go.AddComponent<RogueliteStageQualityPassController>().Configure(stageMap);
             go.AddComponent<RoguelitePitFloorSyncController>().Configure(stageMap);
