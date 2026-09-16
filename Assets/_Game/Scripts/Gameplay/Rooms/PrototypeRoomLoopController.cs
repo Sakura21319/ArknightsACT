@@ -5,6 +5,7 @@ using ArknightsACT.Combat;
 using ArknightsACT.Gameplay.Abilities;
 using ArknightsACT.Gameplay.Characters;
 using ArknightsACT.Gameplay.Combat;
+using ArknightsACT.Gameplay.Roguelite.Progression;
 using UnityEngine;
 
 namespace ArknightsACT.Gameplay.Rooms
@@ -152,6 +153,7 @@ namespace ArknightsACT.Gameplay.Rooms
                 : Mathf.Clamp(baseEnemyCount + tuning.EnemyCountBonus, 1, spawnCount);
             var progressionHealthMultiplier = 1f + Mathf.Max(0, CurrentRoom - 1) * healthGrowthPerRoom;
             var healthMultiplier = progressionHealthMultiplier * Mathf.Max(0.1f, tuning.HealthMultiplier);
+            var experienceMultiplier = ResolveExperienceMultiplier(tuning);
 
             for (var i = 0; i < enemyCount; i++)
             {
@@ -166,6 +168,10 @@ namespace ArknightsACT.Gameplay.Rooms
                 var health = instance.GetComponent<Health>();
                 if (health != null)
                     health.SetMaxHealth(health.MaxHealth * healthMultiplier);
+
+                var experience = instance.GetComponent<EnemyExperienceReward>();
+                if (experience != null)
+                    experience.SetRewardMultiplier(experienceMultiplier);
 
                 instance.SetActive(true);
                 IgnoreActorCollision(instance, player != null ? player.gameObject : null);
@@ -184,9 +190,19 @@ namespace ArknightsACT.Gameplay.Rooms
             var rangedEnabled = tuning.EnableRangedEarly || CurrentRoom >= rangedUnlockRoom;
             Debug.Log(
                 $"[ArknightsACT/RoomLoop] Room {CurrentRoom} started: mode={(Uses25D ? "25D" : "2D")}, node={tuning.Label}, " +
-                $"enemies={_activeEnemies.Count}, healthMultiplier={healthMultiplier:0.00}x, ranged={(rangedEnabled ? "enabled" : "locked")}.",
+                $"enemies={_activeEnemies.Count}, healthMultiplier={healthMultiplier:0.00}x, expMultiplier={experienceMultiplier:0.00}x, " +
+                $"ranged={(rangedEnabled ? "enabled" : "locked")}.",
                 this);
             RoomStarted?.Invoke(CurrentRoom);
+        }
+
+        private static float ResolveExperienceMultiplier(CombatRoomTuning tuning)
+        {
+            if (string.Equals(tuning.Label, "Boss", StringComparison.OrdinalIgnoreCase))
+                return 2.0f;
+            if (string.Equals(tuning.Label, "Emergency", StringComparison.OrdinalIgnoreCase))
+                return 1.5f;
+            return 1f;
         }
 
         private GameObject SelectEnemyTemplate(int spawnIndex, CombatRoomTuning tuning)
