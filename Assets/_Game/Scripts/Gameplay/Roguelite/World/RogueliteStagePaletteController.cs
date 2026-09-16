@@ -11,9 +11,9 @@ namespace ArknightsACT.Gameplay.Roguelite.World
     /// later environment passes can continue resolving them without coupling to this controller.
     ///
     /// This component is present in already-generated PrototypeRun scenes, so it also bootstraps the
-    /// selected Concept-01 and quality passes. That means pulling code is enough to get the current
-    /// presentation; rebuilding the scene is still recommended, but no longer required merely to add
-    /// the new visual components.
+    /// selected Concept-01, mesh-upgrade and quality passes. That means pulling code is enough to get
+    /// the current presentation; rebuilding the scene is still recommended, but no longer required
+    /// merely to add the new visual components.
     /// </summary>
     [DefaultExecutionOrder(5)]
     [DisallowMultipleComponent]
@@ -56,6 +56,11 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             if (concept == null)
                 concept = gameObject.AddComponent<RogueliteStageConceptOneController>();
             concept.Configure(stageMap);
+
+            var meshUpgrade = GetComponent<RogueliteStageMeshUpgradeController>();
+            if (meshUpgrade == null)
+                meshUpgrade = gameObject.AddComponent<RogueliteStageMeshUpgradeController>();
+            meshUpgrade.Configure(stageMap);
 
             var quality = GetComponent<RogueliteStageQualityPassController>();
             if (quality == null)
