@@ -235,6 +235,8 @@ namespace ArknightsACT.Gameplay.Combat
             const float forwardCenterScale = 1.10f;
             const float forwardHalfExtentScale = 0.48f;
             const float lateralHalfExtentScale = 0.38f;
+            const float closeRangeSafetyRadius = 0.92f;
+            const float closeRangeForwardDot = -0.05f;
 
             var center = transform.position +
                          forward * Mathf.Max(0.55f, Mathf.Abs(definition.hitboxOffset.x) * forwardCenterScale) +
@@ -244,15 +246,36 @@ namespace ArknightsACT.Gameplay.Combat
                 0.72f,
                 Mathf.Max(0.65f, definition.hitboxSize.x * forwardHalfExtentScale));
             var rotation = Quaternion.LookRotation(forward, Vector3.up);
-            var hits = Physics.OverlapBox(center, halfExtents, rotation, ~0, QueryTriggerInteraction.Ignore);
+
+            // The long slim box preserves the authored sword reach. A small point-blank sphere is
+            // merged in because two CharacterControllers can touch diagonally while the enemy
+            // centre sits just outside that slim box. The frontal-dot guard keeps this from
+            // becoming a 360-degree attack.
+            var candidates = new List<Collider>();
+            candidates.AddRange(Physics.OverlapBox(center, halfExtents, rotation, ~0, QueryTriggerInteraction.Ignore));
+            candidates.AddRange(Physics.OverlapSphere(
+                transform.position + Vector3.up * 0.78f,
+                closeRangeSafetyRadius,
+                ~0,
+                QueryTriggerInteraction.Ignore));
+
             var processed = new HashSet<CombatEntity>();
             var hitAny = false;
 
-            foreach (var hit in hits)
+            foreach (var hit in candidates)
             {
                 if (hit == null)
                     continue;
                 var target = hit.GetComponentInParent<CombatEntity>();
+                if (target == null || target == _entity || target.Team == _entity.Team || target.Health == null || target.Health.IsDead)
+                    continue;
+
+                var planarToTarget = target.transform.position - transform.position;
+                planarToTarget.y = 0f;
+                if (planarToTarget.sqrMagnitude > 0.001f &&
+                    Vector3.Dot(forward, planarToTarget.normalized) < closeRangeForwardDot)
+                    continue;
+
                 if (!CanHit(target, processed))
                     continue;
                 if (Mathf.Abs(target.transform.position.y - transform.position.y) > max25DHeightDifference)
