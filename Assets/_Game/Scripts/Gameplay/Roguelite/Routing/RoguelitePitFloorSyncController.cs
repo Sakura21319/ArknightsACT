@@ -97,7 +97,48 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
             var snapped = block.InverseTransformPoint(nearest.transform.position);
             pit.localPosition = new Vector3(snapped.x, pit.localPosition.y, snapped.z);
+            FitPitPresentationToSocket(pit, nearest.Footprint);
             return true;
+        }
+
+        private static void FitPitPresentationToSocket(Transform pit, Vector2 footprint)
+        {
+            var trigger = pit.GetComponent<BoxCollider>();
+            if (trigger != null)
+            {
+                trigger.center = new Vector3(0f, 0.16f, 0f);
+                trigger.size = new Vector3(
+                    Mathf.Max(0.40f, footprint.x * 0.94f),
+                    0.72f,
+                    Mathf.Max(0.40f, footprint.y * 0.92f));
+            }
+
+            var depth = pit.Find("PitDepth");
+            if (depth != null)
+            {
+                depth.localPosition = new Vector3(0f, -0.32f, 0f);
+                depth.localScale = new Vector3(footprint.x * 0.98f, 0.04f, footprint.y * 0.98f);
+            }
+
+            var edgeN = pit.Find("PitEdgeN");
+            var edgeS = pit.Find("PitEdgeS");
+            var edgeE = pit.Find("PitEdgeE");
+            var edgeW = pit.Find("PitEdgeW");
+            var halfX = footprint.x * 0.5f;
+            var halfZ = footprint.y * 0.5f;
+
+            FitEdge(edgeN, new Vector3(0f, 0.060f, halfZ + 0.07f), new Vector3(footprint.x + 0.28f, 0.10f, 0.14f));
+            FitEdge(edgeS, new Vector3(0f, 0.060f, -halfZ - 0.07f), new Vector3(footprint.x + 0.28f, 0.10f, 0.14f));
+            FitEdge(edgeE, new Vector3(halfX + 0.07f, 0.060f, 0f), new Vector3(0.14f, 0.10f, footprint.y));
+            FitEdge(edgeW, new Vector3(-halfX - 0.07f, 0.060f, 0f), new Vector3(0.14f, 0.10f, footprint.y));
+        }
+
+        private static void FitEdge(Transform edge, Vector3 localPosition, Vector3 localScale)
+        {
+            if (edge == null)
+                return;
+            edge.localPosition = localPosition;
+            edge.localScale = localScale;
         }
 
         private static Transform FindBlockTransform(Transform stage, int index)
