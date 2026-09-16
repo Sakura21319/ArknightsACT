@@ -159,10 +159,10 @@ namespace ArknightsACT.Editor.PRTS
             settings.loadType = asset.Kind == PrtsGameplayAudioKind.Music
                 ? AudioClipLoadType.CompressedInMemory
                 : AudioClipLoadType.DecompressOnLoad;
+            settings.preloadAudioData = true;
             importer.defaultSampleSettings = settings;
 
             importer.forceToMono = false;
-            importer.preloadAudioData = true;
             importer.loadInBackground = asset.Kind == PrtsGameplayAudioKind.Music;
             importer.SaveAndReimport();
         }
