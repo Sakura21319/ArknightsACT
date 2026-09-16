@@ -97,7 +97,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
                 return;
 
             TryApplyBurn(context, result);
-            TryApplyChain(context, result);
+            TryApplyChain(context);
         }
 
         private void TryApplyBurn(in DamageContext context, in DamageResult result)
@@ -111,7 +111,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
                 return;
 
             var perTickFraction = Mathf.Max(0f, FirstValue(LevelUpgradeEffectType.BurnOnHit)) + (stacks - 1) * 0.035f;
-            var perTickDamage = Mathf.Max(0.5f, result.Damage * perTickFraction);
+            var perTickDamage = Mathf.Max(0.5f, context.BaseDamage * perTickFraction);
             var id = context.Target.EntityId;
             if (string.IsNullOrWhiteSpace(id))
                 return;
@@ -144,7 +144,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
             _burnRoutines.Remove(id);
         }
 
-        private void TryApplyChain(in DamageContext context, in DamageResult result)
+        private void TryApplyChain(in DamageContext context)
         {
             var stacks = SumStacks(LevelUpgradeEffectType.ChainLightning);
             if (stacks <= 0)
@@ -162,7 +162,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
 
             var baseFraction = Mathf.Max(0f, FirstValue(LevelUpgradeEffectType.ChainLightning));
             var fraction = baseFraction + (stacks - 1) * 0.12f;
-            var damage = Mathf.Max(1f, result.Damage * fraction);
+            var damage = Mathf.Max(1f, context.BaseDamage * fraction);
             DamageSystem.Apply(new DamageContext(
                 _entity,
                 _entity,
