@@ -48,10 +48,11 @@ namespace ArknightsACT.Editor
                 Load("TacticalAccent"),
                 Load("HazardBand"));
 
-            // Keep route/encounter code stable. These passes decorate the freshly materialized stage
-            // after BuildCurrentStage: first physical floor/layout, then pit-floor binding, then the
-            // optional local PRTS distant background.
+            // Keep route/encounter code stable. These passes decorate the freshly materialized stage:
+            // physical floor/layout first, then the Arknights authenticity skin, then pit-floor binding,
+            // and finally the optional local PRTS distant background.
             go.AddComponent<RogueliteStageLayoutController>().Configure(stageMap);
+            go.AddComponent<RogueliteStageAuthenticityController>().Configure(stageMap);
             go.AddComponent<RoguelitePitFloorSyncController>().Configure(stageMap);
             go.AddComponent<RogueliteStageBackdropReferenceController>().Configure(stageMap, LoadEnvironmentBackdrops());
             return go;
