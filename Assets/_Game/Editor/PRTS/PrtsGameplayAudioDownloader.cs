@@ -11,47 +11,58 @@ using UnityEngine;
 namespace ArknightsACT.Editor.PRTS
 {
     /// <summary>
-    /// Downloads the local-only PRTS audio set used by the playable prototype.
-    /// The downloader intentionally avoids EditorUtility progress/dialog UI while async work is in
-    /// flight; results are reported through the Console instead. Downloaded media stays under the
-    /// repository's ignored PRTS art root and is never committed by this workflow.
+    /// Downloads the local-only audio set used by the playable prototype.
+    /// PRTS-hosted SFX/voices are downloaded directly. Tracks that PRTS identifies but does not mirror
+    /// under /assets/audio can use an msr:<songId> candidate, which resolves the official Monster Siren
+    /// API source URL before downloading the media. No async Editor GUI is used.
     /// </summary>
     internal static class PrtsGameplayAudioDownloader
     {
+        private const string MonsterSirenSongApi = "https://monster-siren.hypergryph.com/api/song/";
         private static bool _downloadRunning;
 
-        [MenuItem("ArknightsACT/Assets/PRTS/Gameplay Audio/Download Missing Only")]
+        [Serializable]
+        private sealed class MonsterSirenSongResponse
+        {
+            public int code;
+            public string msg;
+            public MonsterSirenSongData data;
+        }
+
+        [Serializable]
+        private sealed class MonsterSirenSongData
+        {
+            public string cid;
+            public string name;
+            public string sourceUrl;
+        }
+
         private static void DownloadMissingOnly()
         {
             StartDownload("缺失音频", PrtsGameplayAudioCatalog.All, skipExisting: true);
         }
 
-        [MenuItem("ArknightsACT/Assets/PRTS/Gameplay Audio/Download All")]
         private static void DownloadAll()
         {
             StartDownload("全部音频", PrtsGameplayAudioCatalog.All, skipExisting: false);
         }
 
-        [MenuItem("ArknightsACT/Assets/PRTS/Gameplay Audio/Download BGM")]
         private static void DownloadBgm()
         {
             StartDownload("BGM", PrtsGameplayAudioCatalog.Bgm, skipExisting: false);
         }
 
-        [MenuItem("ArknightsACT/Assets/PRTS/Gameplay Audio/Download Combat + Skill SFX")]
         private static void DownloadCombatAndSkills()
         {
             StartDownload("战斗与技能音效", PrtsGameplayAudioCatalog.CombatAndSkills, skipExisting: false);
         }
 
-        [MenuItem("ArknightsACT/Assets/PRTS/Gameplay Audio/Download Chen Voices")]
         private static void DownloadChenVoices()
         {
-            StartDownload("陈中文语音", PrtsGameplayAudioCatalog.ChenVoices, skipExisting: false);
+            StartDownload("陈日语语音", PrtsGameplayAudioCatalog.ChenVoices, skipExisting: false);
         }
 
-        [MenuItem("ArknightsACT/Assets/PRTS/Gameplay Audio/Verify Local Audio")]
-        private static void VerifyLocalAudio()
+        internal static void VerifyLocalAudio()
         {
             var valid = new List<string>();
             var missing = new List<string>();
@@ -78,10 +89,11 @@ namespace ArknightsACT.Editor.PRTS
             Debug.Log(builder.ToString());
         }
 
-        // Backward-compatible aliases used by earlier instructions. Both now do the safer missing-only pass.
-        [MenuItem("ArknightsACT/Assets/PRTS/Download Gameplay Audio (BGM + Combat + Chen)")]
-        [MenuItem("ArknightsACT/Assets/PRTS/Download Gameplay Audio (BGM + Chen)")]
-        private static void DownloadLegacyEntry()
+        /// <summary>
+        /// Single production entry used by the compact ArknightsACT menu.
+        /// Existing valid files are preserved; new BGM / Japanese voice filenames are fetched as needed.
+        /// </summary>
+        internal static void DownloadLegacyEntry()
         {
             DownloadMissingOnly();
         }
@@ -129,9 +141,10 @@ namespace ArknightsACT.Editor.PRTS
 
             using var client = new HttpClient
             {
-                Timeout = TimeSpan.FromSeconds(35)
+                Timeout = TimeSpan.FromSeconds(45)
             };
-            client.DefaultRequestHeaders.UserAgent.ParseAdd("ArknightsACT-Prototype/0.7");
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("ArknightsACT-Prototype/0.8");
+            client.DefaultRequestHeaders.Accept.ParseAdd("*/*");
 
             Debug.Log($"[ArknightsACT/PRTS Audio] 开始下载 {label}，共 {assets.Length} 项。" +
                       (skipExisting ? " 已存在的有效文件会跳过。" : string.Empty));
@@ -163,8 +176,6 @@ namespace ArknightsACT.Editor.PRTS
                 }
             }
 
-            // Unity asset/import operations run only after all network awaits have completed. Keeping Editor GUI
-            // calls out of the async loop also avoids the DontSaveInEditor assertion seen with the old progress UI.
             AssetDatabase.Refresh();
             for (var i = 0; i < assets.Length; i++)
             {
@@ -176,7 +187,7 @@ namespace ArknightsACT.Editor.PRTS
 
             var message = new StringBuilder();
             message.AppendLine($"[ArknightsACT/PRTS Audio] {label} 下载结束。");
-            message.AppendLine($"成功：{success.Count}，跳过：{skipped.Count}，失败：{failed.Count}。 ");
+            message.AppendLine($"成功：{success.Count}，跳过：{skipped.Count}，失败：{failed.Count}。");
             if (success.Count > 0)
                 message.AppendLine("成功：" + string.Join("、", success));
             if (skipped.Count > 0)
@@ -204,43 +215,67 @@ namespace ArknightsACT.Editor.PRTS
             var errors = new List<string>(asset.RemoteUrls.Length);
             for (var i = 0; i < asset.RemoteUrls.Length; i++)
             {
-                var url = asset.RemoteUrls[i];
-                if (string.IsNullOrWhiteSpace(url))
+                var candidate = asset.RemoteUrls[i];
+                if (string.IsNullOrWhiteSpace(candidate))
                     continue;
 
                 try
                 {
-                    using var response = await client.GetAsync(url);
-                    if (!response.IsSuccessStatusCode)
+                    if (candidate.StartsWith("msr:", StringComparison.OrdinalIgnoreCase))
                     {
-                        errors.Add($"{(int)response.StatusCode} {url}");
-                        continue;
+                        var songId = candidate.Substring("msr:".Length).Trim();
+                        return await DownloadMonsterSirenSong(client, songId, asset.LocalPath);
                     }
 
-                    var bytes = await response.Content.ReadAsByteArrayAsync();
-                    if (bytes == null || bytes.Length < 128)
-                    {
-                        errors.Add($"empty/invalid response {url}");
-                        continue;
-                    }
-
-                    var mediaType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
-                    if (LooksLikeTextOrHtml(mediaType, bytes))
-                    {
-                        errors.Add($"non-audio response ({mediaType}) {url}");
-                        continue;
-                    }
-
-                    File.WriteAllBytes(asset.LocalPath, bytes);
-                    return url;
+                    await DownloadMediaUrl(client, candidate, asset.LocalPath);
+                    return candidate;
                 }
                 catch (Exception exception)
                 {
-                    errors.Add($"{url}: {exception.Message}");
+                    errors.Add($"{candidate}: {exception.Message}");
                 }
             }
 
             throw new InvalidOperationException("All candidate URLs failed: " + string.Join(" | ", errors));
+        }
+
+        private static async Task<string> DownloadMonsterSirenSong(
+            HttpClient client,
+            string songId,
+            string localPath)
+        {
+            if (string.IsNullOrWhiteSpace(songId))
+                throw new InvalidOperationException("Monster Siren song id is empty.");
+
+            var apiUrl = MonsterSirenSongApi + songId;
+            using var apiResponse = await client.GetAsync(apiUrl);
+            if (!apiResponse.IsSuccessStatusCode)
+                throw new InvalidOperationException($"Monster Siren API returned {(int)apiResponse.StatusCode} for {apiUrl}");
+
+            var json = await apiResponse.Content.ReadAsStringAsync();
+            var payload = JsonUtility.FromJson<MonsterSirenSongResponse>(json);
+            if (payload == null || payload.code != 0 || payload.data == null || string.IsNullOrWhiteSpace(payload.data.sourceUrl))
+                throw new InvalidOperationException("Monster Siren API did not return a usable sourceUrl.");
+
+            await DownloadMediaUrl(client, payload.data.sourceUrl, localPath);
+            return payload.data.sourceUrl;
+        }
+
+        private static async Task DownloadMediaUrl(HttpClient client, string url, string localPath)
+        {
+            using var response = await client.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+                throw new InvalidOperationException($"HTTP {(int)response.StatusCode} {url}");
+
+            var bytes = await response.Content.ReadAsByteArrayAsync();
+            if (bytes == null || bytes.Length < 128)
+                throw new InvalidOperationException($"empty/invalid response {url}");
+
+            var mediaType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
+            if (LooksLikeTextOrHtml(mediaType, bytes))
+                throw new InvalidOperationException($"non-audio response ({mediaType}) {url}");
+
+            File.WriteAllBytes(localPath, bytes);
         }
 
         private static bool LooksLikeTextOrHtml(string mediaType, byte[] bytes)
@@ -284,8 +319,8 @@ namespace ArknightsACT.Editor.PRTS
             File.WriteAllText(
                 notePath,
                 "Display name: " + asset.DisplayName + Environment.NewLine +
-                "PRTS page: " + asset.SourcePage + Environment.NewLine +
-                "PRTS media: " + selectedUrl + Environment.NewLine +
+                "Reference page: " + asset.SourcePage + Environment.NewLine +
+                "Resolved media: " + selectedUrl + Environment.NewLine +
                 "Kind: " + asset.Kind + Environment.NewLine +
                 "Local prototype/reference use only. Do not commit or redistribute from this repository." + Environment.NewLine,
                 Encoding.UTF8);
