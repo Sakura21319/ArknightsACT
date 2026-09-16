@@ -56,8 +56,8 @@ namespace ArknightsACT.Editor
 
             // physical floor/layout -> expanded presentation -> hazard policy -> palette -> modular kit ->
             // floor composition -> industrial shell -> playable rooms/decks -> real street grid/sealed city
-            // facades -> overlap cleanup -> solid blockers -> lighting/chassis -> layered distant city + horizon
-            // wrap -> jump-proof containment -> iconic terrain/Originium -> optional PRTS story backdrop.
+            // facades -> density thinning -> overlap cleanup -> solid blockers -> lighting/chassis -> layered
+            // distant city + horizon wrap -> containment -> actor visibility -> terrain/Originium -> PRTS backdrop.
             go.AddComponent<RogueliteStageLayoutController>().Configure(stageMap);
             go.AddComponent<RogueliteStageExpansionController>().Configure(stageMap);
             go.AddComponent<RogueliteStageHazardPolicyController>().Configure(stageMap);
@@ -75,6 +75,7 @@ namespace ArknightsACT.Editor
             go.AddComponent<RogueliteStageUrbanCompositionController>().Configure(stageMap, environmentKit);
             go.AddComponent<RogueliteStagePlayableArchitectureController>().Configure(stageMap, environmentKit);
             go.AddComponent<RogueliteStageCityStreetsController>().Configure(stageMap, environmentKit);
+            go.AddComponent<RogueliteStageUrbanDensityController>().Configure(stageMap);
             go.AddComponent<RogueliteStageCompositionCleanupController>().Configure(stageMap);
             go.AddComponent<RogueliteStageDressingCollisionController>().Configure(stageMap);
             go.AddComponent<RogueliteStageLightingController>().Configure(stageMap);
@@ -83,6 +84,7 @@ namespace ArknightsACT.Editor
             go.AddComponent<RogueliteStageDistantDistrictController>().Configure(stageMap, environmentKit);
             go.AddComponent<RogueliteStageHorizonCityController>().Configure(stageMap, environmentKit);
             go.AddComponent<RogueliteStageContainmentController>().Configure(stageMap);
+            go.AddComponent<RogueliteStageActorOcclusionController>().Configure(stageMap);
             go.AddComponent<RogueliteStageTerrainPresentationController>().Configure(stageMap);
             go.AddComponent<RogueliteActiveOriginiumPresentationController>().Configure(stageMap);
             go.AddComponent<RogueliteStageBackdropReferenceController>().Configure(stageMap, LoadEnvironmentBackdrops());
