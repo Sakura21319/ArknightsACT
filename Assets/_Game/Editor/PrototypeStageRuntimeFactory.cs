@@ -31,8 +31,10 @@ namespace ArknightsACT.Editor
             }
 
             // The selected visual direction now has a persistent modular asset kit. Ensure it exists
-            // before the generated scene serializes references to its meshes/materials/prefabs.
+            // before the generated scene serializes references to its meshes/materials/prefabs, then
+            // enrich the most visible modules with the current production-detail pass.
             var environmentKit = ChernobogEnvironmentKitBuilder.EnsureBuilt();
+            ChernobogProductionDetailPass.EnsureApplied(environmentKit);
 
             var go = new GameObject("[StageRuntime]");
             var controller = go.AddComponent<RogueliteStageRuntimeController>();
@@ -54,14 +56,15 @@ namespace ArknightsACT.Editor
 
             // Keep route/encounter code stable. Presentation is layered deliberately:
             // physical floor/layout -> palette -> legacy base -> Concept-01 placement hints ->
-            // persistent modular assets -> bevel fallback -> PBR/lighting -> real pit binding ->
-            // iconic terrain -> optional PRTS backdrop.
+            // persistent modular assets -> bevel fallback -> art-direction rhythm -> PBR/lighting ->
+            // real pit binding -> iconic terrain -> optional PRTS backdrop.
             go.AddComponent<RogueliteStageLayoutController>().Configure(stageMap);
             go.AddComponent<RogueliteStagePaletteController>().Configure(stageMap);
             go.AddComponent<RogueliteStageAuthenticityController>().Configure(stageMap);
             go.AddComponent<RogueliteStageConceptOneController>().Configure(stageMap);
             go.AddComponent<RogueliteStageModularKitController>().Configure(stageMap, environmentKit);
             go.AddComponent<RogueliteStageMeshUpgradeController>().Configure(stageMap);
+            go.AddComponent<RogueliteStageArtDirectionController>().Configure(stageMap);
             go.AddComponent<RogueliteStageQualityPassController>().Configure(stageMap);
             go.AddComponent<RoguelitePitFloorSyncController>().Configure(stageMap);
             go.AddComponent<RogueliteStageTerrainPresentationController>().Configure(stageMap);
