@@ -15,6 +15,10 @@ namespace ArknightsACT.Editor
         [UnityEditor.MenuItem("ArknightsACT/Build Prototype Scene", false, 10)]
         private static void BuildPrototypeScene()
         {
+            // The combat Spine already contains Ch'en's authored Attack / Skill_2 / Skill_3 effects.
+            // Refresh its special blend-mode materials before composing the scene so those original
+            // attachments render at full intensity instead of being replaced by synthetic VFX.
+            PrtsOriginalSpineFxSetup.PrepareDownloadedChen();
             PrototypeSceneBuilder.Build();
         }
 
@@ -28,6 +32,7 @@ namespace ArknightsACT.Editor
         private static void BuildPresentationPrefabs()
         {
             PrtsSpinePrefabBuilder.BuildAll();
+            PrtsOriginalSpineFxSetup.PrepareDownloadedChen();
         }
 
         [UnityEditor.MenuItem("ArknightsACT/Assets/PRTS/Download Gameplay Audio", false, 120)]
