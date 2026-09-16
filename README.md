@@ -45,6 +45,8 @@ Start is fixed at the bottom-left and Boss/exit at the top-right. Intermediate b
 
 Entering a block for the first time activates its content. Enemies persist if the player leaves, so encounters can spill across block boundaries. Treasure can also be rolled inside combat blocks.
 
+The shop block currently has a physical safe-plaza location only. Purchase items and refresh UI are intentionally deferred until exploration pacing is validated.
+
 ## Progression
 
 The run currently has three separate growth layers:
