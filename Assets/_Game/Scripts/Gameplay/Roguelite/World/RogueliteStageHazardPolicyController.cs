@@ -78,7 +78,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                     body.detectCollisions = false;
 
                 current.gameObject.SetActive(false);
-                Destroy(current.gameObject);
+                UnityEngine.Object.Destroy(current.gameObject);
             }
         }
     }
