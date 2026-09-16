@@ -39,6 +39,7 @@ PRTS stage references for Active Originium gameplay context remain:
 - adds only a few thin amber veins instead of a broad emissive core;
 - generates three cached faceted crystal meshes at runtime and scatters deterministic clusters of 18 low shards/chips;
 - mixes black ore, amber, gold-facet and rare emissive-amber materials so the mineral reads black/yellow from the gameplay camera;
+- strips inherited deck albedo/normal/AO maps from crystal materials so metal-panel texture detail is not projected onto the mineral faces;
 - uses deliberately low smoothness on the bed/frame to remove the previous plastic response while keeping controlled highlights on crystal faces.
 
 `RogueliteStageEnvironmentController` also uses a subdued amber placeholder and no longer spawns temporary red crystal spikes before the production presentation appears.
