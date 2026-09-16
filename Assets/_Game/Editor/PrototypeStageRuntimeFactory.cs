@@ -1,6 +1,8 @@
 #if UNITY_EDITOR
+using ArknightsACT.Editor.PRTS;
 using ArknightsACT.Gameplay.Roguelite.Rewards;
 using ArknightsACT.Gameplay.Roguelite.Routing;
+using ArknightsACT.Gameplay.Roguelite.World;
 using UnityEditor;
 using UnityEngine;
 
@@ -45,7 +47,23 @@ namespace ArknightsACT.Editor
                 Load("CombatCover"),
                 Load("TacticalAccent"),
                 Load("HazardBand"));
+
+            // Keep route/encounter code stable. These passes decorate the freshly materialized stage
+            // after BuildCurrentStage: first physical floor/layout, then pit-floor binding, then the
+            // optional local PRTS distant background.
+            go.AddComponent<RogueliteStageLayoutController>().Configure(stageMap);
+            go.AddComponent<RoguelitePitFloorSyncController>().Configure(stageMap);
+            go.AddComponent<RogueliteStageBackdropReferenceController>().Configure(stageMap, LoadEnvironmentBackdrops());
             return go;
+        }
+
+        private static Texture2D[] LoadEnvironmentBackdrops()
+        {
+            var references = PrtsEnvironmentReferenceCatalog.RuntimeBackdrops;
+            var textures = new Texture2D[references.Length];
+            for (var i = 0; i < references.Length; i++)
+                textures[i] = AssetDatabase.LoadAssetAtPath<Texture2D>(references[i].LocalPath);
+            return textures;
         }
 
         private static Material Load(string name)
