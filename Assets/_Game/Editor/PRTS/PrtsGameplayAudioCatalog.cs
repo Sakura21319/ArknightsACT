@@ -35,10 +35,9 @@ namespace ArknightsACT.Editor.PRTS
     }
 
     /// <summary>
-    /// Local-only PRTS audio references used by the ACT prototype.
-    /// PRTS Data_Audio logical paths often start with Sound_Beta_2/, while the public media endpoint
-    /// serves the normalized path below /assets/audio/ directly. Keep that normalization here so the
-    /// downloader never has to guess the CDN layout.
+    /// Local-only PRTS / official Monster Siren references used by the ACT prototype.
+    /// PRTS Data_Audio logical paths often start with Sound_Beta_2/, while the public PRTS media
+    /// endpoint serves the normalized path below /assets/audio/ directly.
     /// </summary>
     internal static class PrtsGameplayAudioCatalog
     {
@@ -49,18 +48,18 @@ namespace ArknightsACT.Editor.PRTS
         private const string ChenVoicePage = "https://prts.wiki/w/%E9%99%88/%E8%AF%AD%E9%9F%B3%E8%AE%B0%E5%BD%95";
         private const string AudioDataPage = "https://prts.wiki/w/%E5%BE%AE%E4%BB%B6:Data_Audio";
 
-        // Chapter 16 main-menu track "反常光谱". The original client asset path is
-        // Sound_Beta_2/Music/act16main/m_sys_act16main, which maps to the PRTS media path below.
+        // PRTS identifies sys_act16main as 反常光谱 and links the official Monster Siren track.
+        // The direct torappu /assets/audio mirror does not currently expose this new track, so the
+        // downloader resolves the official Monster Siren song id to its current sourceUrl at runtime.
         public static readonly PrtsGameplayAudioAsset AbnormalSpectrum = new(
             "BGM · 反常光谱",
-            Root + "/BGM_AbnormalSpectrum.mp3",
+            Root + "/BGM_AbnormalSpectrum.wav",
             MusicPage,
             PrtsGameplayAudioKind.Music,
-            AudioBase + "music/act16main/m_sys_act16main.mp3");
+            "msr:514511");
 
-        // PRTS does not expose the previously guessed p_skill_* media paths. These two verified
-        // Chixiao/story SFX are used as prototype presentation for the two ACT skill slots; they are
-        // not claimed to be the exact dedicated in-battle skill files from the original client.
+        // PRTS does not expose the previously guessed p_skill_* media paths. These verified
+        // Chixiao/story SFX are used as prototype presentation for the two ACT skill slots.
         public static readonly PrtsGameplayAudioAsset ChenSkill1Sfx = new(
             "陈 · 赤霄·拔刀 技能音效",
             Root + "/Chen_Skill1_ChixiaoBadao.mp3",
