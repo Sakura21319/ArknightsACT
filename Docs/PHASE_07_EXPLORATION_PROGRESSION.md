@@ -47,13 +47,7 @@ Exactly one non-shop block per stage is promoted to the two-floor facility theme
 
 A block activates its contents the first time the player enters it. Activated enemies persist if the player leaves. The player does not need to clear every block before reaching the Boss.
 
-This intentionally allows:
-
-- avoiding ordinary patrols,
-- pulling encounters across block boundaries,
-- taking optional treasure risk,
-- activating a monster chest and carrying that permanent pursuer into another block,
-- rushing the Boss with fewer upgrades or exploring for more growth first.
+This intentionally allows avoiding ordinary patrols, pulling encounters across block boundaries, taking optional treasure risk, carrying an activated monster chest pursuer into another block, and rushing the Boss with fewer upgrades or exploring for more growth first.
 
 ## Encounter rewards
 
