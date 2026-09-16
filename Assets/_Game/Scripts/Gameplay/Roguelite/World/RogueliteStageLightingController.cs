@@ -48,7 +48,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             ConfigureCamera();
 
             _preparedStage = stage;
-            Debug.Log($"[ArknightsACT/Lighting] Stage {stageMap.StageIndex}: brighter expanded Chernobog lighting rig applied.", this);
+            Debug.Log($"[ArknightsACT/Lighting] Stage {stageMap.StageIndex}: expanded deck + underside lighting rig applied.", this);
         }
 
         private static void ConfigureEnvironment()
@@ -141,6 +141,20 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 Mathf.Clamp(diagonal * 0.68f, 22f, 48f),
                 70f,
                 0.62f,
+                false);
+
+            // The chassis is deliberately darker than the deck, but it still needs a readable silhouette.
+            // A broad shadowless blue-grey bounce from the camera side reveals terraces/girders without
+            // making the underside look self-illuminated.
+            CreateSpot(
+                root,
+                "CoolUndersideLift",
+                new Vector3(-width * 0.26f, 1.8f, -depth * 0.72f),
+                new Vector3(-width * 0.04f, -3.2f, -depth * 0.18f),
+                new Color(0.31f, 0.41f, 0.59f, 1f),
+                Mathf.Clamp(diagonal * 0.70f, 24f, 52f),
+                92f,
+                0.52f,
                 false);
 
             CreateSpot(
