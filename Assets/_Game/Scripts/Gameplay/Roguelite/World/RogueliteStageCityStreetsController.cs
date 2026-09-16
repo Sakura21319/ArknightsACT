@@ -6,9 +6,9 @@ using UnityEngine.Rendering;
 namespace ArknightsACT.Gameplay.Roguelite.World
 {
     /// <summary>
-    /// Converts the combat-cell floor language into a recognizable mobile-city street grid.
-    /// Roads and sidewalks own the central traversal cross; dense sealed facades sit on the camera-far
-    /// north/east edges, while existing PlayableArchitecture supplies the smaller enterable buildings.
+    /// Builds readable city streets from explicit district templates instead of stamping the same
+    /// dark cross into every cell. Roads are broad contiguous surfaces with restrained edges; alleys,
+    /// plazas, yards, ruins and checkpoints deliberately use different spatial grammars.
     /// </summary>
     [DefaultExecutionOrder(23)]
     [DisallowMultipleComponent]
@@ -16,7 +16,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
     {
         private const float ChunkWidth = 18f;
         private const float ChunkDepth = 14f;
-        private const float RoadHalfWidth = 2.55f;
 
         [SerializeField] private RogueliteStageMapController stageMap;
         [SerializeField] private ChernobogEnvironmentKit kit;
@@ -49,7 +48,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             Build(stage.transform);
             Physics.SyncTransforms();
             _preparedStage = stage;
-            Debug.Log($"[ArknightsACT/CityStreets] Stage {stageMap.StageIndex}: roads, sidewalks, sealed facades and street clutter built.", this);
+            Debug.Log($"[ArknightsACT/CityStreets] Stage {stageMap.StageIndex}: district street templates built.", this);
         }
 
         private void Build(Transform stage)
@@ -68,96 +67,193 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 if (data == null || block == null)
                     continue;
 
-                var cell = new GameObject($"Block_{i:00}_CityStreet").transform;
+                var marker = block.GetComponent<RogueliteDistrictTemplate25D>();
+                var district = marker != null
+                    ? marker.DistrictType
+                    : RogueliteStageDistrictTemplateController.ResolveDistrict(data, i, stageMap.StageIndex);
+
+                var cell = new GameObject($"Block_{i:00}_CityStreet_{district}").transform;
                 cell.SetParent(root, false);
                 cell.position = block.position;
 
-                BuildRoadGrid(cell, data.Theme, i);
-                BuildNorthStreetWall(cell, data, i);
-                if (data.Coordinate.x == stageMap.Width - 1)
-                    BuildEastStreetWall(cell, data, i + 97);
-                BuildStreetFurniture(cell, data.Theme, i);
+                BuildDistrictGround(cell, district, i);
+                BuildDistrictArchitecture(cell, data, district, i);
+                BuildDistrictFurniture(cell, district, i);
             }
         }
 
-        private void BuildRoadGrid(Transform parent, RogueliteChunkTheme theme, int seed)
+        private void BuildDistrictGround(Transform parent, ChernobogDistrictType district, int seed)
         {
-            var road = kit.insetMaterial != null ? kit.insetMaterial : kit.deckHeavyMaterial;
-            var sidewalk = kit.deckSecondaryMaterial != null ? kit.deckSecondaryMaterial : kit.deckMaterial;
-            var edge = kit.steelMaterial != null ? kit.steelMaterial : kit.deckHeavyMaterial;
-            var grate = kit.grateMaterial != null ? kit.grateMaterial : road;
+            var road = kit.deckHeavyMaterial != null ? kit.deckHeavyMaterial : kit.deckMaterial;
+            var pavement = kit.deckSecondaryMaterial != null ? kit.deckSecondaryMaterial : kit.deckMaterial;
+            var edge = kit.steelMaterial != null ? kit.steelMaterial : road;
+            var grate = kit.grateMaterial != null ? kit.grateMaterial : kit.insetMaterial;
+            var dark = kit.insetMaterial != null ? kit.insetMaterial : road;
 
-            // Central cross is deliberately uninterrupted so the current waypoint graph still owns a
-            // broad, reliable route between cells. The material change is visual, not a collider seam.
-            CreateBox(parent, "Road_EW", new Vector3(0f, 0.072f, 0f),
-                new Vector3(ChunkWidth - 0.36f, 0.030f, RoadHalfWidth * 2f), 0.006f, road, false);
-            CreateBox(parent, "Road_NS", new Vector3(0f, 0.074f, 0f),
-                new Vector3(RoadHalfWidth * 2f, 0.032f, ChunkDepth - 0.36f), 0.006f, road, false);
-
-            // Sidewalk/service strips make the cell read as a street block instead of a single metal pad.
-            CreateBox(parent, "Sidewalk_N", new Vector3(0f, 0.082f, 3.30f),
-                new Vector3(ChunkWidth - 0.45f, 0.050f, 1.06f), 0.008f, sidewalk, false);
-            CreateBox(parent, "Sidewalk_S", new Vector3(0f, 0.082f, -3.30f),
-                new Vector3(ChunkWidth - 0.45f, 0.050f, 1.06f), 0.008f, sidewalk, false);
-            CreateBox(parent, "Sidewalk_W", new Vector3(-3.35f, 0.084f, 0f),
-                new Vector3(1.08f, 0.052f, ChunkDepth - 0.45f), 0.008f, sidewalk, false);
-            CreateBox(parent, "Sidewalk_E", new Vector3(3.35f, 0.084f, 0f),
-                new Vector3(1.08f, 0.052f, ChunkDepth - 0.45f), 0.008f, sidewalk, false);
-
-            // Sparse road joints / drainage. No repeated orange IDs or bright tactical markings.
-            CreateBox(parent, "Drain_N", new Vector3(-1.65f, 0.101f, 2.72f),
-                new Vector3(2.2f, 0.026f, 0.30f), 0.004f, grate, false);
-            CreateBox(parent, "Drain_S", new Vector3(1.90f, 0.101f, -2.72f),
-                new Vector3(2.0f, 0.026f, 0.30f), 0.004f, grate, false);
-
-            if (theme == RogueliteChunkTheme.Street || theme == RogueliteChunkTheme.SafePlaza)
+            switch (district)
             {
-                CreateBox(parent, "RoadJoint_EW", new Vector3(0f, 0.097f, 0f),
-                    new Vector3(7.2f, 0.020f, 0.055f), 0.002f, edge, false);
-                CreateBox(parent, "RoadJoint_NS", new Vector3(0f, 0.098f, 0f),
-                    new Vector3(0.055f, 0.020f, 6.1f), 0.002f, edge, false);
+                case ChernobogDistrictType.MainStreet:
+                    BuildMainStreet(parent, road, pavement, edge, grate);
+                    break;
+                case ChernobogDistrictType.Alley:
+                    BuildAlley(parent, road, pavement, edge, grate);
+                    break;
+                case ChernobogDistrictType.Plaza:
+                    BuildPlaza(parent, pavement, road, edge, grate);
+                    break;
+                case ChernobogDistrictType.ServiceYard:
+                    BuildServiceYard(parent, pavement, road, edge, grate);
+                    break;
+                case ChernobogDistrictType.RuinedBlock:
+                    BuildRuinedStreet(parent, road, pavement, edge, dark, seed);
+                    break;
+                case ChernobogDistrictType.Checkpoint:
+                    BuildCheckpointRoad(parent, road, pavement, edge, grate);
+                    break;
             }
         }
 
-        private void BuildNorthStreetWall(Transform parent, RogueliteBlockState data, int seed)
+        private void BuildMainStreet(Transform parent, Material road, Material pavement, Material edge, Material grate)
         {
-            // The fixed gameplay camera looks toward north/east. Dense facades here create the same
-            // readable street-wall layering as story backgrounds without hiding the player in foreground.
-            var leftHeight = data.Theme == RogueliteChunkTheme.BossArena ? 7.4f : Mathf.Lerp(4.2f, 6.4f, Hash01(seed * 31 + 7));
-            var rightHeight = data.Theme == RogueliteChunkTheme.Facility ? 7.0f : Mathf.Lerp(3.8f, 6.8f, Hash01(seed * 47 + 13));
+            // One unmistakable, broad E/W street. The narrow N/S connector only communicates the
+            // junction and keeps the waypoint cross visually coherent without turning the whole cell
+            // into a checkerboard of dark strips.
+            CreateBox(parent, "MainStreet_Carriageway", new Vector3(0f, 0.073f, 0f),
+                new Vector3(ChunkWidth - 0.28f, 0.035f, 5.80f), 0.006f, road, false);
+            CreateBox(parent, "MainStreet_NorthWalk", new Vector3(0f, 0.086f, 3.62f),
+                new Vector3(ChunkWidth - 0.35f, 0.055f, 1.35f), 0.008f, pavement, false);
+            CreateBox(parent, "MainStreet_SouthWalk", new Vector3(0f, 0.086f, -3.62f),
+                new Vector3(ChunkWidth - 0.35f, 0.055f, 1.35f), 0.008f, pavement, false);
+            CreateBox(parent, "MainStreet_Junction", new Vector3(0f, 0.075f, 0f),
+                new Vector3(4.1f, 0.038f, ChunkDepth - 0.35f), 0.006f, road, false);
+            CreateBox(parent, "MainStreet_CenterJoint", new Vector3(0f, 0.098f, 0f),
+                new Vector3(ChunkWidth - 1.0f, 0.018f, 0.055f), 0.002f, edge, false);
+            CreateBox(parent, "MainStreet_GutterN", new Vector3(0f, 0.103f, 2.96f),
+                new Vector3(ChunkWidth - 0.70f, 0.020f, 0.18f), 0.003f, grate, false);
+            CreateBox(parent, "MainStreet_GutterS", new Vector3(0f, 0.103f, -2.96f),
+                new Vector3(ChunkWidth - 0.70f, 0.020f, 0.18f), 0.003f, grate, false);
+        }
 
-            if (data.Theme == RogueliteChunkTheme.SafePlaza)
+        private void BuildAlley(Transform parent, Material road, Material pavement, Material edge, Material grate)
+        {
+            CreateBox(parent, "Alley_Main", new Vector3(-1.25f, 0.074f, 0f),
+                new Vector3(3.55f, 0.036f, ChunkDepth - 0.30f), 0.006f, road, false);
+            CreateBox(parent, "Alley_Branch", new Vector3(2.15f, 0.075f, 1.15f),
+                new Vector3(7.0f, 0.036f, 2.65f), 0.006f, road, false);
+            CreateBox(parent, "Alley_WalkWest", new Vector3(-3.55f, 0.086f, 0f),
+                new Vector3(0.95f, 0.052f, ChunkDepth - 0.55f), 0.008f, pavement, false);
+            CreateBox(parent, "Alley_WalkEast", new Vector3(0.95f, 0.086f, -1.35f),
+                new Vector3(0.90f, 0.052f, ChunkDepth - 3.1f), 0.008f, pavement, false);
+            CreateBox(parent, "Alley_Drain", new Vector3(0.38f, 0.103f, -0.80f),
+                new Vector3(0.20f, 0.020f, 5.3f), 0.003f, grate, false);
+            CreateBox(parent, "Alley_BranchEdge", new Vector3(2.20f, 0.101f, 2.50f),
+                new Vector3(6.5f, 0.018f, 0.055f), 0.002f, edge, false);
+        }
+
+        private void BuildPlaza(Transform parent, Material pavement, Material road, Material edge, Material grate)
+        {
+            CreateBox(parent, "Plaza_MainPad", new Vector3(0f, 0.082f, 0f),
+                new Vector3(12.6f, 0.052f, 9.4f), 0.012f, pavement, false);
+            CreateBox(parent, "Plaza_EWEntry", new Vector3(0f, 0.074f, 0f),
+                new Vector3(ChunkWidth - 0.30f, 0.036f, 3.25f), 0.006f, road, false);
+            CreateBox(parent, "Plaza_NSEntry", new Vector3(0f, 0.075f, 0f),
+                new Vector3(3.25f, 0.036f, ChunkDepth - 0.30f), 0.006f, road, false);
+            CreateBox(parent, "Plaza_FrameN", new Vector3(0f, 0.108f, 4.54f),
+                new Vector3(11.5f, 0.025f, 0.10f), 0.003f, edge, false);
+            CreateBox(parent, "Plaza_FrameS", new Vector3(0f, 0.108f, -4.54f),
+                new Vector3(11.5f, 0.025f, 0.10f), 0.003f, edge, false);
+            CreateBox(parent, "Plaza_Drain", new Vector3(4.85f, 0.109f, 0f),
+                new Vector3(0.26f, 0.024f, 4.8f), 0.004f, grate, false);
+        }
+
+        private void BuildServiceYard(Transform parent, Material pavement, Material road, Material edge, Material grate)
+        {
+            CreateBox(parent, "Yard_Pad", new Vector3(0f, 0.080f, 0f),
+                new Vector3(13.8f, 0.050f, 9.8f), 0.010f, pavement, false);
+            CreateBox(parent, "Yard_ServiceLane", new Vector3(0f, 0.088f, -1.25f),
+                new Vector3(ChunkWidth - 0.32f, 0.036f, 3.65f), 0.006f, road, false);
+            CreateBox(parent, "Yard_LoadingApron", new Vector3(3.75f, 0.102f, 3.15f),
+                new Vector3(5.1f, 0.035f, 2.15f), 0.006f, road, false);
+            CreateBox(parent, "Yard_ServiceTrench", new Vector3(-4.65f, 0.110f, 2.8f),
+                new Vector3(0.50f, 0.026f, 4.2f), 0.004f, grate, false);
+            CreateBox(parent, "Yard_Edge", new Vector3(0f, 0.112f, 4.72f),
+                new Vector3(12.5f, 0.025f, 0.08f), 0.003f, edge, false);
+        }
+
+        private void BuildRuinedStreet(Transform parent, Material road, Material pavement, Material edge, Material dark, int seed)
+        {
+            CreateBox(parent, "Ruined_MainRoad", new Vector3(0f, 0.072f, 0f),
+                new Vector3(ChunkWidth - 0.30f, 0.034f, 4.6f), 0.006f, road, false);
+            CreateBox(parent, "Ruined_SidewalkN", new Vector3(-1.6f, 0.084f, 3.42f),
+                new Vector3(12.0f, 0.050f, 1.25f), 0.008f, pavement, false);
+            CreateBox(parent, "Ruined_PatchA", new Vector3(-4.8f, 0.104f, -0.45f),
+                new Vector3(3.6f, 0.022f, 2.15f), 0.004f, dark, false,
+                Quaternion.Euler(0f, Hash01(seed + 7) * 8f - 4f, 0f));
+            CreateBox(parent, "Ruined_PatchB", new Vector3(3.8f, 0.105f, 0.68f),
+                new Vector3(2.8f, 0.024f, 1.65f), 0.004f, dark, false,
+                Quaternion.Euler(0f, Hash01(seed + 17) * 10f - 5f, 0f));
+            CreateBox(parent, "Ruined_CrackBand", new Vector3(0.8f, 0.110f, -2.28f),
+                new Vector3(5.8f, 0.020f, 0.065f), 0.002f, edge, false,
+                Quaternion.Euler(0f, -8f, 0f));
+        }
+
+        private void BuildCheckpointRoad(Transform parent, Material road, Material pavement, Material edge, Material grate)
+        {
+            CreateBox(parent, "Checkpoint_Road", new Vector3(0f, 0.073f, 0f),
+                new Vector3(ChunkWidth - 0.28f, 0.036f, 5.1f), 0.006f, road, false);
+            CreateBox(parent, "Checkpoint_InspectionPad", new Vector3(1.6f, 0.088f, 0f),
+                new Vector3(7.6f, 0.045f, 7.6f), 0.010f, pavement, false);
+            CreateBox(parent, "Checkpoint_NSAccess", new Vector3(0f, 0.075f, 0f),
+                new Vector3(3.45f, 0.036f, ChunkDepth - 0.30f), 0.006f, road, false);
+            CreateBox(parent, "Checkpoint_StopLine", new Vector3(-1.55f, 0.109f, 0f),
+                new Vector3(0.08f, 0.022f, 4.45f), 0.003f, edge, false);
+            CreateBox(parent, "Checkpoint_Drain", new Vector3(5.25f, 0.109f, 0f),
+                new Vector3(0.30f, 0.024f, 4.15f), 0.004f, grate, false);
+        }
+
+        private void BuildDistrictArchitecture(Transform parent, RogueliteBlockState data, ChernobogDistrictType district, int seed)
+        {
+            // Buildings stay concentrated on camera-far edges. District templates decide how much street
+            // wall exists so open/plaza cells no longer feel randomly packed with the same tall masses.
+            switch (district)
             {
-                BuildClosedStorefront(parent, new Vector3(-5.15f, 0f, 5.18f), 4.55f, 2.72f, 3.25f, seed);
-                BuildSealedBuilding(parent, new Vector3(5.15f, 0f, 5.18f), 4.55f, 2.72f, 4.6f, seed + 11, true);
-                return;
+                case ChernobogDistrictType.MainStreet:
+                    BuildSealedBuilding(parent, new Vector3(-5.35f, 0f, 5.35f), 4.10f, 2.45f,
+                        Mathf.Lerp(4.2f, 5.8f, Hash01(seed + 5)), seed, false);
+                    if (PositiveMod(seed, 2) == 0)
+                        BuildClosedStorefront(parent, new Vector3(5.15f, 0f, 5.38f), 4.0f, 2.40f, 3.25f, seed + 17);
+                    break;
+                case ChernobogDistrictType.Alley:
+                    BuildSealedBuilding(parent, new Vector3(-5.55f, 0f, 5.30f), 3.75f, 2.55f,
+                        Mathf.Lerp(5.2f, 6.8f, Hash01(seed + 9)), seed, true);
+                    break;
+                case ChernobogDistrictType.Plaza:
+                    if (PositiveMod(seed, 2) == 0)
+                        BuildClosedStorefront(parent, new Vector3(5.45f, 0f, 5.42f), 3.8f, 2.35f, 3.1f, seed + 23);
+                    break;
+                case ChernobogDistrictType.ServiceYard:
+                    BuildSealedBuilding(parent, new Vector3(5.35f, 0f, 5.28f), 4.15f, 2.55f,
+                        4.3f, seed + 31, true);
+                    break;
+                case ChernobogDistrictType.RuinedBlock:
+                    BuildSealedBuilding(parent, new Vector3(-5.45f, 0f, 5.35f), 3.9f, 2.45f,
+                        4.0f, seed + 41, false);
+                    break;
+                case ChernobogDistrictType.Checkpoint:
+                    BuildSealedBuilding(parent, new Vector3(5.35f, 0f, 5.30f), 3.8f, 2.45f,
+                        4.4f, seed + 53, true);
+                    break;
             }
 
-            BuildSealedBuilding(parent, new Vector3(-5.15f, 0f, 5.12f), 4.55f, 2.78f, leftHeight, seed, false);
-            if (data.Theme == RogueliteChunkTheme.Open && PositiveMod(seed, 3) == 1)
-                BuildClosedStorefront(parent, new Vector3(5.15f, 0f, 5.14f), 4.55f, 2.74f, 3.45f, seed + 19);
-            else
-                BuildSealedBuilding(parent, new Vector3(5.15f, 0f, 5.12f), 4.55f, 2.78f, rightHeight, seed + 19, true);
+            if (data.Coordinate.x == stageMap.Width - 1 && district != ChernobogDistrictType.Plaza)
+            {
+                var z = PositiveMod(seed, 2) == 0 ? 4.6f : -4.6f;
+                BuildSideBuilding(parent, new Vector3(7.35f, 0f, z), 2.35f, 3.15f,
+                    Mathf.Lerp(3.8f, 5.4f, Hash01(seed + 71)), seed + 71);
+            }
         }
 
-        private void BuildEastStreetWall(Transform parent, RogueliteBlockState data, int seed)
-        {
-            // Only the map's right-most column gets this extra external-facing wall. It closes the
-            // camera-right silhouette while keeping the E/W traversal opening around z=0 completely clear.
-            BuildSideBuilding(parent, new Vector3(7.25f, 0f, 4.55f), 2.65f, 3.65f,
-                Mathf.Lerp(4.5f, 7.2f, Hash01(seed + 3)), seed);
-            BuildSideBuilding(parent, new Vector3(7.25f, 0f, -4.55f), 2.65f, 3.65f,
-                Mathf.Lerp(3.8f, 6.4f, Hash01(seed + 17)), seed + 17);
-        }
-
-        private void BuildSealedBuilding(
-            Transform parent,
-            Vector3 anchor,
-            float width,
-            float depth,
-            float height,
-            int seed,
-            bool utilityFacade)
+        private void BuildSealedBuilding(Transform parent, Vector3 anchor, float width, float depth, float height, int seed, bool utilityFacade)
         {
             var root = new GameObject(utilityFacade ? "SealedUtilityBuilding" : "SealedCityBuilding").transform;
             root.SetParent(parent, false);
@@ -176,40 +272,30 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             var floors = Mathf.Clamp(Mathf.RoundToInt(height / 1.75f), 2, 4);
             for (var floor = 0; floor < floors; floor++)
             {
-                var y = 1.05f + floor * 1.45f;
-                if (y > height - 0.45f)
+                var y = 1.0f + floor * 1.42f;
+                if (y > height - 0.4f)
                     break;
-
                 for (var panel = -1; panel <= 1; panel++)
                 {
                     var x = panel * width * 0.25f;
                     CreateBox(root, $"FacadeWindow_{floor}_{panel + 1}",
                         new Vector3(x, y, -depth * 0.5f - 0.036f),
-                        new Vector3(width * 0.18f, 0.66f, 0.055f), 0.006f,
+                        new Vector3(width * 0.18f, 0.62f, 0.055f), 0.006f,
                         utilityFacade && panel == 0 ? grate : inset, false);
                 }
             }
 
-            CreateBox(root, "FacadeBand", new Vector3(0f, Mathf.Min(height - 0.42f, 2.72f), -depth * 0.5f - 0.052f),
-                new Vector3(width * 0.84f, 0.12f, 0.07f), 0.012f, steel, false);
-
-            if (kit.hvacSmall != null && PositiveMod(seed, 2) == 0)
+            if (kit.hvacSmall != null && PositiveMod(seed, 3) == 0)
             {
                 var hvac = Instantiate(kit.hvacSmall, root);
                 hvac.name = "RoofHVAC";
                 hvac.transform.localPosition = new Vector3(width * 0.18f, height + 0.18f, 0f);
-                hvac.transform.localScale = new Vector3(0.72f, 0.72f, 0.72f);
+                hvac.transform.localScale = Vector3.one * 0.66f;
                 DisablePrefabColliders(hvac);
             }
         }
 
-        private void BuildClosedStorefront(
-            Transform parent,
-            Vector3 anchor,
-            float width,
-            float depth,
-            float height,
-            int seed)
+        private void BuildClosedStorefront(Transform parent, Vector3 anchor, float width, float depth, float height, int seed)
         {
             var root = new GameObject("ClosedStorefront").transform;
             root.SetParent(parent, false);
@@ -222,12 +308,10 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
             CreateBox(root, "StoreMass", new Vector3(0f, height * 0.5f, 0f),
                 new Vector3(width, height, depth), 0.12f, wall, true);
-            CreateBox(root, "RollerShutter", new Vector3(0f, 1.35f, -depth * 0.5f - 0.045f),
-                new Vector3(width * 0.70f, 2.20f, 0.065f), 0.008f, grate, false);
-            CreateBox(root, "DoorFrameTop", new Vector3(0f, 2.55f, -depth * 0.5f - 0.065f),
-                new Vector3(width * 0.78f, 0.16f, 0.09f), 0.018f, steel, false);
-            CreateBox(root, "Awning", new Vector3(0f, 2.82f, -depth * 0.5f - 0.42f),
-                new Vector3(width * 0.82f, 0.12f, 0.86f), 0.025f, steel, false,
+            CreateBox(root, "RollerShutter", new Vector3(0f, 1.25f, -depth * 0.5f - 0.045f),
+                new Vector3(width * 0.68f, 1.95f, 0.065f), 0.008f, grate, false);
+            CreateBox(root, "Awning", new Vector3(0f, 2.58f, -depth * 0.5f - 0.36f),
+                new Vector3(width * 0.80f, 0.12f, 0.72f), 0.025f, steel, false,
                 Quaternion.Euler(6f, 0f, 0f));
             CreateBox(root, "Roof", new Vector3(0f, height + 0.09f, 0f),
                 new Vector3(width * 1.05f, 0.18f, depth * 1.05f), 0.04f, steel, false);
@@ -247,40 +331,50 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             CreateBox(root, "Mass", new Vector3(0f, height * 0.5f, 0f),
                 new Vector3(width, height, depth), 0.12f, wall, true);
             CreateBox(root, "EastFacadeInset", new Vector3(-width * 0.5f - 0.035f, height * 0.48f, 0f),
-                new Vector3(0.055f, Mathf.Min(1.5f, height * 0.32f), depth * 0.62f), 0.006f, grate, false);
+                new Vector3(0.055f, Mathf.Min(1.45f, height * 0.32f), depth * 0.62f), 0.006f, grate, false);
             CreateBox(root, "Cap", new Vector3(0f, height + 0.10f, 0f),
                 new Vector3(width * 1.06f, 0.20f, depth * 1.05f), 0.04f, steel, false);
         }
 
-        private void BuildStreetFurniture(Transform parent, RogueliteChunkTheme theme, int seed)
+        private void BuildDistrictFurniture(Transform parent, ChernobogDistrictType district, int seed)
         {
             var steel = kit.steelMaterial != null ? kit.steelMaterial : kit.wallMaterial;
             var inset = kit.insetMaterial != null ? kit.insetMaterial : steel;
             var emissive = kit.emissiveMaterial != null ? kit.emissiveMaterial : kit.accentMaterial;
 
-            BuildLamp(parent, new Vector3(-4.15f, 0f, 3.78f), steel, emissive);
-            if (PositiveMod(seed, 2) == 0)
-                BuildLamp(parent, new Vector3(4.15f, 0f, -3.78f), steel, emissive);
-
-            CreateBox(parent, "StreetServiceCabinet", new Vector3(5.55f, 0.52f, 3.70f),
-                new Vector3(0.80f, 1.04f, 0.62f), 0.055f, inset, true);
-
-            // A small line of bollards defines the pedestrian/service edge without sealing the route.
-            for (var i = 0; i < 3; i++)
+            switch (district)
             {
-                var x = -5.65f + i * 0.62f;
-                CreateBox(parent, $"Bollard_{i}", new Vector3(x, 0.34f, -3.82f),
-                    new Vector3(0.16f, 0.68f, 0.16f), 0.025f, steel, true);
-            }
-
-            if (theme == RogueliteChunkTheme.Facility && kit.pipeRun != null)
-            {
-                var pipe = Instantiate(kit.pipeRun, parent);
-                pipe.name = "StreetPipeService";
-                pipe.transform.localPosition = new Vector3(6.05f, 0.10f, -3.70f);
-                pipe.transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
-                pipe.transform.localScale = new Vector3(0.72f, 0.72f, 0.72f);
-                DisablePrefabColliders(pipe);
+                case ChernobogDistrictType.MainStreet:
+                    BuildLamp(parent, new Vector3(-5.55f, 0f, 3.82f), steel, emissive);
+                    BuildLamp(parent, new Vector3(5.55f, 0f, -3.82f), steel, emissive);
+                    CreateBox(parent, "StreetCabinet", new Vector3(6.05f, 0.50f, 3.70f),
+                        new Vector3(0.72f, 1.0f, 0.58f), 0.05f, inset, true);
+                    break;
+                case ChernobogDistrictType.Alley:
+                    BuildLamp(parent, new Vector3(-3.95f, 0f, -4.85f), steel, emissive);
+                    CreateBox(parent, "AlleyCabinet", new Vector3(1.62f, 0.44f, 4.72f),
+                        new Vector3(0.62f, 0.88f, 0.54f), 0.05f, inset, true);
+                    break;
+                case ChernobogDistrictType.Plaza:
+                    BuildLamp(parent, new Vector3(-5.35f, 0f, 4.68f), steel, emissive);
+                    BuildLamp(parent, new Vector3(5.35f, 0f, 4.68f), steel, emissive);
+                    break;
+                case ChernobogDistrictType.ServiceYard:
+                    CreateBox(parent, "YardCabinetA", new Vector3(-5.4f, 0.58f, 4.35f),
+                        new Vector3(0.86f, 1.16f, 0.68f), 0.055f, inset, true);
+                    CreateBox(parent, "YardCabinetB", new Vector3(-4.25f, 0.42f, 4.30f),
+                        new Vector3(0.70f, 0.84f, 0.62f), 0.050f, inset, true);
+                    break;
+                case ChernobogDistrictType.Checkpoint:
+                    for (var i = 0; i < 3; i++)
+                        CreateBox(parent, $"CheckpointBollard_{i}", new Vector3(-2.15f, 0.32f, -1.10f + i * 1.10f),
+                            new Vector3(0.18f, 0.64f, 0.18f), 0.025f, steel, true);
+                    BuildLamp(parent, new Vector3(5.45f, 0f, 4.2f), steel, emissive);
+                    break;
+                case ChernobogDistrictType.RuinedBlock:
+                    if (PositiveMod(seed, 2) == 0)
+                        BuildLamp(parent, new Vector3(-5.25f, 0f, 4.2f), steel, emissive);
+                    break;
             }
         }
 
@@ -294,15 +388,8 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             CreateBox(root, "Lamp", new Vector3(0.70f, 2.86f, 0f), new Vector3(0.20f, 0.12f, 0.18f), 0.025f, emissive, false);
         }
 
-        private static GameObject CreateBox(
-            Transform parent,
-            string name,
-            Vector3 localPosition,
-            Vector3 size,
-            float bevel,
-            Material material,
-            bool collider,
-            Quaternion? localRotation = null)
+        private static GameObject CreateBox(Transform parent, string name, Vector3 localPosition, Vector3 size, float bevel,
+            Material material, bool collider, Quaternion? localRotation = null)
         {
             var go = new GameObject(name);
             go.transform.SetParent(parent, false);
@@ -310,7 +397,8 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             go.transform.localRotation = localRotation ?? Quaternion.identity;
 
             var filter = go.AddComponent<MeshFilter>();
-            filter.sharedMesh = ChernobogBeveledMeshFactory.GetBox(size, Mathf.Min(bevel, Mathf.Min(size.x, Mathf.Min(size.y, size.z)) * 0.22f));
+            filter.sharedMesh = ChernobogBeveledMeshFactory.GetBox(size,
+                Mathf.Min(bevel, Mathf.Min(size.x, Mathf.Min(size.y, size.z)) * 0.22f));
             var renderer = go.AddComponent<MeshRenderer>();
             renderer.sharedMaterial = material;
             renderer.shadowCastingMode = ShadowCastingMode.On;
@@ -364,6 +452,8 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         private static int PositiveMod(int value, int divisor)
         {
+            if (divisor <= 0)
+                return 0;
             var result = value % divisor;
             return result < 0 ? result + divisor : result;
         }
