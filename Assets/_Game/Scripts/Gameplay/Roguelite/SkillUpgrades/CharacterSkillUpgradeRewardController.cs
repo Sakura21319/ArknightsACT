@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using ArknightsACT.Gameplay.Feedback;
+using ArknightsACT.Gameplay.Roguelite.Rewards;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -9,14 +10,24 @@ namespace ArknightsACT.Gameplay.Roguelite.SkillUpgrades
     [DisallowMultipleComponent]
     public sealed class CharacterSkillUpgradeRewardController : MonoBehaviour
     {
+        private sealed class RewardRequest
+        {
+            public string Title;
+            public int ChoiceCount;
+            public Action Completed;
+        }
+
         [SerializeField] private CharacterSkillUpgradeInventory inventory;
         [SerializeField] private CharacterSkillUpgradeDefinition[] pool;
 
+        private readonly Queue<RewardRequest> _pendingRequests = new();
         private readonly List<CharacterSkillUpgradeDefinition> _choices = new();
         private GameplayPauseService _pause;
+        private RewardSelectionCoordinator _coordinator;
         private Action _completed;
         private bool _isOpen;
         private string _title = "技能特化";
+        private int _inputUnlockFrame;
 
         public bool IsOpen => _isOpen;
 
@@ -26,28 +37,56 @@ namespace ArknightsACT.Gameplay.Roguelite.SkillUpgrades
             pool = rewardPool;
         }
 
-        private void OnEnable() => _pause = GameplayPauseService.Instance;
+        private void OnEnable()
+        {
+            _pause = GameplayPauseService.Instance;
+            _coordinator = RewardSelectionCoordinator.Instance ?? FindFirstObjectByType<RewardSelectionCoordinator>();
+        }
 
         private void OnDisable()
         {
             CloseWithoutCallback();
+            _coordinator?.Release(this);
             _completed = null;
+            _pendingRequests.Clear();
         }
 
         public bool OpenReward(string title, int requestedChoiceCount, Action completed)
         {
-            if (_isOpen || inventory == null)
+            if (inventory == null)
                 return false;
 
-            _title = string.IsNullOrWhiteSpace(title) ? "技能特化" : title;
-            _completed = completed;
-            BuildChoices(Mathf.Clamp(requestedChoiceCount, 1, 3));
+            _pendingRequests.Enqueue(new RewardRequest
+            {
+                Title = string.IsNullOrWhiteSpace(title) ? "技能特化" : title,
+                ChoiceCount = Mathf.Clamp(requestedChoiceCount, 1, 3),
+                Completed = completed
+            });
+            TryOpenNext();
+            return true;
+        }
+
+        private void TryOpenNext()
+        {
+            if (_isOpen || _pendingRequests.Count == 0)
+                return;
+
+            _coordinator ??= RewardSelectionCoordinator.Instance ?? FindFirstObjectByType<RewardSelectionCoordinator>();
+            if (_coordinator != null && !_coordinator.TryAcquire(this))
+                return;
+
+            var request = _pendingRequests.Dequeue();
+            _title = request.Title;
+            _completed = request.Completed;
+            BuildChoices(request.ChoiceCount);
             if (_choices.Count == 0)
             {
                 var callback = _completed;
                 _completed = null;
+                _coordinator?.Release(this);
                 callback?.Invoke();
-                return false;
+                TryOpenNext();
+                return;
             }
 
             _pause ??= GameplayPauseService.Instance;
@@ -56,13 +95,19 @@ namespace ArknightsACT.Gameplay.Roguelite.SkillUpgrades
             else
                 Time.timeScale = 0f;
             _isOpen = true;
-            return true;
+            _inputUnlockFrame = Time.frameCount + 1;
         }
 
         private void Update()
         {
-            if (!_isOpen || Keyboard.current == null)
+            if (!_isOpen)
+            {
+                TryOpenNext();
                 return;
+            }
+            if (Time.frameCount < _inputUnlockFrame || Keyboard.current == null)
+                return;
+
             if (Keyboard.current.digit1Key.wasPressedThisFrame || Keyboard.current.numpad1Key.wasPressedThisFrame)
                 Choose(0);
             else if (Keyboard.current.digit2Key.wasPressedThisFrame || Keyboard.current.numpad2Key.wasPressedThisFrame)
@@ -117,6 +162,7 @@ namespace ArknightsACT.Gameplay.Roguelite.SkillUpgrades
             _completed = null;
             CloseWithoutCallback();
             callback?.Invoke();
+            TryOpenNext();
         }
 
         private void CloseWithoutCallback()
@@ -129,6 +175,7 @@ namespace ArknightsACT.Gameplay.Roguelite.SkillUpgrades
                 _pause.Resume(this);
             else
                 Time.timeScale = 1f;
+            _coordinator?.Release(this);
         }
 
         private void OnGUI()
