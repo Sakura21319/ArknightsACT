@@ -154,6 +154,14 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             CreateBox(parent, "DeckPatch_B", patchB + new Vector3(0f, 0.058f, 0f),
                 new Vector3(2.1f, 0.032f, 1.35f), 0.007f, material, false,
                 Quaternion.Euler(0f, selector % 2 == 0 ? 90f : 0f, 0f));
+
+            if (kit.floorGrate != null && PositiveMod(blockIndex + stageMap.StageIndex, 2) == 0)
+            {
+                var grate = Instantiate(kit.floorGrate, parent);
+                grate.name = "ServiceGratePatch";
+                grate.transform.localPosition = Anchor(selector + 7) * 0.54f + new Vector3(0f, 0.072f, 0f);
+                grate.transform.localRotation = Quaternion.Euler(0f, selector * 90f, 0f);
+            }
         }
 
         private void BuildScaffold(Transform parent, Vector3 anchor, float height, int seed)
@@ -303,14 +311,11 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 var filter = go.AddComponent<MeshFilter>();
                 filter.sharedMesh = i % 2 == 0 ? _crystalMeshA : _crystalMeshB;
                 var renderer = go.AddComponent<MeshRenderer>();
-                renderer.sharedMaterials = _crystalFacet != null && i % 3 == 0
-                    ? new[] { _crystalDark, _crystalFacet }
-                    : new[] { _crystalDark, _crystalDark };
+                renderer.sharedMaterial = _crystalFacet != null && i % 4 == 0 ? _crystalFacet : _crystalDark;
                 renderer.shadowCastingMode = ShadowCastingMode.On;
                 renderer.receiveShadows = true;
             }
 
-            // Small dark debris ties the crystal growth into the steel deck instead of looking planted.
             BuildRubbleCluster(root, Vector3.zero, seed + 401, Mathf.Clamp(count / 2, 2, 4));
         }
 
@@ -363,18 +368,15 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             for (var i = 0; i < sides; i++)
             {
                 var next = (i + 1) % sides;
-                // bottom fan
                 triangles[cursor++] = 0;
                 triangles[cursor++] = 1 + next;
                 triangles[cursor++] = 1 + i;
-                // lower faceted wall
                 triangles[cursor++] = 1 + i;
                 triangles[cursor++] = 1 + next;
                 triangles[cursor++] = 1 + sides + i;
                 triangles[cursor++] = 1 + next;
                 triangles[cursor++] = 1 + sides + next;
                 triangles[cursor++] = 1 + sides + i;
-                // upper point
                 triangles[cursor++] = 1 + sides + i;
                 triangles[cursor++] = 1 + sides + next;
                 triangles[cursor++] = topIndex;
@@ -390,7 +392,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         private static Vector3 Anchor(int index)
         {
-            // Keep the central +-4m cross quiet for ACT movement and cardinal block navigation.
             var anchors = new[]
             {
                 new Vector3(-6.55f, 0f, 4.70f),
