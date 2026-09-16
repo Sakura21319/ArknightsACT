@@ -30,12 +30,10 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         private readonly List<Material> _ownedMaterials = new();
         private GameObject _decoratedStage;
         private float _nextResolveAt;
-        private int _pitCount;
         private Material _buildingMaterial;
         private Material _buildingAccentMaterial;
         private Material _originiumMaterial;
         private Material _hazardMaterial;
-        private Material _pitMaterial;
         private Material _boltMaterial;
 
         public RogueliteCatastropheKind CurrentCatastrophe { get; private set; }
@@ -79,7 +77,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             if (!prototypeHazardsEnabled)
                 return;
 
-            _pitCount = 0;
             for (var i = 0; i < stageMap.Blocks.Count; i++)
             {
                 var data = stageMap.Blocks[i];
@@ -91,11 +88,9 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 DecorateBlockHazards(block, data, i);
             }
 
-            EnsureAtLeastOnePit(stage.transform);
-
             Debug.Log(
                 $"[ArknightsACT/Environment] Stage {stageMap.StageIndex} decorated. " +
-                $"Catastrophe={CurrentCatastrophe}, pits={_pitCount}.",
+                $"Catastrophe={CurrentCatastrophe}, pits=disabled.",
                 this);
         }
 
@@ -104,7 +99,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             var rng = new System.Random(unchecked(stageMap.StageIndex * 104729 + blockIndex * 8191 + 21319));
             var emergency = data.Type == RogueliteBlockType.EmergencyCombat;
             var boss = data.Type == RogueliteBlockType.Boss;
-            var facility = data.Theme == RogueliteChunkTheme.Facility;
 
             if (boss)
             {
@@ -123,14 +117,8 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 CreateOriginium(block, new Vector3(x, 0f, z), new Vector2(2.7f, 1.55f));
             }
 
-            var pitChance = emergency ? 0.75 : 0.38;
-            if (!facility && rng.NextDouble() < pitChance)
-            {
-                var x = rng.NextDouble() < 0.5 ? -3.2f : 3.2f;
-                var z = rng.NextDouble() < 0.5 ? -2.2f : 2.2f;
-                CreatePit(block, new Vector3(x, 0f, z), block.position + new Vector3(0f, 0.10f, 0f));
-            }
-
+            // Pit hazards were retired from the prototype. Keep the field traversable and spend the
+            // environment budget on recognizable Arknights terrain such as Active Originium instead.
             if (emergency ? rng.NextDouble() < 0.70 : rng.NextDouble() < 0.20)
             {
                 var fromWest = rng.NextDouble() < 0.5;
@@ -138,29 +126,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                     block,
                     new Vector3(fromWest ? -5.6f : 5.6f, 0f, (float)(rng.NextDouble() * 3.0 - 1.5)),
                     fromWest ? Vector3.right : Vector3.left);
-            }
-        }
-
-        private void EnsureAtLeastOnePit(Transform stage)
-        {
-            if (_pitCount > 0 || stageMap == null)
-                return;
-
-            for (var i = 0; i < stageMap.Blocks.Count; i++)
-            {
-                var data = stageMap.Blocks[i];
-                if (data == null ||
-                    data.Type == RogueliteBlockType.Start ||
-                    data.Type == RogueliteBlockType.Shop ||
-                    data.Type == RogueliteBlockType.Boss)
-                    continue;
-
-                var block = FindBlockTransform(stage, i);
-                if (block == null)
-                    continue;
-
-                CreatePit(block, new Vector3(-3.8f, 0f, -2.65f), block.position + new Vector3(0f, 0.10f, 0f));
-                return;
             }
         }
 
@@ -179,6 +144,8 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             body.useGravity = false;
             root.AddComponent<ActiveOriginiumZone25D>().Configure(0.025f, 0.30f);
 
+            // A temporary red base is created here so the hazard never flashes purple while the late
+            // production presentation pass snaps it to a floor socket and replaces it with the full tile.
             CreateVisual(root.transform, "OriginiumTile", new Vector3(0f, 0.028f, 0f), new Vector3(footprint.x, 0.055f, footprint.y), _originiumMaterial);
             for (var i = 0; i < 5; i++)
             {
@@ -193,29 +160,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                     _originiumMaterial);
                 crystal.transform.localRotation = Quaternion.Euler(8f + i * 5f, i * 29f, 11f);
             }
-        }
-
-        private void CreatePit(Transform parent, Vector3 localPosition, Vector3 resetPosition)
-        {
-            var root = new GameObject("Hazard_Hole");
-            root.transform.SetParent(parent, false);
-            root.transform.localPosition = localPosition;
-
-            var trigger = root.AddComponent<BoxCollider>();
-            trigger.isTrigger = true;
-            trigger.center = new Vector3(0f, 0.22f, 0f);
-            trigger.size = new Vector3(2.45f, 0.46f, 1.95f);
-            var body = root.AddComponent<Rigidbody>();
-            body.isKinematic = true;
-            body.useGravity = false;
-            root.AddComponent<PitHazard25D>().Configure(resetPosition, 0.20f);
-
-            CreateVisual(root.transform, "PitDepth", new Vector3(0f, 0.020f, 0f), new Vector3(2.45f, 0.040f, 1.95f), _pitMaterial);
-            CreateVisual(root.transform, "PitEdgeN", new Vector3(0f, 0.060f, 1.04f), new Vector3(2.72f, 0.10f, 0.14f), _hazardMaterial);
-            CreateVisual(root.transform, "PitEdgeS", new Vector3(0f, 0.060f, -1.04f), new Vector3(2.72f, 0.10f, 0.14f), _hazardMaterial);
-            CreateVisual(root.transform, "PitEdgeE", new Vector3(1.29f, 0.060f, 0f), new Vector3(0.14f, 0.10f, 1.95f), _hazardMaterial);
-            CreateVisual(root.transform, "PitEdgeW", new Vector3(-1.29f, 0.060f, 0f), new Vector3(0.14f, 0.10f, 1.95f), _hazardMaterial);
-            _pitCount++;
         }
 
         private void CreateBallista(Transform parent, Vector3 localPosition, Vector3 direction)
@@ -300,8 +244,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             _buildingAccentMaterial = floor ?? sidewalk ?? cover ?? fallback;
             _hazardMaterial = hazard ?? accent ?? _buildingAccentMaterial ?? fallback;
 
-            _originiumMaterial = CloneTint(accent ?? _hazardMaterial ?? fallback, new Color(0.48f, 0.18f, 0.62f), "Runtime_Originium");
-            _pitMaterial = CloneTint(ground ?? cover ?? fallback, new Color(0.018f, 0.021f, 0.026f), "Runtime_Pit");
+            _originiumMaterial = CloneTint(accent ?? _hazardMaterial ?? fallback, new Color(0.62f, 0.045f, 0.025f), "Runtime_OriginiumRed");
             _boltMaterial = CloneTint(accent ?? _hazardMaterial ?? fallback, new Color(0.96f, 0.62f, 0.14f), "Runtime_BallistaBolt");
         }
 
@@ -399,7 +342,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             }
             _ownedMaterials.Clear();
             _originiumMaterial = null;
-            _pitMaterial = null;
             _boltMaterial = null;
         }
     }
