@@ -25,6 +25,46 @@ namespace ArknightsACT.Editor.PRTS
             -0.72f,
             0.38f);
 
+        public static readonly PrtsAssetDescriptor NormalTreasureChest = new(
+            "宝箱·水月",
+            "https://prts.wiki/w/%E5%AE%9D%E7%AE%B1%28%E6%B0%B4%E6%9C%88%29",
+            "https://torappu.prts.wiki/assets/char_spine/trap_065_normbox/defaultskin/spine/",
+            "trap_065_normbox",
+            "Assets/_Game/Art/Props/PRTS/NormalTreasureChest/Spine",
+            "Treasure",
+            0.90f,
+            -0.42f,
+            0.42f);
+
+        public static readonly PrtsAssetDescriptor SpikeTreasureChest = new(
+            "尖刺宝箱·水月",
+            "https://prts.wiki/w/%E5%B0%96%E5%88%BA%E5%AE%9D%E7%AE%B1%28%E6%B0%B4%E6%9C%88%29",
+            "https://torappu.prts.wiki/assets/char_spine/trap_066_rarebox/defaultskin/spine/",
+            "trap_066_rarebox",
+            "Assets/_Game/Art/Props/PRTS/SpikeTreasureChest/Spine",
+            "SpikeTreasure",
+            0.95f,
+            -0.44f,
+            0.42f);
+
+        public static readonly PrtsAssetDescriptor ChestSeaborn = new(
+            "箱形恐鱼",
+            "https://prts.wiki/w/%E7%AE%B1%E5%BD%A2%E6%81%90%E9%B1%BC",
+            "https://torappu.prts.wiki/assets/enemy_spine/enemy_2035_sybox/",
+            "enemy_2035_sybox",
+            "Assets/_Game/Art/Enemies/PRTS/ChestSeaborn/Spine",
+            "TreasureMonster",
+            1.15f,
+            -0.55f,
+            0.38f);
+
+        public static readonly PrtsAssetDescriptor[] RogueliteTreasureAssets =
+        {
+            NormalTreasureChest,
+            SpikeTreasureChest,
+            ChestSeaborn
+        };
+
         public static readonly PrtsAssetDescriptor[] PrototypeEnemies =
         {
             new(
@@ -91,11 +131,14 @@ namespace ArknightsACT.Editor.PRTS
 
         public static PrtsAssetDescriptor[] GetFullPrototypePack()
         {
-            var result = new PrtsAssetDescriptor[PrototypeEnemies.Length + 2];
-            result[0] = Chen;
-            result[1] = ChenBaseMotion;
+            var result = new PrtsAssetDescriptor[PrototypeEnemies.Length + RogueliteTreasureAssets.Length + 2];
+            var index = 0;
+            result[index++] = Chen;
+            result[index++] = ChenBaseMotion;
             for (var i = 0; i < PrototypeEnemies.Length; i++)
-                result[i + 2] = PrototypeEnemies[i];
+                result[index++] = PrototypeEnemies[i];
+            for (var i = 0; i < RogueliteTreasureAssets.Length; i++)
+                result[index++] = RogueliteTreasureAssets[i];
             return result;
         }
     }
