@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using ArknightsACT.Gameplay.Navigation;
 using UnityEngine;
 
 namespace ArknightsACT.Editor
@@ -34,6 +35,10 @@ namespace ArknightsACT.Editor
             var oldGenerated = GameObject.Find("Building_NE_Walkable");
             if (oldGenerated != null)
                 Object.DestroyImmediate(oldGenerated);
+
+            var oldNavigation = GameObject.Find("[Navigation25D]");
+            if (oldNavigation != null)
+                Object.DestroyImmediate(oldNavigation);
 
             var root = new GameObject("Building_NE_Walkable");
             root.transform.SetParent(map, true);
@@ -98,7 +103,59 @@ namespace ArknightsACT.Editor
             CreateBlock(root.transform, "Cover_Roof", new Vector3(8.15f, level2Y + 0.42f, 7.15f),
                 new Vector3(0.85f, 0.84f, 0.85f), accentMaterial);
 
-            Debug.Log("[ArknightsACT/25D] Added walkable NE building: ground floor -> level 2 -> roof deck via external ramps.");
+            BuildNavigationGraph(map, groundY, level1Y, level2Y);
+            Debug.Log("[ArknightsACT/25D] Added walkable NE building and navigation graph: ground floor -> level 2 -> roof deck.");
+        }
+
+        private static void BuildNavigationGraph(Transform map, float groundY, float level1Y, float level2Y)
+        {
+            var navObject = new GameObject("[Navigation25D]");
+            navObject.transform.SetParent(map, true);
+            var graph = navObject.AddComponent<PrototypeNavigationGraph25D>();
+
+            // Street nodes intentionally route around the center obstacles before entering the
+            // building graph. Upper-floor nodes sit directly on the real walkable surfaces.
+            var nodes = new[]
+            {
+                new Vector3(0.0f, groundY, 0.0f),   // 0 street center
+                new Vector3(7.0f, groundY, -2.5f),  // 1 east street south
+                new Vector3(7.0f, groundY, 3.2f),   // 2 east street north
+                new Vector3(5.4f, groundY, 3.7f),   // 3 building/ramp approach
+                new Vector3(8.9f, groundY, 4.20f),  // 4 ground-floor entrance
+                new Vector3(8.2f, groundY, 6.45f),  // 5 ground-floor interior
+                new Vector3(5.65f, groundY, 4.95f), // 6 ramp 1 bottom
+                new Vector3(5.65f, level1Y, 8.45f), // 7 ramp 1 top
+                new Vector3(6.20f, level1Y, 7.80f), // 8 level 1 west
+                new Vector3(8.10f, level1Y, 6.45f), // 9 level 1 interior
+                new Vector3(4.75f, level1Y, 8.45f), // 10 ramp 2 bottom
+                new Vector3(4.75f, level2Y, 4.95f), // 11 ramp 2 top
+                new Vector3(5.80f, level2Y, 5.30f), // 12 roof west
+                new Vector3(8.00f, level2Y, 6.40f), // 13 roof interior
+                new Vector3(-3.0f, groundY, 3.0f),  // 14 west/north street
+                new Vector3(-3.0f, groundY, -3.0f)  // 15 west/south street
+            };
+
+            // Undirected pairs. The route intentionally forms one deterministic vertical chain:
+            // street -> entrance/ramp -> L1 -> switchback -> roof.
+            graph.Configure(nodes, new[]
+            {
+                0, 1,
+                0, 14,
+                0, 15,
+                1, 2,
+                14, 3,
+                2, 3,
+                3, 4,
+                4, 5,
+                3, 6,
+                6, 7,
+                7, 8,
+                8, 9,
+                8, 10,
+                10, 11,
+                11, 12,
+                12, 13
+            });
         }
 
         private static GameObject CreateBlock(
