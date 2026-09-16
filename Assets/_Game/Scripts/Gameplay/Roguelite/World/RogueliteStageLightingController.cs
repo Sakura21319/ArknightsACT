@@ -48,7 +48,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             ConfigureCamera();
 
             _preparedStage = stage;
-            Debug.Log($"[ArknightsACT/Lighting] Stage {stageMap.StageIndex}: expanded deck + underside lighting rig applied.", this);
+            Debug.Log($"[ArknightsACT/Lighting] Stage {stageMap.StageIndex}: expanded deck + deep underside lighting rig applied.", this);
         }
 
         private static void ConfigureEnvironment()
@@ -144,8 +144,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 false);
 
             // The chassis is deliberately darker than the deck, but it still needs a readable silhouette.
-            // A broad shadowless blue-grey bounce from the camera side reveals terraces/girders without
-            // making the underside look self-illuminated.
             CreateSpot(
                 root,
                 "CoolUndersideLift",
@@ -155,6 +153,19 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 Mathf.Clamp(diagonal * 0.70f, 24f, 52f),
                 92f,
                 0.52f,
+                false);
+
+            // A second, weaker bounce reaches the new y=-6..-11 lower-city foundation. It is kept
+            // intentionally dim so the lower structure remains subordinate to the combat deck.
+            CreateSpot(
+                root,
+                "CoolDeepBaseLift",
+                new Vector3(-width * 0.20f, -1.6f, -depth * 0.88f),
+                new Vector3(0f, -7.4f, -depth * 0.12f),
+                new Color(0.23f, 0.31f, 0.46f, 1f),
+                Mathf.Clamp(diagonal * 0.88f, 30f, 68f),
+                98f,
+                0.38f,
                 false);
 
             CreateSpot(
@@ -245,6 +256,11 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 return;
             camera.allowHDR = true;
             camera.allowMSAA = true;
+
+            // Avoid a featureless absolute-black void beyond the geometry. This stays very dark and
+            // cool, matching the fog/under-city palette while preserving silhouette contrast.
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor = new Color(0.018f, 0.023f, 0.032f, 1f);
         }
     }
 }
