@@ -1,6 +1,8 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using ArknightsACT.Combat;
+using ArknightsACT.Gameplay.Navigation;
 using UnityEngine;
 
 namespace ArknightsACT.Gameplay.Roguelite.Treasure
@@ -17,13 +19,25 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
         [SerializeField, Min(0.1f)] private float attackDamage = 7f;
         [SerializeField] private float gravity = -24f;
 
+        [Header("Navigation")]
+        [SerializeField, Min(0.05f)] private float pathRefreshSeconds = 0.35f;
+        [SerializeField, Min(0.1f)] private float waypointReachDistance = 0.42f;
+        [SerializeField, Min(0.05f)] private float walkProbeRadius = 0.22f;
+        [SerializeField, Min(0.1f)] private float walkProbeHeight = 0.50f;
+        [SerializeField, Min(0.1f)] private float directWalkHeightTolerance = 0.70f;
+
+        private readonly List<Vector3> _path = new(16);
+
         private CharacterController _controller;
         private CombatEntity _entity;
         private CombatEntity _target;
+        private PrototypeNavigationGraph25D _navigation;
         private Coroutine _attackRoutine;
         private float _nextAttackAt;
+        private float _nextPathRefreshAt;
         private float _verticalVelocity;
         private Vector3 _forward = Vector3.back;
+        private int _pathIndex;
 
         public event Action Activated;
         public event Action<int> AttackStarted;
@@ -37,6 +51,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
         {
             _controller = GetComponent<CharacterController>();
             _entity = GetComponent<CombatEntity>();
+            _navigation = PrototypeNavigationGraph25D.Instance;
         }
 
         public void Activate(CombatEntity target)
@@ -49,6 +64,8 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
                 return;
 
             IsActivated = true;
+            _path.Clear();
+            _pathIndex = 0;
             FaceToward(target.transform.position);
             Activated?.Invoke();
         }
@@ -60,6 +77,8 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
                 StopCoroutine(_attackRoutine);
                 _attackRoutine = null;
             }
+            _path.Clear();
+            _pathIndex = 0;
             IsMoving = false;
         }
 
@@ -80,22 +99,27 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
                 return;
             }
 
-            var delta = _target.transform.position - transform.position;
+            var targetPosition = _target.transform.position;
+            var delta = targetPosition - transform.position;
             var height = Mathf.Abs(delta.y);
             delta.y = 0f;
             var distance = delta.magnitude;
-            FaceToward(_target.transform.position);
 
             if (height <= 1.1f && distance <= attackRange && HasClearLine())
             {
+                FaceToward(targetPosition);
                 IsMoving = false;
                 TryAttack();
                 return;
             }
 
-            if (distance > 0.05f)
+            var chasePoint = ResolveChasePoint(targetPosition);
+            var move = chasePoint - transform.position;
+            move.y = 0f;
+            if (move.sqrMagnitude > 0.0025f)
             {
-                _controller.Move(delta.normalized * (moveSpeed * Time.deltaTime));
+                FaceToward(chasePoint);
+                _controller.Move(move.normalized * (moveSpeed * Time.deltaTime));
                 IsMoving = true;
             }
             else
@@ -139,6 +163,80 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
                 yield return new WaitForSeconds(attackRecovery);
             _attackRoutine = null;
             _nextAttackAt = Time.time + attackCooldown;
+        }
+
+        private Vector3 ResolveChasePoint(Vector3 destination)
+        {
+            if (HasDirectWalkPath(destination))
+            {
+                _path.Clear();
+                _pathIndex = 0;
+                return destination;
+            }
+
+            if (_navigation == null)
+                _navigation = PrototypeNavigationGraph25D.Instance ?? FindFirstObjectByType<PrototypeNavigationGraph25D>();
+            if (_navigation == null)
+                return destination;
+
+            if (_path.Count == 0 || _pathIndex >= _path.Count || Time.time >= _nextPathRefreshAt)
+            {
+                _nextPathRefreshAt = Time.time + pathRefreshSeconds;
+                if (_navigation.TryBuildPath(transform.position, destination, _path))
+                    _pathIndex = 0;
+                else
+                    _path.Clear();
+            }
+
+            AdvanceReachedWaypoints();
+            return _pathIndex < _path.Count ? _path[_pathIndex] : destination;
+        }
+
+        private void AdvanceReachedWaypoints()
+        {
+            while (_pathIndex < _path.Count)
+            {
+                var waypoint = _path[_pathIndex];
+                var dx = waypoint.x - transform.position.x;
+                var dz = waypoint.z - transform.position.z;
+                var planar = Mathf.Sqrt(dx * dx + dz * dz);
+                var vertical = Mathf.Abs(transform.position.y - waypoint.y);
+                if (planar > waypointReachDistance || vertical > 0.72f)
+                    break;
+                _pathIndex++;
+            }
+        }
+
+        private bool HasDirectWalkPath(Vector3 destination)
+        {
+            if (Mathf.Abs(destination.y - transform.position.y) > directWalkHeightTolerance)
+                return false;
+
+            var planar = destination - transform.position;
+            planar.y = 0f;
+            var distance = planar.magnitude;
+            if (distance <= 0.10f)
+                return true;
+
+            var origin = transform.position + Vector3.up * walkProbeHeight;
+            var hits = Physics.SphereCastAll(
+                origin,
+                walkProbeRadius,
+                planar / distance,
+                distance,
+                ~0,
+                QueryTriggerInteraction.Ignore);
+            Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            for (var i = 0; i < hits.Length; i++)
+            {
+                var collider = hits[i].collider;
+                if (collider == null || collider.transform.IsChildOf(transform))
+                    continue;
+                if (collider.GetComponentInParent<CombatEntity>() != null)
+                    continue;
+                return false;
+            }
+            return true;
         }
 
         private bool HasClearLine()
