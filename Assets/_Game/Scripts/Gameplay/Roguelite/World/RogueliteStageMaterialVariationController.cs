@@ -68,7 +68,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 var seed = unchecked(
                     Mathf.RoundToInt(t.position.x * 37f) * 73856093 ^
                     Mathf.RoundToInt(t.position.z * 41f) * 19349663 ^
-                    t.name.GetHashCode() ^
+                    StableStringHash(t.name) ^
                     stageMap.StageIndex * 83492791);
                 var h = Hash01(seed);
                 var h2 = Hash01(seed ^ 0x2c1b3c6d);
@@ -119,6 +119,22 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 return false;
             }
             return true;
+        }
+
+        private static int StableStringHash(string value)
+        {
+            unchecked
+            {
+                var hash = (int)2166136261;
+                if (value == null)
+                    return hash;
+                for (var i = 0; i < value.Length; i++)
+                {
+                    hash ^= value[i];
+                    hash *= 16777619;
+                }
+                return hash;
+            }
         }
 
         private static float Hash01(int value)
