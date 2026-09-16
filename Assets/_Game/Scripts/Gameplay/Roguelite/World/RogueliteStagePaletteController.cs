@@ -9,6 +9,11 @@ namespace ArknightsACT.Gameplay.Roguelite.World
     /// Reuses the generated procedural textures but retunes their material response toward the
     /// colder, darker Chernobog combat-stage palette. Material names are intentionally preserved so
     /// later environment passes can continue resolving them without coupling to this controller.
+    ///
+    /// This component is present in already-generated PrototypeRun scenes, so it also bootstraps the
+    /// selected Concept-01 and quality passes. That means pulling code is enough to get the current
+    /// presentation; rebuilding the scene is still recommended, but no longer required merely to add
+    /// the new visual components.
     /// </summary>
     [DefaultExecutionOrder(5)]
     [DisallowMultipleComponent]
@@ -35,12 +40,27 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             if (stageMap == null)
                 return;
 
+            EnsureCurrentVisualPasses();
+
             var stage = GameObject.Find($"[Stage_{stageMap.StageIndex:00}_Runtime]");
             if (stage == null || stage == _preparedStage)
                 return;
 
             ApplyPalette(stage);
             _preparedStage = stage;
+        }
+
+        private void EnsureCurrentVisualPasses()
+        {
+            var concept = GetComponent<RogueliteStageConceptOneController>();
+            if (concept == null)
+                concept = gameObject.AddComponent<RogueliteStageConceptOneController>();
+            concept.Configure(stageMap);
+
+            var quality = GetComponent<RogueliteStageQualityPassController>();
+            if (quality == null)
+                quality = gameObject.AddComponent<RogueliteStageQualityPassController>();
+            quality.Configure(stageMap);
         }
 
         private void OnDestroy()
