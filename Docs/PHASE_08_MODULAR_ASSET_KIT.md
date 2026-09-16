@@ -33,6 +33,8 @@ Generated content:
 - reusable environment prefabs;
 - one `ChernobogEnvironmentKit.asset` manifest referenced by the generated prototype scene.
 
+The generated kit folder and its root `.meta` are ignored intentionally. During this phase, do not treat those generated binaries as the hand-authored source of truth; rebuild them from code until a module is deliberately replaced with an authored FBX/texture asset.
+
 ## Current module set
 
 ### Floor
