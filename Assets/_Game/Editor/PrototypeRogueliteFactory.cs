@@ -50,6 +50,8 @@ namespace ArknightsACT.Editor
 
             root.AddComponent<RewardSelectionCoordinator>();
             var runState = root.AddComponent<RogueliteRunState>();
+            var stageMap = root.AddComponent<RogueliteStageMapController>();
+            stageMap.Configure(runState);
 
             var rewards = root.AddComponent<RogueliteRewardController>();
             rewards.Configure(inventory, profile, collectiblePool);
