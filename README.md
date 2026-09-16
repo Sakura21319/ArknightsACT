@@ -59,11 +59,7 @@ Reward selection screens share a single coordinator so level-up, skill-specializ
 
 ## Treasure prototypes
 
-The prototype uses locally downloaded PRTS presentation sources for:
-
-- normal chest (`trap_065_normbox`),
-- spike chest (`trap_066_rarebox`),
-- Chest Seaborn / monster chest (`enemy_2035_sybox`).
+The prototype uses locally downloaded PRTS presentation sources for normal chest (`trap_065_normbox`), spike chest (`trap_066_rarebox`), and Chest Seaborn / monster chest (`enemy_2035_sybox`).
 
 Normal chest gives low-value resources. Spike chest reflects direct damage and grants a collectible choice. Monster chest initially looks like a normal chest; the first hit reveals the monster form, permanently activates pursuit and grants character skill specialization plus a collectible reward on defeat.
 
