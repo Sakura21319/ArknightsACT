@@ -21,8 +21,9 @@ namespace ArknightsACT.Editor
             EnsureFolder(SceneDir);
             var attacks = BuildChenAttackDefinitions();
 
+            // Prototype25DSceneBuilder is now the single source of truth for the production map:
+            // ground/roads, one two-floor facility, sparse one-grid cover and navigation graph.
             Prototype25DSceneBuilder.Build();
-            Prototype25DVerticalityEnhancer.Apply();
             RemoveDemoActor("Player_Chen_25D");
             RemoveDemoActor("Enemy_Soldier");
             RemoveDemoActor("Enemy_Hound");
@@ -53,8 +54,8 @@ namespace ArknightsACT.Editor
             Debug.Log(
                 $"ArknightsACT Chen 2.5D ACT roguelite prototype generated: {ScenePath}. " +
                 "Controls: WASD/Stick move on XZ, Space jump, J/LMB combo, K/Shift dash, L skill1, I/RMB skill2. " +
-                "Enemies acquire only inside their forward vision cone with obstacle-aware line of sight. " +
-                "The NE structure is walkable across multiple floors. R3 rewards and route nodes remain active.");
+                "Unified arena: one walkable two-floor facility, sparse one-grid cover, obstacle-aware LOS and navigation. " +
+                "R3 rewards and route nodes remain active.");
         }
 
         private static void RemoveDemoActor(string objectName)
