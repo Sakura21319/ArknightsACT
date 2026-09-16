@@ -8,16 +8,22 @@ They were adding traversal noise without contributing enough to the selected ear
 
 `RogueliteStageHazardPolicyController` remains as a defensive cleanup pass so stale scenes or future environment code cannot silently reintroduce hole hazards.
 
-## Active Originium reference
+## Active Originium reference direction
 
-PRTS stage 4-3 `人工制冷` documents classic **Active Originium** terrain: units standing on / crossing the tile continuously take true damage while receiving a large offensive benefit.
+The gameplay hazard remains `ActiveOriginiumZone25D`; this pass is presentation-only.
 
-Reference:
+The previous red/crimson floor treatment was rejected after in-engine review because it read as a painted plastic hazard plate. The new art direction follows the supplied Originium mineral reference instead:
+
+- mineral mass is predominantly black / smoke-brown;
+- exposed facets read amber / dark gold rather than saturated red;
+- emissive energy is restrained to thin amber veins and a very small minority of fragments;
+- the terrain should look like fragmented Originium embedded into a damaged industrial deck, not a clean colored tile;
+- shard silhouettes stay low enough to preserve ACT movement readability.
+
+PRTS stage references for Active Originium gameplay context remain:
 
 - https://prts.wiki/w/4-3_%E4%BA%BA%E5%B7%A5%E5%88%B6%E5%86%B7
 - https://prts.wiki/w/S4-1_%E6%99%B6%E7%B0%87-1
-
-The ACT prototype keeps its existing gameplay adaptation for now (`ActiveOriginiumZone25D`) and changes the visual language only in this pass.
 
 ## Visual rebuild
 
@@ -25,20 +31,26 @@ The ACT prototype keeps its existing gameplay adaptation for now (`ActiveOrigini
 
 - snaps Active Originium to one side/corner physical floor socket;
 - replaces that socket's normal floor surface visually;
+- removes nearby maintenance inserts so the special terrain has a clean silhouette;
 - normalizes the trigger footprint to the floor module;
-- hides the old purple/orange prototype tile and crystal skin;
-- builds a dark-framed **red / crimson hazardous floor tile**;
-- adds a hotter red core, emissive fissures and only a few low crystal fins;
-- uses cached beveled hard-surface meshes so the tile belongs to the same environment kit as the deck.
+- suppresses the legacy purple/orange skin and the rejected red-tile skin;
+- builds a dark industrial frame plus a very rough scorched mineral bed;
+- adds several irregular carbonized ore patches rather than one smooth colored plate;
+- adds only a few thin amber veins instead of a broad emissive core;
+- generates three cached faceted crystal meshes at runtime and scatters deterministic clusters of 18 low shards/chips;
+- mixes black ore, amber, gold-facet and rare emissive-amber materials so the mineral reads black/yellow from the gameplay camera;
+- uses deliberately low smoothness on the bed/frame to remove the previous plastic response while keeping controlled highlights on crystal faces.
 
-The result should read as a special Arknights terrain tile first, and as decorative crystal clutter second.
+`RogueliteStageEnvironmentController` also uses a subdued amber placeholder and no longer spawns temporary red crystal spikes before the production presentation appears.
 
 ## Validation
 
 1. Rebuild the prototype scene.
 2. Enter combat blocks until an Active Originium tile appears.
 3. Confirm no pit / hole terrain is generated anywhere.
-4. Confirm the Active Originium tile replaces a normal floor module instead of floating over it.
-5. Confirm the tile is predominantly red/crimson with dark framing and hot red fissures.
-6. Confirm touching the tile still triggers the existing ACT Active Originium damage/buff behaviour.
-7. Confirm cover collision, Facility navigation, enemies and ballista hazards are unchanged.
+4. Confirm the Active Originium terrain replaces one normal floor module instead of floating over it.
+5. From the normal gameplay camera, confirm the dominant read is black/brown mineral debris with amber/yellow facets — not a red plate.
+6. Check that the base is rough/matte while individual shard faces catch harder highlights without looking glossy-plastic.
+7. Confirm shards remain low enough that they do not look like physical blockers.
+8. Confirm touching the tile still triggers the existing ACT Active Originium damage/buff behaviour.
+9. Confirm cover collision, Facility navigation, enemies and ballista hazards are unchanged.
