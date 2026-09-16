@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace ArknightsACT.Combat
@@ -5,6 +6,8 @@ namespace ArknightsACT.Combat
     public static class DamageSystem
     {
         public const int MaxProcGeneration = 4;
+
+        public static event Action<DamageContext, DamageResult> DamageApplied;
 
         public static DamageResult Apply(in DamageContext context)
         {
@@ -38,6 +41,7 @@ namespace ArknightsACT.Combat
 
             var result = new DamageResult(true, dealt, context.Target.Health.IsDead);
             context.Target.NotifyDamaged(context, result);
+            DamageApplied?.Invoke(context, result);
 
             // A lethal hit enters the target's death state during TakeDamage. Do not apply a
             // later physics impulse that can make the corpse slide while its Die clip is playing.
