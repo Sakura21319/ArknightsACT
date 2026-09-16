@@ -18,6 +18,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         [SerializeField, Min(0f)] private float finalDamage = 30f;
         [SerializeField, Min(0.5f)] private float targetingRadius = 5.5f;
         [SerializeField, Min(0.1f)] private float castLockSeconds = 2.1f;
+        [SerializeField, Min(0.1f)] private float max25DHeightDifference = 1.35f;
 
         private CombatEntity _entity;
         private PlayerMotor25D _motor25D;
@@ -140,6 +141,10 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                 var candidate = collider.GetComponentInParent<CombatEntity>();
                 if (!CanTarget(candidate))
                     continue;
+                if (Mathf.Abs(candidate.transform.position.y - transform.position.y) > max25DHeightDifference)
+                    continue;
+                if (!HasClear25DLine(candidate))
+                    continue;
 
                 var delta = candidate.transform.position - transform.position;
                 delta.y = 0f;
@@ -151,6 +156,34 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             }
 
             return best;
+        }
+
+        private bool HasClear25DLine(CombatEntity target)
+        {
+            var origin = transform.position + Vector3.up * 0.70f;
+            var destination = target.transform.position + Vector3.up * 0.70f;
+            var cast = destination - origin;
+            var distance = cast.magnitude;
+            if (distance < 0.001f)
+                return true;
+
+            var hits = Physics.SphereCastAll(origin, 0.12f, cast / distance, distance, ~0, QueryTriggerInteraction.Ignore);
+            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            foreach (var hit in hits)
+            {
+                var hitCollider = hit.collider;
+                if (hitCollider == null || hitCollider.transform.IsChildOf(transform))
+                    continue;
+                var entity = hitCollider.GetComponentInParent<CombatEntity>();
+                if (entity != null)
+                {
+                    if (entity == target)
+                        return true;
+                    continue;
+                }
+                return false;
+            }
+            return true;
         }
 
         private bool CanTarget(CombatEntity candidate)
