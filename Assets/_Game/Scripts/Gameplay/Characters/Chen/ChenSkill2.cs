@@ -1,4 +1,3 @@
-using System;
 using System.Collections;
 using ArknightsACT.Combat;
 using ArknightsACT.Gameplay.Abilities;
@@ -33,13 +32,6 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         public float CooldownRemaining => Mathf.Max(0f, _readyAt - Time.time);
         public bool IsCasting { get; private set; }
         public bool IsInvulnerable => IsCasting;
-
-        /// <summary>
-        /// Fired only when one of the Jueying damage strikes is actually applied.
-        /// index, total, target world position, final strike.
-        /// Presentation code can subscribe without coupling damage timing to visual timing guesses.
-        /// </summary>
-        public event Action<int, int, Vector3, bool> StrikeResolved;
 
         private void Awake()
         {
@@ -95,7 +87,6 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                         knockback = isFinal ? direction * 3.5f : Vector2.zero;
                     }
 
-                    var targetPosition = target.transform.position;
                     var context = new DamageContext(
                         _entity,
                         _entity,
@@ -106,7 +97,6 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                         sourceId: isFinal ? "Chen_Skill2_Final" : "Chen_Skill2_Strike");
                     if (DamageSystem.Apply(context).Applied)
                     {
-                        StrikeResolved?.Invoke(i, totalStrikes, targetPosition, isFinal);
                         target.GetComponentInChildren<HitFlash2D>()?.Flash();
                         HitStopService.Instance?.Request(isFinal ? 0.040f : 0.012f);
                         CameraShake2D.Instance?.Shake(isFinal ? 0.10f : 0.025f, 0.04f);
