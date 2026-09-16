@@ -37,6 +37,11 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             surfaceVisual = surface;
         }
 
+        public void SetFootprint(Vector2 size)
+        {
+            footprint = new Vector2(Mathf.Max(0.1f, size.x), Mathf.Max(0.1f, size.y));
+        }
+
         public bool Open()
         {
             if (opened || !pitEligible)
