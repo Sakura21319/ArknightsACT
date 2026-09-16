@@ -2,11 +2,13 @@
 
 ## Decision
 
-Pit hazards are removed from the current prototype direction.
+Pit and ballista hazards are removed from the current prototype direction.
 
-They were adding traversal noise without contributing enough to the selected early-Chernobog / mobile-city combat identity. The segmented floor system remains in place because it is still useful for authored terrain replacement, but generated stages no longer create `Hazard_Hole` objects and the prototype scene no longer installs `RoguelitePitFloorSyncController`.
+They were adding traversal / visual noise without contributing enough to the selected early-Chernobog / mobile-city combat identity. The segmented floor system remains in place because it is still useful for authored terrain replacement, but generated stages no longer create `Hazard_Hole` or `Hazard_Ballista` objects and the prototype scene no longer installs `RoguelitePitFloorSyncController`.
 
-`RogueliteStageHazardPolicyController` remains as a defensive cleanup pass so stale scenes or future environment code cannot silently reintroduce hole hazards.
+`RogueliteStageHazardPolicyController` remains as a defensive cleanup pass so stale scenes or future environment code cannot silently reintroduce hole or ballista hazards.
+
+`BallistaHazard25D` remains dormant source code only; it is not spawned by the current generated stages.
 
 ## Active Originium reference direction
 
@@ -48,10 +50,10 @@ PRTS stage references for Active Originium gameplay context remain:
 
 1. Rebuild the prototype scene.
 2. Enter combat blocks until an Active Originium tile appears.
-3. Confirm no pit / hole terrain is generated anywhere.
+3. Confirm no pit / hole or ballista terrain hazard is generated anywhere.
 4. Confirm the Active Originium terrain replaces one normal floor module instead of floating over it.
 5. From the normal gameplay camera, confirm the dominant read is black/brown mineral debris with amber/yellow facets — not a red plate.
 6. Check that the base is rough/matte while individual shard faces catch harder highlights without looking glossy-plastic.
 7. Confirm shards remain low enough that they do not look like physical blockers.
 8. Confirm touching the tile still triggers the existing ACT Active Originium damage/buff behaviour.
-9. Confirm cover collision, Facility navigation, enemies and ballista hazards are unchanged.
+9. Confirm cover collision, Facility navigation and enemies are unchanged.
