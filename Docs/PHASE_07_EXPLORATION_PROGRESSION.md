@@ -59,7 +59,7 @@ This intentionally allows:
 
 - Normal combat: +2 Ingots, 20% Common+ collectible 2-choice.
 - Emergency combat: +4 Ingots, 1.5x enemy EXP, guaranteed Rare+ collectible 2-choice.
-- Boss: +8 Ingots, 2.0x boss EXP reward tuning, Rare+ collectible 3-choice.
+- Boss: +8 Ingots, Rare+ collectible 3-choice.
 
 Reward selection is serialized through `RewardSelectionCoordinator` so it cannot overlap level-up or character-skill specialization screens.
 
@@ -81,7 +81,7 @@ Boss reward completion enables the exit marker in the Boss block. On stages 1 an
 
 ## Current shop state
 
-The Shop block is physically generated as a safe plaza with a shop counter, but the purchase/refresh UI is intentionally deferred until the exploration pacing is validated. This avoids tuning map density and economy simultaneously.
+The Shop block is physically generated as a safe plaza with a shop counter and randomized map location. Purchase items and refresh behavior are intentionally deferred until the exploration pacing is validated; the current UI labels this as a prototype shop area rather than pretending the economy is finished.
 
 ## Local validation checklist
 
