@@ -23,6 +23,9 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         private CombatEntity _entity;
         private PlayerMotor25D _motor25D;
         private float _readyAt;
+        private int _bonusStrikeCount;
+        private float _runtimeFinalDamageMultiplier = 1f;
+        private float _runtimeRadiusMultiplier = 1f;
 
         public int Slot => 2;
         public string DisplayName => "赤霄·绝影";
@@ -52,6 +55,15 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                 _readyAt = Mathf.Max(Time.time, _readyAt - seconds);
         }
 
+        public void AddStrikeCount(int value) =>
+            _bonusStrikeCount = Mathf.Clamp(_bonusStrikeCount + Mathf.Max(0, value), 0, 12);
+
+        public void AddFinalDamagePercent(float value) =>
+            _runtimeFinalDamageMultiplier = Mathf.Clamp(_runtimeFinalDamageMultiplier + Mathf.Max(0f, value), 1f, 4f);
+
+        public void AddTargetingRadiusPercent(float value) =>
+            _runtimeRadiusMultiplier = Mathf.Clamp(_runtimeRadiusMultiplier + Mathf.Max(0f, value), 1f, 2.5f);
+
         private IEnumerator CastRoutine()
         {
             IsCasting = true;
@@ -60,17 +72,19 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             if (startupSeconds > 0f)
                 yield return new WaitForSeconds(startupSeconds);
 
-            for (var i = 0; i < strikeCount && _entity?.Health != null && !_entity.Health.IsDead; i++)
+            var totalStrikes = Mathf.Max(1, strikeCount + _bonusStrikeCount);
+            for (var i = 0; i < totalStrikes && _entity?.Health != null && !_entity.Health.IsDead; i++)
             {
                 var target = FindNearestTarget();
                 if (target != null)
                 {
-                    var damage = i == strikeCount - 1 ? finalDamage : strikeDamage;
+                    var isFinal = i == totalStrikes - 1;
+                    var damage = isFinal ? finalDamage * _runtimeFinalDamageMultiplier : strikeDamage;
                     var knockback = Vector2.zero;
                     if (_motor25D == null)
                     {
                         var direction = ((Vector2)target.transform.position - (Vector2)transform.position).normalized;
-                        knockback = i == strikeCount - 1 ? direction * 3.5f : Vector2.zero;
+                        knockback = isFinal ? direction * 3.5f : Vector2.zero;
                     }
 
                     var context = new DamageContext(
@@ -80,16 +94,16 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                         damage,
                         DamageType.Physical,
                         knockback,
-                        sourceId: i == strikeCount - 1 ? "Chen_Skill2_Final" : "Chen_Skill2_Strike");
+                        sourceId: isFinal ? "Chen_Skill2_Final" : "Chen_Skill2_Strike");
                     if (DamageSystem.Apply(context).Applied)
                     {
                         target.GetComponentInChildren<HitFlash2D>()?.Flash();
-                        HitStopService.Instance?.Request(i == strikeCount - 1 ? 0.040f : 0.012f);
-                        CameraShake2D.Instance?.Shake(i == strikeCount - 1 ? 0.10f : 0.025f, 0.04f);
+                        HitStopService.Instance?.Request(isFinal ? 0.040f : 0.012f);
+                        CameraShake2D.Instance?.Shake(isFinal ? 0.10f : 0.025f, 0.04f);
                     }
                 }
 
-                if (i < strikeCount - 1)
+                if (i < totalStrikes - 1)
                     yield return new WaitForSeconds(strikeInterval);
             }
 
@@ -106,7 +120,8 @@ namespace ArknightsACT.Gameplay.Characters.Chen
 
         private CombatEntity FindNearestTarget2D()
         {
-            var colliders = Physics2D.OverlapCircleAll(transform.position, targetingRadius);
+            var radius = targetingRadius * _runtimeRadiusMultiplier;
+            var colliders = Physics2D.OverlapCircleAll(transform.position, radius);
             CombatEntity best = null;
             var bestSqr = float.PositiveInfinity;
 
@@ -130,7 +145,8 @@ namespace ArknightsACT.Gameplay.Characters.Chen
 
         private CombatEntity FindNearestTarget25D()
         {
-            var colliders = Physics.OverlapSphere(transform.position, targetingRadius, ~0, QueryTriggerInteraction.Ignore);
+            var radius = targetingRadius * _runtimeRadiusMultiplier;
+            var colliders = Physics.OverlapSphere(transform.position, radius, ~0, QueryTriggerInteraction.Ignore);
             CombatEntity best = null;
             var bestSqr = float.PositiveInfinity;
 

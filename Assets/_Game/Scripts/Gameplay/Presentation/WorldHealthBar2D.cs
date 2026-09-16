@@ -4,13 +4,18 @@ using UnityEngine;
 namespace ArknightsACT.Gameplay.Presentation
 {
     /// <summary>
-    /// Lightweight world-space health bar. In 2.5D it billboards toward the gameplay camera;
-    /// in the legacy side-view camera the same code resolves to the original orientation.
+    /// Lightweight world-space health bar. The visual always faces Camera.main when available,
+    /// which keeps both CharacterController actors and static 3D props such as treasure chests
+    /// readable in the oblique 2.5D camera.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(CombatEntity))]
     public sealed class WorldHealthBar2D : MonoBehaviour
     {
+        [SerializeField] private float worldYOffsetOverride = -1f;
+        [SerializeField] private float widthOverride = -1f;
+        [SerializeField] private float heightOverride = -1f;
+
         private CombatEntity _entity;
         private GameObject _root;
         private Transform _fill;
@@ -18,6 +23,13 @@ namespace ArknightsACT.Gameplay.Presentation
         private Sprite _sprite;
         private float _innerWidth;
         private float _innerHeight;
+
+        public void ConfigureWorldLayout(float yOffset, float width, float height)
+        {
+            worldYOffsetOverride = Mathf.Max(0.05f, yOffset);
+            widthOverride = Mathf.Max(0.10f, width);
+            heightOverride = Mathf.Max(0.02f, height);
+        }
 
         private void Awake()
         {
@@ -44,7 +56,7 @@ namespace ArknightsACT.Gameplay.Presentation
             if (_root == null)
                 return;
             var camera = Camera.main;
-            if (camera != null && GetComponent<CharacterController>() != null)
+            if (camera != null)
                 _root.transform.rotation = camera.transform.rotation;
         }
 
@@ -84,10 +96,10 @@ namespace ArknightsACT.Gameplay.Presentation
             _sprite = Sprite.Create(_texture, new Rect(0f, 0f, 1f, 1f), new Vector2(0.5f, 0.5f), 1f);
 
             var isPlayer = _entity != null && _entity.Team == Team.Player;
-            var width = isPlayer ? 1.48f : 1.08f;
-            var height = isPlayer ? 0.11f : 0.085f;
-            var border = isPlayer ? 0.025f : 0.020f;
-            var y = isPlayer ? 1.62f : 1.48f;
+            var width = widthOverride > 0f ? widthOverride : (isPlayer ? 1.48f : 1.08f);
+            var height = heightOverride > 0f ? heightOverride : (isPlayer ? 0.11f : 0.085f);
+            var border = Mathf.Min(width, height) * 0.18f;
+            var y = worldYOffsetOverride > 0f ? worldYOffsetOverride : (isPlayer ? 1.62f : 1.48f);
 
             _root = new GameObject("WorldHealthBar");
             _root.transform.SetParent(transform, false);

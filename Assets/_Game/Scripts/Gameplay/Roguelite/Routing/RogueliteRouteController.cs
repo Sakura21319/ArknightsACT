@@ -30,6 +30,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
         [SerializeField] private RogueliteRunState runState;
         [SerializeField] private Transform player;
         [SerializeField, Min(1)] private int combatsBeforeBoss = 4;
+        [SerializeField, Range(0f, 1f)] private float normalCollectibleChance = 0.20f;
 
         private readonly List<RogueliteRouteNodeChoice> _routeChoices = new();
         private OverlayMode _mode;
@@ -88,7 +89,8 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
         private void OnRoomCleared(int roomIndex)
         {
             var isBoss = _currentCombatNode == RogueliteRouteNodeType.Boss;
-            runState?.RecordCombatClear(isBoss);
+            var isEmergency = _currentCombatNode == RogueliteRouteNodeType.EmergencyCombat;
+            runState?.RecordCombatClear(isBoss, isEmergency);
             runState?.AddIngots(_currentCombatNode switch
             {
                 RogueliteRouteNodeType.EmergencyCombat => 4,
@@ -108,7 +110,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                     rewards.OpenReward(
                         $"紧急作战 {roomIndex} 完成 · 选择战利品",
                         CollectibleRarity.Rare,
-                        3,
+                        2,
                         OpenRouteSelection);
                     break;
                 case RogueliteRouteNodeType.Boss:
@@ -119,11 +121,18 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                         OpenRouteSelection);
                     break;
                 default:
-                    rewards.OpenReward(
-                        $"作战 {roomIndex} 完成 · 选择战利品",
-                        CollectibleRarity.Common,
-                        2,
-                        OpenRouteSelection);
+                    if (UnityEngine.Random.value < normalCollectibleChance)
+                    {
+                        rewards.OpenReward(
+                            $"普通作战 {roomIndex} · 意外战利品",
+                            CollectibleRarity.Common,
+                            2,
+                            OpenRouteSelection);
+                    }
+                    else
+                    {
+                        OpenRouteSelection();
+                    }
                     break;
             }
         }
@@ -204,7 +213,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             RogueliteRouteNodeType.EmergencyCombat => new RogueliteRouteNodeChoice(
                 type,
                 "紧急作战",
-                "敌人 +1，生命 +35%，远程敌人提前加入。通关 +4 源石锭，收藏品至少稀有。"),
+                "敌人 +1，生命 +35%，远程敌人提前加入；敌人经验 1.5 倍。通关 +4 源石锭，并必定获得 Rare+ 收藏品二选一。"),
             RogueliteRouteNodeType.Encounter => new RogueliteRouteNodeChoice(
                 type,
                 "不期而遇",
@@ -220,11 +229,11 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             RogueliteRouteNodeType.Boss => new RogueliteRouteNodeChoice(
                 type,
                 "险路恶敌",
-                "路线汇聚。迎战高生命重装防御者；通关 +8 源石锭并获得高品质战利品。"),
+                "路线汇聚。迎战高生命重装防御者；Boss 经验 2 倍，通关 +8 源石锭并获得 Rare+ 收藏品三选一。"),
             _ => new RogueliteRouteNodeChoice(
                 type,
                 "普通作战",
-                "标准敌群。通关 +2 源石锭，并从 2 件收藏品中选择 1 件。")
+                "标准敌群。击杀获得经验，通关 +2 源石锭，并有 20% 概率获得 Common+ 收藏品二选一。")
         };
 
         private void ActivateOption(int index)

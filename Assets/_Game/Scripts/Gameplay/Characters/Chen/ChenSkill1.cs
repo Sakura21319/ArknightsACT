@@ -24,6 +24,9 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         private IPlayerLocomotion _motor;
         private PlayerMotor25D _motor25D;
         private float _readyAt;
+        private float _runtimeRangeMultiplier = 1f;
+        private float _runtimeDamageMultiplier = 1f;
+        private float _runtimeCooldownMultiplier = 1f;
 
         public int Slot => 1;
         public string DisplayName => "赤霄·拔刀";
@@ -42,7 +45,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             if (IsCasting || Time.time < _readyAt || _entity?.Health == null || _entity.Health.IsDead)
                 return false;
 
-            _readyAt = Time.time + cooldownSeconds;
+            _readyAt = Time.time + cooldownSeconds * _runtimeCooldownMultiplier;
             StartCoroutine(CastRoutine());
             return true;
         }
@@ -52,6 +55,15 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             if (seconds > 0f)
                 _readyAt = Mathf.Max(Time.time, _readyAt - seconds);
         }
+
+        public void AddRangePercent(float value) =>
+            _runtimeRangeMultiplier = Mathf.Clamp(_runtimeRangeMultiplier + Mathf.Max(0f, value), 1f, 2.5f);
+
+        public void AddDamagePercent(float value) =>
+            _runtimeDamageMultiplier = Mathf.Clamp(_runtimeDamageMultiplier + Mathf.Max(0f, value), 1f, 3f);
+
+        public void AddCooldownReductionPercent(float value) =>
+            _runtimeCooldownMultiplier = Mathf.Clamp(_runtimeCooldownMultiplier * (1f - Mathf.Max(0f, value)), 0.45f, 1f);
 
         private IEnumerator CastRoutine()
         {
@@ -82,9 +94,11 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         {
             var facing = _motor != null ? _motor.FacingSign : 1;
             var offset = hitboxOffset;
-            offset.x *= facing;
+            offset.x *= facing * _runtimeRangeMultiplier;
+            var size = hitboxSize;
+            size.x *= _runtimeRangeMultiplier;
             var center = (Vector2)transform.position + offset;
-            var colliders = Physics2D.OverlapBoxAll(center, hitboxSize, 0f);
+            var colliders = Physics2D.OverlapBoxAll(center, size, 0f);
             var seen = new HashSet<CombatEntity>();
             var hitAny = false;
 
@@ -111,14 +125,13 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                 forward = Vector3.forward;
             forward.Normalize();
 
-            // Preserve the authored side-view semantics: X is forward reach, Y is thickness.
             var center = transform.position +
-                         forward * Mathf.Max(0.95f, Mathf.Abs(hitboxOffset.x) * 1.08f) +
+                         forward * Mathf.Max(0.95f, Mathf.Abs(hitboxOffset.x) * 1.08f * _runtimeRangeMultiplier) +
                          Vector3.up * 0.78f;
             var halfExtents = new Vector3(
                 Mathf.Max(0.66f, hitboxSize.y * 0.40f),
                 0.72f,
-                Mathf.Max(1.25f, hitboxSize.x * 0.50f));
+                Mathf.Max(1.25f, hitboxSize.x * 0.50f * _runtimeRangeMultiplier));
             var rotation = Quaternion.LookRotation(forward, Vector3.up);
             var colliders = Physics.OverlapBox(center, halfExtents, rotation, ~0, QueryTriggerInteraction.Ignore);
             var seen = new HashSet<CombatEntity>();
@@ -185,7 +198,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         {
             var hitAny = false;
             var physical = new DamageContext(
-                _entity, _entity, target, physicalDamage, DamageType.Physical, knockback,
+                _entity, _entity, target, physicalDamage * _runtimeDamageMultiplier, DamageType.Physical, knockback,
                 sourceId: "Chen_Skill1_Physical");
             var physicalResult = DamageSystem.Apply(physical);
             if (physicalResult.Applied)
@@ -194,7 +207,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             if (!target.Health.IsDead && artsDamage > 0f)
             {
                 var arts = new DamageContext(
-                    _entity, _entity, target, artsDamage, DamageType.Arts, Vector2.zero,
+                    _entity, _entity, target, artsDamage * _runtimeDamageMultiplier, DamageType.Arts, Vector2.zero,
                     sourceId: "Chen_Skill1_Arts");
                 if (DamageSystem.Apply(arts).Applied)
                     hitAny = true;

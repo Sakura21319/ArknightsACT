@@ -6,6 +6,7 @@ using ArknightsACT.Gameplay.CameraSystem;
 using ArknightsACT.Gameplay.Enemies;
 using ArknightsACT.Gameplay.Feedback;
 using ArknightsACT.Gameplay.Presentation;
+using ArknightsACT.Gameplay.Roguelite.Progression;
 using ArknightsACT.Gameplay.Rooms;
 using UnityEngine;
 
@@ -66,8 +67,6 @@ namespace ArknightsACT.Editor
                 enemyTemplates,
                 new[]
                 {
-                    // Spawn points share the same unified arena layout: none overlap the single
-                    // facility, its ramp, or the sparse one-grid cover pieces.
                     new Vector3(4.1f, 0.03f, 2.0f),
                     new Vector3(6.2f, 0.03f, -3.3f),
                     new Vector3(2.6f, 0.03f, -4.5f),
@@ -104,6 +103,9 @@ namespace ArknightsACT.Editor
 
             var entity = go.GetComponent<CombatEntity>() ?? go.AddComponent<CombatEntity>();
             entity.SetTeam(Team.Enemy);
+
+            var experience = go.AddComponent<EnemyExperienceReward>();
+            experience.Configure(healthOverride.HasValue ? 120 : ResolveExperience(archetype));
 
             var brain = go.AddComponent<PrototypeEnemyCombatBrain25D>();
             brain.Configure(archetype, Vector3.back);
@@ -143,6 +145,13 @@ namespace ArknightsACT.Editor
             PrototypeEnemyArchetype.FastMelee => 45f,
             PrototypeEnemyArchetype.Ranged => 50f,
             _ => 60f
+        };
+
+        private static int ResolveExperience(PrototypeEnemyArchetype archetype) => archetype switch
+        {
+            PrototypeEnemyArchetype.FastMelee => 22,
+            PrototypeEnemyArchetype.Ranged => 32,
+            _ => 28
         };
     }
 }

@@ -21,13 +21,15 @@ namespace ArknightsACT.Editor
             EnsureFolder(SceneDir);
             var attacks = BuildChenAttackDefinitions();
 
-            // Prototype25DSceneBuilder is now the single source of truth for the production map:
-            // ground/roads, one two-floor facility, sparse one-grid cover and navigation graph.
+            // Reuse the validated 2.5D shell to create lighting, camera and material assets, then
+            // remove its fixed demo arena. PrototypeRun now materializes the random 4/6/9-block
+            // stage at runtime instead of playing inside one editor-authored room.
             Prototype25DSceneBuilder.Build();
             RemoveDemoActor("Player_Chen_25D");
             RemoveDemoActor("Enemy_Soldier");
             RemoveDemoActor("Enemy_Hound");
             RemoveDemoActor("Enemy_Crossbowman");
+            RemoveDemoActor("[3D Map]");
 
             var camera = GameObject.Find("Main Camera")?.GetComponent<Camera>();
             if (camera == null)
@@ -41,8 +43,9 @@ namespace ArknightsACT.Editor
             Prototype25DProductionFactory.ConfigureCamera(camera, player.transform);
 
             var enemyTemplates = Prototype25DProductionFactory.CreateEnemyTemplates(camera);
-            var roomLoop = Prototype25DProductionFactory.CreateRoomLoop(player.transform, enemyTemplates);
-            PrototypeRogueliteFactory.Create(roomLoop, player.transform);
+            var treasureTemplates = PrototypeTreasureFactory.CreateTemplates(camera);
+            var rogueliteRoot = PrototypeRogueliteFactory.CreateExploration(player.transform);
+            PrototypeStageRuntimeFactory.Create(player.transform, enemyTemplates, treasureTemplates, rogueliteRoot);
 
             var scene = SceneManager.GetActiveScene();
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -52,10 +55,9 @@ namespace ArknightsACT.Editor
             EditorGUIUtility.PingObject(player);
 
             Debug.Log(
-                $"ArknightsACT Chen 2.5D ACT roguelite prototype generated: {ScenePath}. " +
+                $"ArknightsACT Chen 2.5D exploration roguelite generated: {ScenePath}. " +
                 "Controls: WASD/Stick move on XZ, Space jump, J/LMB combo, K/Shift dash, L skill1, I/RMB skill2. " +
-                "Unified arena: one walkable two-floor facility, sparse one-grid cover, obstacle-aware LOS and navigation. " +
-                "R3 rewards and route nodes remain active.");
+                "Runtime flow: Stage1 4 blocks -> Boss -> Stage2 6 blocks -> Boss -> Stage3 9 blocks -> Final Boss.");
         }
 
         private static void RemoveDemoActor(string objectName)

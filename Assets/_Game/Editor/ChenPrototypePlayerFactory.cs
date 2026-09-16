@@ -10,6 +10,9 @@ using ArknightsACT.Gameplay.Input;
 using ArknightsACT.Gameplay.Presentation;
 using ArknightsACT.Gameplay.Roguelite;
 using ArknightsACT.Gameplay.Roguelite.Collectibles;
+using ArknightsACT.Gameplay.Roguelite.Progression;
+using ArknightsACT.Gameplay.Roguelite.SkillUpgrades;
+using ArknightsACT.Gameplay.Roguelite.Treasure;
 using UnityEngine;
 
 namespace ArknightsACT.Editor
@@ -97,10 +100,6 @@ namespace ArknightsACT.Editor
                 combatPresentation.transform.localPosition =
                     new Vector3(0f, -PrtsPrototypeAssetCatalog.Chen.FeetLocalY, 0f);
 
-                // Keep the exact movement presentation used by the validated side-view build:
-                // the base/dorm skeleton supplies Move, while the visible combat skeleton keeps
-                // Ch'en's weapons/attachments. Both live under the camera-facing billboard so
-                // the retargeted pose remains in the same local presentation space.
                 AttachMotionRetarget(go, billboard.transform, combatPresentation);
             }
             else
@@ -143,10 +142,6 @@ namespace ArknightsACT.Editor
 
         private static void AddSharedGameplay(GameObject go, AttackDefinition[] attacks)
         {
-            // CombatEntity has RequireComponent(Health, StatusController). During editor-time
-            // composition of an inactive GameObject, relying on RequireComponent to inject the
-            // missing StatusController can fail inside AddComponent<CombatEntity>(). Compose the
-            // dependency chain explicitly and deterministically instead.
             var health = go.GetComponent<Health>() ?? go.AddComponent<Health>();
             health.SetMaxHealth(100f);
             if (go.GetComponent<StatusController>() == null)
@@ -163,6 +158,7 @@ namespace ArknightsACT.Editor
             go.AddComponent<ChenSkill1>();
             go.AddComponent<ChenSkill2>();
             go.AddComponent<PlayerSkillController>();
+            go.AddComponent<ChenSkillUpgradeApplier>();
 
             var profile = go.AddComponent<PlayerCombatProfile>();
             profile.Configure(
@@ -172,6 +168,9 @@ namespace ArknightsACT.Editor
                 CombatFeature.PhysicalDamage |
                 CombatFeature.ArtsDamage);
             go.AddComponent<CollectibleInventory>();
+            go.AddComponent<LevelUpgradeInventory>();
+            go.AddComponent<CharacterSkillUpgradeInventory>();
+            go.AddComponent<TemporaryCombatBuffs>();
         }
 
         private static void CreatePlaceholder(Transform parent)
