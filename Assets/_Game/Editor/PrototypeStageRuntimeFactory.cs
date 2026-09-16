@@ -58,7 +58,7 @@ namespace ArknightsACT.Editor
             // Keep route/encounter code stable. Presentation is layered deliberately:
             // physical floor/layout -> hazard policy -> palette -> legacy base -> Concept-01 hints ->
             // persistent modular assets -> broad floor composition -> bevel fallback -> modular backdrop ->
-            // art-direction rhythm -> PBR/lighting -> iconic terrain -> red Active Originium -> optional PRTS backdrop.
+            // art-direction rhythm -> PBR/lighting -> iconic terrain -> amber-black Originium shards -> optional PRTS backdrop.
             go.AddComponent<RogueliteStageLayoutController>().Configure(stageMap);
             go.AddComponent<RogueliteStageHazardPolicyController>().Configure(stageMap);
             go.AddComponent<RogueliteStagePaletteController>().Configure(stageMap);
