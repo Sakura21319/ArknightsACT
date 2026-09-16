@@ -49,11 +49,12 @@ namespace ArknightsACT.Editor
                 Load("HazardBand"));
 
             // Keep route/encounter code stable. These passes decorate the freshly materialized stage:
-            // physical floor/layout -> cold Chernobog palette -> Arknights geometry skin -> real pit
-            // binding -> iconic terrain presentation -> optional local PRTS distant background.
+            // physical floor/layout -> cold palette -> legacy authenticity base -> selected Concept-01
+            // modular kit -> real pit binding -> iconic terrain -> optional local PRTS background.
             go.AddComponent<RogueliteStageLayoutController>().Configure(stageMap);
             go.AddComponent<RogueliteStagePaletteController>().Configure(stageMap);
             go.AddComponent<RogueliteStageAuthenticityController>().Configure(stageMap);
+            go.AddComponent<RogueliteStageConceptOneController>().Configure(stageMap);
             go.AddComponent<RoguelitePitFloorSyncController>().Configure(stageMap);
             go.AddComponent<RogueliteStageTerrainPresentationController>().Configure(stageMap);
             go.AddComponent<RogueliteStageBackdropReferenceController>().Configure(stageMap, LoadEnvironmentBackdrops());
