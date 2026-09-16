@@ -13,12 +13,23 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
         Boss
     }
 
+    public enum RogueliteChunkTheme
+    {
+        Open,
+        Street,
+        CoverLane,
+        Facility,
+        SafePlaza,
+        BossArena
+    }
+
     [Serializable]
     public sealed class RogueliteBlockState
     {
         [SerializeField] private int index;
         [SerializeField] private Vector2Int coordinate;
         [SerializeField] private RogueliteBlockType type;
+        [SerializeField] private RogueliteChunkTheme theme;
         [SerializeField] private bool explored;
         [SerializeField] private bool hasNormalChest;
         [SerializeField] private bool hasSpikeChest;
@@ -27,6 +38,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
         public int Index => index;
         public Vector2Int Coordinate => coordinate;
         public RogueliteBlockType Type => type;
+        public RogueliteChunkTheme Theme => theme;
         public bool Explored => explored;
         public bool HasNormalChest => hasNormalChest;
         public bool HasSpikeChest => hasSpikeChest;
@@ -36,6 +48,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             int blockIndex,
             Vector2Int gridCoordinate,
             RogueliteBlockType blockType,
+            RogueliteChunkTheme chunkTheme,
             bool normalChest,
             bool spikeChest,
             bool monsterChest)
@@ -43,6 +56,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             index = blockIndex;
             coordinate = gridCoordinate;
             type = blockType;
+            theme = chunkTheme;
             explored = false;
             hasNormalChest = normalChest;
             hasSpikeChest = spikeChest;
@@ -59,10 +73,9 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
     }
 
     /// <summary>
-    /// Logical stage map used before physical chunk assembly is introduced.
-    /// Stage 1 = 2x2 (4 blocks), Stage 2 = 3x2 (6), Stage 3 = 3x3 (9).
-    /// Start is fixed at bottom-left and Boss/exit is fixed at top-right. All other block
-    /// contents are rerolled per stage/run while remaining fully connected by cardinal edges.
+    /// Logical stage map. Stage 1 = 2x2 (4 blocks), Stage 2 = 3x2 (6), Stage 3 = 3x3 (9).
+    /// Start is fixed at bottom-left and Boss/exit at top-right. All cells remain cardinally
+    /// connected so the player chooses the exploration order instead of following a single route.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class RogueliteStageMapController : MonoBehaviour
@@ -119,10 +132,18 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                 var type = index == 0
                     ? RogueliteBlockType.Start
                     : (index == count - 1 ? RogueliteBlockType.Boss : RogueliteBlockType.Combat);
-                _blocks.Add(new RogueliteBlockState(index, coordinate, type, false, false, false));
+                _blocks.Add(new RogueliteBlockState(
+                    index,
+                    coordinate,
+                    type,
+                    RogueliteChunkTheme.Open,
+                    false,
+                    false,
+                    false));
             }
 
             AssignSpecialCombatBlocks();
+            AssignChunkThemes();
             RollTreasureContents();
             LayoutGenerated?.Invoke(StageIndex);
             Debug.Log(BuildDebugSummary(), this);
@@ -176,7 +197,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             if (_random.NextDouble() < shopChance && candidates.Count > 0)
             {
                 var shop = RemoveRandom(candidates);
-                ReplaceBlockType(shop, RogueliteBlockType.Shop);
+                ReplaceBlock(shop, RogueliteBlockType.Shop, RogueliteChunkTheme.SafePlaza);
             }
 
             var emergencyCount = StageIndex switch
@@ -188,7 +209,44 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             for (var i = 0; i < emergencyCount && candidates.Count > 0; i++)
             {
                 var emergency = RemoveRandom(candidates);
-                ReplaceBlockType(emergency, RogueliteBlockType.EmergencyCombat);
+                ReplaceBlock(emergency, RogueliteBlockType.EmergencyCombat, RogueliteChunkTheme.Open);
+            }
+        }
+
+        private void AssignChunkThemes()
+        {
+            ReplaceBlock(StartIndex, RogueliteBlockType.Start, RogueliteChunkTheme.SafePlaza);
+            ReplaceBlock(BossIndex, RogueliteBlockType.Boss, RogueliteChunkTheme.BossArena);
+
+            // Exactly one walkable two-floor facility per stage when there is at least one
+            // non-shop combat cell. Other blocks stay low-profile so the stage never becomes
+            // a city of repeated solid buildings.
+            var facilityCandidates = new List<int>();
+            for (var i = 1; i < _blocks.Count - 1; i++)
+            {
+                if (_blocks[i].Type != RogueliteBlockType.Shop)
+                    facilityCandidates.Add(i);
+            }
+            if (facilityCandidates.Count > 0)
+            {
+                var facility = facilityCandidates[_random.Next(facilityCandidates.Count)];
+                ReplaceBlock(facility, _blocks[facility].Type, RogueliteChunkTheme.Facility);
+            }
+
+            for (var i = 1; i < _blocks.Count - 1; i++)
+            {
+                var block = _blocks[i];
+                if (block.Type == RogueliteBlockType.Shop || block.Theme == RogueliteChunkTheme.Facility)
+                    continue;
+
+                var roll = _random.Next(3);
+                var theme = roll switch
+                {
+                    1 => RogueliteChunkTheme.Street,
+                    2 => RogueliteChunkTheme.CoverLane,
+                    _ => RogueliteChunkTheme.Open
+                };
+                ReplaceBlock(i, block.Type, theme);
             }
         }
 
@@ -204,7 +262,14 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                 var monster = specialRoll < monsterChestChance;
                 var spike = !monster && specialRoll < monsterChestChance + spikeChestChance;
                 var normal = _random.NextDouble() < normalChestChance;
-                _blocks[i] = new RogueliteBlockState(old.Index, old.Coordinate, old.Type, normal, spike, monster);
+                _blocks[i] = new RogueliteBlockState(
+                    old.Index,
+                    old.Coordinate,
+                    old.Type,
+                    old.Theme,
+                    normal,
+                    spike,
+                    monster);
             }
         }
 
@@ -224,10 +289,19 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             return value;
         }
 
-        private void ReplaceBlockType(int index, RogueliteBlockType type)
+        private void ReplaceBlock(int index, RogueliteBlockType type, RogueliteChunkTheme theme)
         {
+            if (index < 0 || index >= _blocks.Count)
+                return;
             var old = _blocks[index];
-            _blocks[index] = new RogueliteBlockState(old.Index, old.Coordinate, type, false, false, false);
+            _blocks[index] = new RogueliteBlockState(
+                old.Index,
+                old.Coordinate,
+                type,
+                theme,
+                old.HasNormalChest,
+                old.HasSpikeChest,
+                old.HasMonsterChest);
         }
 
         private void AddNeighbor(Vector2Int coordinate, List<int> result)
@@ -257,8 +331,17 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                         RogueliteBlockType.EmergencyCombat => "!",
                         _ => "C"
                     };
+                    var theme = block.Theme switch
+                    {
+                        RogueliteChunkTheme.Facility => "F",
+                        RogueliteChunkTheme.Street => "R",
+                        RogueliteChunkTheme.CoverLane => "L",
+                        RogueliteChunkTheme.SafePlaza => "P",
+                        RogueliteChunkTheme.BossArena => "A",
+                        _ => "O"
+                    };
                     var treasure = block.HasMonsterChest ? "M" : (block.HasSpikeChest ? "X" : (block.HasNormalChest ? "N" : "-"));
-                    row += $"[{code}{treasure}] ";
+                    row += $"[{code}{theme}{treasure}] ";
                 }
                 lines.Add(row.TrimEnd());
             }
