@@ -73,9 +73,10 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
     }
 
     /// <summary>
-    /// Logical stage map. Stage 1 = 2x2 (4 blocks), Stage 2 = 3x2 (6), Stage 3 = 3x3 (9).
-    /// Start is fixed at bottom-left and Boss/exit at top-right. All cells remain cardinally
-    /// connected so the player chooses the exploration order instead of following a single route.
+    /// Logical city-scale stage map. Stage 1 = 3x3 (9 blocks), Stage 2 = 4x3 (12),
+    /// Stage 3 = 4x4 (16). Start is fixed at bottom-left and Boss/exit at top-right.
+    /// The enlarged grids give roads, buildings, alleys and service yards enough room to read as a
+    /// real mobile-city district instead of a handful of adjacent combat platforms.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class RogueliteStageMapController : MonoBehaviour
@@ -88,13 +89,13 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
         [SerializeField, Range(0f, 1f)] private float spikeChestChance = 0.14f;
         [SerializeField, Range(0f, 1f)] private float monsterChestChance = 0.10f;
 
-        private readonly List<RogueliteBlockState> _blocks = new(9);
+        private readonly List<RogueliteBlockState> _blocks = new(16);
         private System.Random _random;
 
         public IReadOnlyList<RogueliteBlockState> Blocks => _blocks;
         public int StageIndex { get; private set; } = 1;
-        public int Width { get; private set; } = 2;
-        public int Height { get; private set; } = 2;
+        public int Width { get; private set; } = 3;
+        public int Height { get; private set; } = 3;
         public int StartIndex => 0;
         public int BossIndex => _blocks.Count > 0 ? _blocks.Count - 1 : -1;
 
@@ -202,9 +203,9 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
             var emergencyCount = StageIndex switch
             {
-                1 => _random.NextDouble() < 0.35 ? 1 : 0,
-                2 => 1,
-                _ => _random.NextDouble() < 0.45 ? 2 : 1
+                1 => 1,
+                2 => _random.NextDouble() < 0.45 ? 2 : 1,
+                _ => 2
             };
             for (var i = 0; i < emergencyCount && candidates.Count > 0; i++)
             {
@@ -218,9 +219,8 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             ReplaceBlock(StartIndex, RogueliteBlockType.Start, RogueliteChunkTheme.SafePlaza);
             ReplaceBlock(BossIndex, RogueliteBlockType.Boss, RogueliteChunkTheme.BossArena);
 
-            // Exactly one walkable two-floor facility per stage when there is at least one
-            // non-shop combat cell. Other blocks stay low-profile so the stage never becomes
-            // a city of repeated solid buildings.
+            // One authoritative walkable two-floor facility remains enough for the waypoint graph.
+            // Other city buildings are supplied by the urban/playable architecture passes.
             var facilityCandidates = new List<int>();
             for (var i = 1; i < _blocks.Count - 1; i++)
             {
@@ -353,16 +353,16 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             switch (stageIndex)
             {
                 case 2:
-                    width = 3;
-                    height = 2;
-                    break;
-                case 3:
-                    width = 3;
+                    width = 4;
                     height = 3;
                     break;
+                case 3:
+                    width = 4;
+                    height = 4;
+                    break;
                 default:
-                    width = 2;
-                    height = 2;
+                    width = 3;
+                    height = 3;
                     break;
             }
         }
