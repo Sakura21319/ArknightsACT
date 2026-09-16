@@ -25,6 +25,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
         private float _verticalVelocity;
         private Vector3 _forward = Vector3.back;
 
+        public event Action Activated;
         public event Action<int> AttackStarted;
         public bool IsActivated { get; private set; }
         public bool IsMoving { get; private set; }
@@ -42,9 +43,14 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
         {
             if (target == null || target.Health == null || target.Health.IsDead)
                 return;
+
             _target = target;
+            if (IsActivated)
+                return;
+
             IsActivated = true;
             FaceToward(target.transform.position);
+            Activated?.Invoke();
         }
 
         private void OnDisable()
