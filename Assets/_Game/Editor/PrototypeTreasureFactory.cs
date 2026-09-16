@@ -69,17 +69,17 @@ namespace ArknightsACT.Editor
             if (kind == TreasureChestKind.Monster)
             {
                 var controller = go.AddComponent<CharacterController>();
-                controller.radius = 0.40f;
-                controller.height = 1.10f;
-                controller.center = new Vector3(0f, 0.55f, 0f);
-                controller.stepOffset = 0.24f;
+                controller.radius = 0.32f;
+                controller.height = 0.90f;
+                controller.center = new Vector3(0f, 0.45f, 0f);
+                controller.stepOffset = 0.20f;
                 controller.slopeLimit = 45f;
             }
             else
             {
                 var collider = go.AddComponent<BoxCollider>();
-                collider.size = new Vector3(0.92f, 0.86f, 0.92f);
-                collider.center = new Vector3(0f, 0.43f, 0f);
+                collider.size = new Vector3(0.72f, 0.62f, 0.72f);
+                collider.center = new Vector3(0f, 0.31f, 0f);
             }
 
             var health = go.AddComponent<Health>();
@@ -92,42 +92,80 @@ namespace ArknightsACT.Editor
             billboard.transform.SetParent(go.transform, false);
             billboard.AddComponent<BillboardPresentation25D>().Configure(camera);
 
-            if (PrtsGeneratedPresentation.TryAttach(descriptor.BaseName, billboard.transform, out var presentation))
+            GameObject dormantVisual = null;
+            GameObject monsterVisual = null;
+            if (kind == TreasureChestKind.Monster)
             {
-                presentation.transform.localPosition = new Vector3(0f, -descriptor.FeetLocalY, 0f);
+                dormantVisual = AttachPresentationOrFallback(
+                    billboard.transform,
+                    PrtsPrototypeAssetCatalog.NormalTreasureChest,
+                    TreasureChestKind.Normal,
+                    "DormantChest");
+                monsterVisual = AttachPresentationOrFallback(
+                    billboard.transform,
+                    PrtsPrototypeAssetCatalog.ChestSeaborn,
+                    TreasureChestKind.Monster,
+                    "ActiveMonster");
+                if (monsterVisual != null)
+                    monsterVisual.SetActive(false);
             }
             else
             {
-                CreateFallback(billboard.transform, kind);
-                Debug.LogWarning(
-                    $"[ArknightsACT/Treasure] PRTS presentation missing for {descriptor.DisplayName}. " +
-                    "Run 'Download Roguelite Treasure' then '3. Build Presentation Prefabs'.",
-                    go);
+                AttachPresentationOrFallback(billboard.transform, descriptor, kind, kind + "Visual");
             }
 
             if (kind == TreasureChestKind.Monster)
             {
                 go.AddComponent<TreasureMonsterBrain25D>();
-                go.AddComponent<TreasureMonsterPresentation25D>();
+                var monsterPresentation = go.AddComponent<TreasureMonsterPresentation25D>();
+                monsterPresentation.Configure(dormantVisual, monsterVisual);
                 go.AddComponent<EnemyExperienceReward>().Configure(90);
             }
 
             go.AddComponent<TreasureChest25D>().Configure(kind, player);
             go.AddComponent<DamageTintFlash2D>();
-            go.AddComponent<WorldHealthBar2D>();
+            var healthBar = go.AddComponent<WorldHealthBar2D>();
+            healthBar.ConfigureWorldLayout(
+                kind == TreasureChestKind.Monster ? 1.02f : 0.84f,
+                kind == TreasureChestKind.Monster ? 0.88f : 0.78f,
+                0.065f);
             go.AddComponent<DamageNumberEmitter2D>();
 
             go.SetActive(true);
             return go;
         }
 
-        private static void CreateFallback(Transform parent, TreasureChestKind kind)
+        private static GameObject AttachPresentationOrFallback(
+            Transform parent,
+            PrtsAssetDescriptor descriptor,
+            TreasureChestKind kind,
+            string objectName)
+        {
+            if (PrtsGeneratedPresentation.TryAttach(descriptor.BaseName, parent, out var presentation))
+            {
+                presentation.name = objectName;
+                presentation.transform.localPosition = new Vector3(0f, -descriptor.FeetLocalY, 0f);
+                return presentation;
+            }
+
+            var fallback = CreateFallback(parent, kind);
+            fallback.name = objectName + "_Fallback";
+            Debug.LogWarning(
+                $"[ArknightsACT/Treasure] PRTS presentation missing for {descriptor.DisplayName}. " +
+                "Run 'Download Roguelite Treasure' then '3. Build Presentation Prefabs'.",
+                parent);
+            return fallback;
+        }
+
+        private static GameObject CreateFallback(Transform parent, TreasureChestKind kind)
         {
             var visual = GameObject.CreatePrimitive(PrimitiveType.Cube);
             visual.name = kind + "_Fallback";
             visual.transform.SetParent(parent, false);
-            visual.transform.localPosition = new Vector3(0f, 0.42f, 0f);
-            visual.transform.localScale = new Vector3(0.86f, 0.72f, 0.72f);
+            visual.transform.localPosition = new Vector3(0f, kind == TreasureChestKind.Monster ? 0.42f : 0.30f, 0f);
+            visual.transform.localScale = kind == TreasureChestKind.Monster
+                ? new Vector3(0.68f, 0.82f, 0.62f)
+                : new Vector3(0.68f, 0.52f, 0.58f);
             var collider = visual.GetComponent<Collider>();
             if (collider != null)
                 Object.DestroyImmediate(collider);
@@ -144,6 +182,7 @@ namespace ArknightsACT.Editor
             if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", color);
             if (material.HasProperty("_Color")) material.SetColor("_Color", color);
             renderer.sharedMaterial = material;
+            return visual;
         }
     }
 }
