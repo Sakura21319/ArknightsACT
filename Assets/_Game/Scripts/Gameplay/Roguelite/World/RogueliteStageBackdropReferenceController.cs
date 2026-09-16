@@ -6,17 +6,21 @@ using UnityEngine.Rendering;
 namespace ArknightsACT.Gameplay.Roguelite.World
 {
     /// <summary>
-    /// Optional local-reference backdrop layer. When PRTS Chernobog images were downloaded through
-    /// the editor workflow, a dimmed camera-facing card sits behind the procedural mobile-city
-    /// skyline. The 3D block geometry remains authoritative for gameplay and collision.
+    /// Optional local-reference backdrop layer. When PRTS Chernobog story-background images were
+    /// downloaded through the editor workflow, a dimmed camera-facing card sits behind the procedural
+    /// city geometry. The 3D streets/buildings remain authoritative for gameplay and collision while
+    /// the verified story art supplies the distant atmosphere that procedural boxes cannot reproduce.
     /// </summary>
     [DefaultExecutionOrder(40)]
     [DisallowMultipleComponent]
     public sealed class RogueliteStageBackdropReferenceController : MonoBehaviour
     {
+        private const float ChunkWidth = 18f;
+        private const float ChunkDepth = 14f;
+
         [SerializeField] private RogueliteStageMapController stageMap;
         [SerializeField] private Texture2D[] cernobogBackdrops;
-        [SerializeField, Range(0.1f, 1f)] private float backdropBrightness = 0.48f;
+        [SerializeField, Range(0.1f, 1f)] private float backdropBrightness = 0.42f;
 
         private GameObject _resolvedStage;
         private GameObject _backdropCard;
@@ -82,10 +86,19 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 horizontalForward = new Vector3(1f, 0f, 1f);
             horizontalForward.Normalize();
 
-            var stageSpan = Mathf.Max(stageMap.Width * 14f, stageMap.Height * 11f);
-            _backdropCard.transform.position = stage.transform.position + horizontalForward * (stageSpan * 0.72f + 18f) + Vector3.up * 8.5f;
+            var stageWidth = stageMap.Width * ChunkWidth;
+            var stageDepth = stageMap.Height * ChunkDepth;
+            var stageSpan = Mathf.Max(stageWidth, stageDepth);
+            _backdropCard.transform.position = stage.transform.position +
+                                               horizontalForward * (stageSpan * 0.86f + 26f) +
+                                               Vector3.up * Mathf.Max(10f, stageSpan * 0.16f);
             _backdropCard.transform.rotation = Quaternion.LookRotation(-camera.transform.forward, camera.transform.up);
-            _backdropCard.transform.localScale = new Vector3(44f, 24.75f, 1f);
+
+            // Overscan heavily so the fixed 2.5D camera never exposes the card edges at the expanded
+            // 3x3 / 4x3 / 4x4 city sizes. Keep the source's wide story-background proportion.
+            var backdropWidth = Mathf.Max(58f, stageSpan * 1.72f);
+            var backdropHeight = backdropWidth * 0.5625f;
+            _backdropCard.transform.localScale = new Vector3(backdropWidth, backdropHeight, 1f);
 
             var collider = _backdropCard.GetComponent<Collider>();
             if (collider != null)
