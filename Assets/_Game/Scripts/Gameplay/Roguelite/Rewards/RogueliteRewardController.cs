@@ -8,23 +8,34 @@ using UnityEngine.InputSystem;
 namespace ArknightsACT.Gameplay.Roguelite.Rewards
 {
     /// <summary>
-    /// Reusable collectible reward screen. Route / node orchestration decides when it opens,
-    /// which rarity floor applies, and what happens after selection.
+    /// Reusable collectible reward screen. Requests are queued behind the shared reward
+    /// coordinator so collectible, level-up and character-skill choices never overlap.
     /// </summary>
     public sealed class RogueliteRewardController : MonoBehaviour
     {
+        private sealed class RewardRequest
+        {
+            public string Title;
+            public CollectibleRarity MinimumRarity;
+            public int ChoiceCount;
+            public Action Completed;
+        }
+
         [SerializeField] private CollectibleInventory inventory;
         [SerializeField] private PlayerCombatProfile combatProfile;
         [SerializeField] private CollectibleDefinition[] rewardPool;
         [SerializeField, Range(1, 3)] private int defaultChoiceCount = 3;
 
+        private readonly Queue<RewardRequest> _pendingRequests = new();
         private readonly List<CollectibleDefinition> _choices = new();
         private bool _isOpen;
         private GameplayPauseService _pause;
+        private RewardSelectionCoordinator _coordinator;
         private CollectibleRarity _minimumRarity;
         private int _activeChoiceCount;
         private string _title = "选择一件收藏品";
         private Action _completed;
+        private int _inputUnlockFrame;
 
         public bool IsOpen => _isOpen;
 
@@ -41,12 +52,15 @@ namespace ArknightsACT.Gameplay.Roguelite.Rewards
         private void OnEnable()
         {
             _pause = GameplayPauseService.Instance;
+            _coordinator = RewardSelectionCoordinator.Instance ?? FindFirstObjectByType<RewardSelectionCoordinator>();
         }
 
         private void OnDisable()
         {
             CloseWithoutCallback();
+            _coordinator?.Release(this);
             _completed = null;
+            _pendingRequests.Clear();
         }
 
         public bool OpenReward(
@@ -55,13 +69,34 @@ namespace ArknightsACT.Gameplay.Roguelite.Rewards
             int requestedChoiceCount,
             Action completed)
         {
-            if (_isOpen)
+            if (inventory == null)
                 return false;
 
-            _title = string.IsNullOrWhiteSpace(title) ? "选择一件收藏品" : title;
-            _minimumRarity = minimumRarity;
-            _activeChoiceCount = Mathf.Clamp(requestedChoiceCount > 0 ? requestedChoiceCount : defaultChoiceCount, 1, 3);
-            _completed = completed;
+            _pendingRequests.Enqueue(new RewardRequest
+            {
+                Title = string.IsNullOrWhiteSpace(title) ? "选择一件收藏品" : title,
+                MinimumRarity = minimumRarity,
+                ChoiceCount = Mathf.Clamp(requestedChoiceCount > 0 ? requestedChoiceCount : defaultChoiceCount, 1, 3),
+                Completed = completed
+            });
+            TryOpenNext();
+            return true;
+        }
+
+        private void TryOpenNext()
+        {
+            if (_isOpen || _pendingRequests.Count == 0)
+                return;
+
+            _coordinator ??= RewardSelectionCoordinator.Instance ?? FindFirstObjectByType<RewardSelectionCoordinator>();
+            if (_coordinator != null && !_coordinator.TryAcquire(this))
+                return;
+
+            var request = _pendingRequests.Dequeue();
+            _title = request.Title;
+            _minimumRarity = request.MinimumRarity;
+            _activeChoiceCount = request.ChoiceCount;
+            _completed = request.Completed;
             BuildChoices();
 
             if (_choices.Count == 0)
@@ -71,8 +106,10 @@ namespace ArknightsACT.Gameplay.Roguelite.Rewards
                     this);
                 var callback = _completed;
                 _completed = null;
+                _coordinator?.Release(this);
                 callback?.Invoke();
-                return false;
+                TryOpenNext();
+                return;
             }
 
             _pause ??= GameplayPauseService.Instance;
@@ -81,12 +118,17 @@ namespace ArknightsACT.Gameplay.Roguelite.Rewards
             else
                 Time.timeScale = 0f;
             _isOpen = true;
-            return true;
+            _inputUnlockFrame = Time.frameCount + 1;
         }
 
         private void Update()
         {
             if (!_isOpen)
+            {
+                TryOpenNext();
+                return;
+            }
+            if (Time.frameCount < _inputUnlockFrame)
                 return;
 
             var keyboard = Keyboard.current;
@@ -163,6 +205,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Rewards
             _completed = null;
             CloseWithoutCallback();
             callback?.Invoke();
+            TryOpenNext();
         }
 
         private void CloseWithoutCallback()
@@ -176,6 +219,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Rewards
                 _pause.Resume(this);
             else
                 Time.timeScale = 1f;
+            _coordinator?.Release(this);
         }
 
         private void OnGUI()
