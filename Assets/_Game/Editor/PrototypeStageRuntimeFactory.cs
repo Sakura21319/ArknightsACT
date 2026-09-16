@@ -54,12 +54,12 @@ namespace ArknightsACT.Editor
                 Load("TacticalAccent"),
                 Load("HazardBand"));
 
-            // physical floor/layout -> expanded presentation -> hazard policy -> palette -> modular kit ->
-            // floor composition -> industrial shell -> playable rooms/decks -> real street grid/sealed city
-            // facades -> density thinning -> overlap cleanup -> solid blockers -> lighting/chassis -> layered
-            // distant city + horizon wrap -> containment -> actor visibility -> terrain/Originium -> PRTS backdrop.
+            // physical floor/layout -> district assignment -> modular presentation -> industrial shell ->
+            // playable rooms/decks -> district-specific streets/facades -> legacy density cleanup -> dressing
+            // collision -> lighting/chassis/deep base -> distant city/horizon -> containment -> x-ray visibility.
             go.AddComponent<RogueliteStageLayoutController>().Configure(stageMap);
             go.AddComponent<RogueliteStageExpansionController>().Configure(stageMap);
+            go.AddComponent<RogueliteStageDistrictTemplateController>().Configure(stageMap);
             go.AddComponent<RogueliteStageHazardPolicyController>().Configure(stageMap);
             go.AddComponent<RogueliteStagePaletteController>().Configure(stageMap);
             go.AddComponent<RogueliteStageAuthenticityController>().Configure(stageMap);
