@@ -4,18 +4,30 @@ This pass adds a small **local-only** Arknights audio layer to the 2.5D prototyp
 
 ## Canonical sources used
 
-- Battle BGM: `bat_chernobog` / `m_bat_chernobog_intro` + `m_bat_chernobog_loop`.
-- Chen skill slot 1 (`赤霄·拔刀`): `p_skill_chixiaobadao`.
-- Chen skill slot 2 (`赤霄·绝影`): `p_skill_jueying_1`.
-- Chen Chinese battle voice pool: CN_025 .. CN_028 from the operator voice set.
+- Game BGM: Chapter 16 main-menu track `sys_act16main` / `Sound_Beta_2/Music/act16main/m_sys_act16main`, titled **反常光谱** on PRTS.
+- Chen skill slot 1 (`赤霄·拔刀`): verified Chixiao/story presentation SFX `d_avg_chixiaosword`.
+- Chen skill slot 2 (`赤霄·绝影`): verified Chixiao/story presentation SFX `d_avg_chixiaotiancheng`.
+- Chen battle voice pool: **Japanese only**, CN_025 .. CN_028 from `voice/char_010_chen`.
 
-The downloader keeps fallback URL candidates for PRTS media-path casing/root differences. Every downloaded file receives a `_SOURCE.txt` sidecar recording the PRTS page and the actual media URL that succeeded.
+The downloader normalizes PRTS media paths and writes a `_SOURCE.txt` sidecar recording the PRTS page and the media URL that succeeded. Japanese voice files use `Chen_Voice_JP_*` local names so previously downloaded Chinese clips cannot be reused accidentally.
+
+## Simplified Unity menu
+
+The visible `ArknightsACT` production workflow is intentionally small:
+
+- `ArknightsACT > Build Prototype Scene`
+- `ArknightsACT > Assets > PRTS > Download Prototype Models`
+- `ArknightsACT > Assets > PRTS > Build Presentation Prefabs`
+- `ArknightsACT > Assets > PRTS > Download Gameplay Audio`
+- `ArknightsACT > Assets > PRTS > Verify Gameplay Audio`
+
+Legacy demo builders, individual Chernobog material passes, diagnostic commands, per-character download commands, the old Spine installer entry, and split audio download commands are hidden from the normal menu. Their implementation remains available to the editor code where still useful.
 
 ## Unity workflow
 
 1. Pull `feat/phase-08-world-visuals` and wait for zero compiler errors.
-2. Run `ArknightsACT > Assets > PRTS > Download Gameplay Audio (BGM + Chen)`.
-3. Wait for Unity to import all audio clips.
+2. Run `ArknightsACT > Assets > PRTS > Download Gameplay Audio`.
+3. Run `ArknightsACT > Assets > PRTS > Verify Gameplay Audio`.
 4. Run `ArknightsACT > Build Prototype Scene`.
 5. Enter Play mode.
 
@@ -23,18 +35,18 @@ The downloader keeps fallback URL candidates for PRTS media-path casing/root dif
 
 `RoguelitePrototypeAudioController` is added to `[StageRuntime]` by `PrototypeStageRuntimeFactory`.
 
-- BGM intro is scheduled once, then the loop clip is scheduled immediately after it for a cleaner transition than repeatedly playing a combined intro.
+- `反常光谱` is loaded as the single looping gameplay BGM; the old Chernobog intro/loop pair is no longer wired.
 - Skill audio listens to `PlayerSkillController.SkillCastSucceeded`, so cooldown/invalid button presses never play audio.
-- Slot 1 and slot 2 use separate canonical Chen skill SFX.
-- Slot 1 randomly alternates between CN_025 / CN_026; slot 2 alternates between CN_027 / CN_028, avoiding immediate repetition when possible.
+- Slot 1 randomly alternates between Japanese CN_025 / CN_026; slot 2 alternates between Japanese CN_027 / CN_028, avoiding immediate repetition when possible.
 - Voice briefly ducks the BGM so the spoken line remains readable without making the skill SFX too loud.
-- Missing clips do not break the prototype. One warning explains how to download and rebuild the scene.
+- Missing clips do not break the prototype. The scene can still build and the audio verifier reports what is missing.
 
 ## Validation
 
 Confirm:
 
-- Chernobog BGM starts with the intro and continues into the loop.
+- `反常光谱` starts and loops during gameplay.
+- No Chinese Ch'en voice is used; skill voices are Japanese.
 - Skill 1 only plays its SFX/voice after a successful cast.
 - Skill 2 only plays its SFX/voice after a successful cast.
 - Repeated casts vary the voice line rather than always selecting the same clip.
