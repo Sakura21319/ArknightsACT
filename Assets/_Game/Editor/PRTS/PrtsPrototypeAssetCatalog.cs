@@ -32,9 +32,9 @@ namespace ArknightsACT.Editor.PRTS
             "trap_065_normbox",
             "Assets/_Game/Art/Props/PRTS/NormalTreasureChest/Spine",
             "Treasure",
-            0.90f,
+            0.72f,
             -0.42f,
-            0.42f);
+            0.34f);
 
         public static readonly PrtsAssetDescriptor SpikeTreasureChest = new(
             "尖刺宝箱·水月",
@@ -43,9 +43,9 @@ namespace ArknightsACT.Editor.PRTS
             "trap_066_rarebox",
             "Assets/_Game/Art/Props/PRTS/SpikeTreasureChest/Spine",
             "SpikeTreasure",
-            0.95f,
+            0.76f,
             -0.44f,
-            0.42f);
+            0.34f);
 
         public static readonly PrtsAssetDescriptor ChestSeaborn = new(
             "箱形恐鱼",
@@ -54,9 +54,9 @@ namespace ArknightsACT.Editor.PRTS
             "enemy_2035_sybox",
             "Assets/_Game/Art/Enemies/PRTS/ChestSeaborn/Spine",
             "TreasureMonster",
-            1.15f,
+            0.92f,
             -0.55f,
-            0.38f);
+            0.31f);
 
         public static readonly PrtsAssetDescriptor[] RogueliteTreasureAssets =
         {
