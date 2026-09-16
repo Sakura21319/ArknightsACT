@@ -98,7 +98,33 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             var snapped = block.InverseTransformPoint(nearest.transform.position);
             pit.localPosition = new Vector3(snapped.x, pit.localPosition.y, snapped.z);
             FitPitPresentationToSocket(pit, nearest.Footprint);
+
+            // Concept-01 floor inserts live in the visual stage layer rather than under the physical
+            // socket. Remove a nearby grate/hatch when that socket becomes a real hole so no service
+            // plate can float over an opened shaft.
+            HideConceptFloorDetails(block.parent, nearest.transform.position);
             return true;
+        }
+
+        private static void HideConceptFloorDetails(Transform stage, Vector3 socketWorldPosition)
+        {
+            if (stage == null)
+                return;
+
+            var transforms = stage.GetComponentsInChildren<Transform>(true);
+            for (var i = 0; i < transforms.Length; i++)
+            {
+                var current = transforms[i];
+                if (current == null ||
+                    (!string.Equals(current.name, "MaintenanceGrate", StringComparison.Ordinal) &&
+                     !string.Equals(current.name, "ServiceHatch", StringComparison.Ordinal)))
+                    continue;
+
+                var delta = current.position - socketWorldPosition;
+                delta.y = 0f;
+                if (delta.sqrMagnitude <= 1.35f * 1.35f)
+                    current.gameObject.SetActive(false);
+            }
         }
 
         private static void FitPitPresentationToSocket(Transform pit, Vector2 footprint)
