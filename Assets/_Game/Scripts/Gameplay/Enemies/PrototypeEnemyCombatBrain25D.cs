@@ -22,6 +22,8 @@ namespace ArknightsACT.Gameplay.Enemies
         [SerializeField, Min(0.5f)] private float viewDistance = 7f;
         [SerializeField, Range(10f, 170f)] private float viewAngle = 85f;
         [SerializeField, Min(0f)] private float loseSightDelay = 1.0f;
+        [SerializeField, Range(0.35f, 1.2f)] private float visionProbeHeight = 0.62f;
+        [SerializeField, Range(0.05f, 0.35f)] private float visionProbeRadius = 0.16f;
         [SerializeField] private Vector3 initialForward = Vector3.back;
 
         [Header("Combat")]
@@ -256,29 +258,55 @@ namespace ArknightsACT.Gameplay.Enemies
             if (_target == null)
                 return false;
 
-            var delta = _target.transform.position - transform.position;
-            delta.y = 0f;
-            var distance = delta.magnitude;
-            if (distance < 0.001f || distance > viewDistance)
+            var planarDelta = _target.transform.position - transform.position;
+            planarDelta.y = 0f;
+            var planarDistance = planarDelta.magnitude;
+            if (planarDistance < 0.001f || planarDistance > viewDistance)
                 return false;
 
-            var direction = delta / distance;
-            if (Vector3.Angle(LogicForward, direction) > viewAngle * 0.5f)
+            var planarDirection = planarDelta / planarDistance;
+            if (Vector3.Angle(LogicForward, planarDirection) > viewAngle * 0.5f)
                 return false;
 
-            var origin = transform.position + Vector3.up * 0.8f;
-            var destination = _target.transform.position + Vector3.up * 0.8f;
-            var ray = destination - origin;
-            var hits = Physics.RaycastAll(origin, ray.normalized, ray.magnitude, ~0, QueryTriggerInteraction.Ignore);
-            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            // Use a small-radius chest-height probe rather than a thin eye-level ray. This makes
+            // the existing crates, road barriers, medians, walls and floor slabs meaningful LOS
+            // blockers instead of letting enemies see just over 0.5-0.7 m obstacles.
+            var origin = transform.position + Vector3.up * visionProbeHeight;
+            var destination = _target.transform.position + Vector3.up * visionProbeHeight;
+            var cast = destination - origin;
+            var castDistance = cast.magnitude;
+            if (castDistance < 0.001f)
+                return true;
+
+            var hits = Physics.SphereCastAll(
+                origin,
+                visionProbeRadius,
+                cast / castDistance,
+                castDistance,
+                ~0,
+                QueryTriggerInteraction.Ignore);
+            Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
             for (var i = 0; i < hits.Length; i++)
             {
                 var collider = hits[i].collider;
                 if (collider == null || collider.transform.IsChildOf(transform))
                     continue;
-                var entity = collider.GetComponentInParent<CombatEntity>();
-                return entity == _target;
+
+                var hitEntity = collider.GetComponentInParent<CombatEntity>();
+                if (hitEntity != null)
+                {
+                    if (hitEntity == _target)
+                        return true;
+
+                    // Other actors do not count as permanent world occluders. Continue until we
+                    // either reach the target or hit actual map geometry.
+                    continue;
+                }
+
+                return false;
             }
+
             return true;
         }
 
