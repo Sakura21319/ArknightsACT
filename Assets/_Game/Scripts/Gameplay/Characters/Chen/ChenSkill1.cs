@@ -18,6 +18,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         [SerializeField, Min(0f)] private float artsDamage = 28f;
         [SerializeField] private Vector2 hitboxOffset = new(1.25f, 0.08f);
         [SerializeField] private Vector2 hitboxSize = new(3.4f, 1.8f);
+        [SerializeField, Min(0.1f)] private float max25DHeightDifference = 1.20f;
 
         private CombatEntity _entity;
         private IPlayerLocomotion _motor;
@@ -110,11 +111,14 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                 forward = Vector3.forward;
             forward.Normalize();
 
-            var center = transform.position + forward * Mathf.Max(0.8f, Mathf.Abs(hitboxOffset.x)) + Vector3.up * 0.85f;
+            // Preserve the authored side-view semantics: X is forward reach, Y is thickness.
+            var center = transform.position +
+                         forward * Mathf.Max(0.95f, Mathf.Abs(hitboxOffset.x) * 1.08f) +
+                         Vector3.up * 0.78f;
             var halfExtents = new Vector3(
-                Mathf.Max(0.9f, hitboxSize.x * 0.5f),
-                1.0f,
-                Mathf.Max(0.75f, hitboxSize.y * 0.45f));
+                Mathf.Max(0.66f, hitboxSize.y * 0.40f),
+                0.72f,
+                Mathf.Max(1.25f, hitboxSize.x * 0.50f));
             var rotation = Quaternion.LookRotation(forward, Vector3.up);
             var colliders = Physics.OverlapBox(center, halfExtents, rotation, ~0, QueryTriggerInteraction.Ignore);
             var seen = new HashSet<CombatEntity>();
@@ -126,6 +130,10 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                     continue;
                 var target = collider.GetComponentInParent<CombatEntity>();
                 if (!CanHit(target, seen))
+                    continue;
+                if (Mathf.Abs(target.transform.position.y - transform.position.y) > max25DHeightDifference)
+                    continue;
+                if (!HasClear25DLine(target))
                     continue;
 
                 if (ApplyDamagePair(target, Vector2.zero))
@@ -143,6 +151,34 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                    target.Health != null &&
                    !target.Health.IsDead &&
                    seen.Add(target);
+        }
+
+        private bool HasClear25DLine(CombatEntity target)
+        {
+            var origin = transform.position + Vector3.up * 0.70f;
+            var destination = target.transform.position + Vector3.up * 0.70f;
+            var cast = destination - origin;
+            var distance = cast.magnitude;
+            if (distance < 0.001f)
+                return true;
+
+            var hits = Physics.SphereCastAll(origin, 0.12f, cast / distance, distance, ~0, QueryTriggerInteraction.Ignore);
+            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            foreach (var hit in hits)
+            {
+                var collider = hit.collider;
+                if (collider == null || collider.transform.IsChildOf(transform))
+                    continue;
+                var entity = collider.GetComponentInParent<CombatEntity>();
+                if (entity != null)
+                {
+                    if (entity == target)
+                        return true;
+                    continue;
+                }
+                return false;
+            }
+            return true;
         }
 
         private bool ApplyDamagePair(CombatEntity target, Vector2 knockback)
