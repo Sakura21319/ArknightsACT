@@ -9,8 +9,9 @@ namespace ArknightsACT.Editor
 {
     /// <summary>
     /// Keeps the production menu small while preserving old editor utilities in code for debugging.
-    /// Legacy MenuItem attributes are removed after the editor registers them, and only the current
-    /// production workflow is re-exposed with short names.
+    /// Unity rebuilds attribute-backed MenuItem entries during domain/script reload, so a single delayed
+    /// removal is not reliable. We repeatedly remove legacy entries for a short post-reload window and
+    /// expose only the current production workflow below.
     /// </summary>
     [InitializeOnLoad]
     internal static class ArknightsActMenuCleanup
@@ -48,11 +49,21 @@ namespace ArknightsACT.Editor
             "ArknightsACT/Assets/PRTS/Download Gameplay Audio (BGM + Chen)"
         };
 
+        private static readonly MethodInfo RemoveMenuItemMethod = typeof(Menu).GetMethod(
+            "RemoveMenuItem",
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+            null,
+            new[] { typeof(string) },
+            null);
+
+        private static double _cleanupUntil;
+        private static double _nextCleanupAt;
+        private static bool _warnedUnavailable;
+
         static ArknightsActMenuCleanup()
         {
-            // MenuItem attributes are registered during script reload. Delay one editor tick so the
-            // internal RemoveMenuItem call runs after registration has completed.
-            EditorApplication.delayCall += RemoveLegacyItems;
+            BeginCleanupWindow();
+            AssemblyReloadEvents.afterAssemblyReload += BeginCleanupWindow;
         }
 
         [MenuItem("ArknightsACT/Assets/PRTS/Download Prototype Models", false, 100)]
@@ -70,27 +81,49 @@ namespace ArknightsACT.Editor
         [MenuItem("ArknightsACT/Assets/PRTS/Download Gameplay Audio", false, 120)]
         private static void DownloadGameplayAudio()
         {
-            InvokeHidden(typeof(PrtsGameplayAudioDownloader), "DownloadLegacyEntry");
+            PrtsGameplayAudioDownloader.DownloadLegacyEntry();
         }
 
         [MenuItem("ArknightsACT/Assets/PRTS/Verify Gameplay Audio", false, 121)]
         private static void VerifyGameplayAudio()
         {
-            InvokeHidden(typeof(PrtsGameplayAudioDownloader), "VerifyLocalAudio");
+            PrtsGameplayAudioDownloader.VerifyLocalAudio();
+        }
+
+        private static void BeginCleanupWindow()
+        {
+            _cleanupUntil = EditorApplication.timeSinceStartup + 20.0d;
+            _nextCleanupAt = 0d;
+            EditorApplication.update -= MaintainLegacyMenuRemoval;
+            EditorApplication.update += MaintainLegacyMenuRemoval;
+            EditorApplication.delayCall += RemoveLegacyItems;
+        }
+
+        private static void MaintainLegacyMenuRemoval()
+        {
+            var now = EditorApplication.timeSinceStartup;
+            if (now >= _cleanupUntil)
+            {
+                EditorApplication.update -= MaintainLegacyMenuRemoval;
+                return;
+            }
+
+            if (now < _nextCleanupAt)
+                return;
+
+            _nextCleanupAt = now + 0.5d;
+            RemoveLegacyItems();
         }
 
         private static void RemoveLegacyItems()
         {
-            var method = typeof(Menu).GetMethod(
-                "RemoveMenuItem",
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
-                null,
-                new[] { typeof(string) },
-                null);
-
-            if (method == null)
+            if (RemoveMenuItemMethod == null)
             {
-                Debug.LogWarning("[ArknightsACT/Menu] UnityEditor.Menu.RemoveMenuItem is unavailable; legacy menu entries could not be hidden.");
+                if (!_warnedUnavailable)
+                {
+                    _warnedUnavailable = true;
+                    Debug.LogWarning("[ArknightsACT/Menu] Unity internal RemoveMenuItem API is unavailable; legacy menu entries could not be hidden.");
+                }
                 return;
             }
 
@@ -98,12 +131,11 @@ namespace ArknightsACT.Editor
             {
                 try
                 {
-                    method.Invoke(null, new object[] { LegacyMenuItems[i] });
+                    RemoveMenuItemMethod.Invoke(null, new object[] { LegacyMenuItems[i] });
                 }
                 catch
                 {
-                    // Some entries may not exist in a given project state. Menu cleanup is best-effort
-                    // and should never block compilation or scene building.
+                    // Best-effort cleanup: some entries do not exist in every editor state.
                 }
             }
         }
