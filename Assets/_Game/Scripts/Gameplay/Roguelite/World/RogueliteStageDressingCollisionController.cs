@@ -5,11 +5,11 @@ using UnityEngine;
 namespace ArknightsACT.Gameplay.Roguelite.World
 {
     /// <summary>
-    /// Promotes selected set-dressing pieces into static blockers after the urban-composition pass has
-    /// moved them into safe edge/corner pockets. Rubble/crystal/cargo/slabs use robust aggregate boxes;
-    /// scaffold poles, decks and braces use their authored mesh bounds.
+    /// Promotes selected set-dressing pieces into reliable static blockers after urban/playable composition
+    /// and overlap cleanup have completed. Aggregate blockers derive their size from the actual rendered
+    /// bounds so visible rubble/crystal/cargo no longer protrudes through a smaller hard-coded collider.
     /// </summary>
-    [DefaultExecutionOrder(23)]
+    [DefaultExecutionOrder(25)]
     [DisallowMultipleComponent]
     public sealed class RogueliteStageDressingCollisionController : MonoBehaviour
     {
@@ -38,14 +38,15 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 return;
 
             var dressing = stage.transform.Find("[Chernobog_SetDressing]");
-            var composition = stage.transform.Find("[Chernobog_UrbanArchitecture]");
-            if (dressing == null || composition == null)
+            var urban = stage.transform.Find("[Chernobog_UrbanArchitecture]");
+            var playable = stage.transform.Find("[Chernobog_PlayableArchitecture]");
+            if (dressing == null || urban == null || playable == null)
                 return;
 
             var added = Apply(dressing);
             Physics.SyncTransforms();
             _preparedStage = stage;
-            Debug.Log($"[ArknightsACT/DressingCollision] Stage {stageMap.StageIndex}: {added} solid dressing colliders installed.", this);
+            Debug.Log($"[ArknightsACT/DressingCollision] Stage {stageMap.StageIndex}: {added} solid dressing colliders installed from visual bounds.", this);
         }
 
         private static int Apply(Transform dressing)
@@ -66,26 +67,16 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                     case "RubbleCluster":
                         if (!HasAncestorNamed(feature, "BrokenDeckSlab") &&
                             !HasAncestorNamed(feature, "BlackOriginiumGrowth"))
-                        {
-                            added += AddAggregateCollider(feature,
-                                new Vector3(0f, 0.46f, 0f),
-                                new Vector3(2.75f, 0.92f, 2.20f));
-                        }
+                            added += AddAggregateRendererBoundsCollider(feature, 0.08f, 0.04f);
                         break;
                     case "BlackOriginiumGrowth":
-                        added += AddAggregateCollider(feature,
-                            new Vector3(0f, 1.02f, 0f),
-                            new Vector3(2.65f, 2.10f, 2.10f));
+                        added += AddAggregateRendererBoundsCollider(feature, 0.10f, 0.05f);
                         break;
                     case "BrokenDeckSlab":
-                        added += AddAggregateCollider(feature,
-                            new Vector3(0.10f, 0.30f, -0.08f),
-                            new Vector3(3.95f, 0.72f, 2.65f));
+                        added += AddAggregateRendererBoundsCollider(feature, 0.08f, 0.04f);
                         break;
                     case "CargoBlocks":
-                        added += AddAggregateCollider(feature,
-                            new Vector3(0f, 1.22f, 0f),
-                            new Vector3(3.05f, 2.48f, 1.62f));
+                        added += AddAggregateRendererBoundsCollider(feature, 0.06f, 0.03f);
                         break;
                 }
             }
@@ -100,14 +91,13 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
             var local = blockRoot.InverseTransformPoint(feature.position);
 
-            // The current waypoint graph owns the central cardinal cross. UrbanComposition moves all
-            // solid dressing roots outside this reserve before this pass executes.
+            // The waypoint graph owns this broad cross. Solid dressing must remain in the side/corner
+            // combat pockets so inter-block traversal cannot be cut by procedural decoration.
             const float verticalLaneHalfWidth = 3.0f;
             const float horizontalLaneHalfDepth = 2.55f;
             if (Mathf.Abs(local.x) < verticalLaneHalfWidth || Mathf.Abs(local.z) < horizontalLaneHalfDepth)
                 return false;
 
-            // Keep enough clearance from the invisible perimeter containment and visible edge wall.
             if (Mathf.Abs(local.x) > 7.55f || Mathf.Abs(local.z) > 5.75f)
                 return false;
 
@@ -123,17 +113,21 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 var child = parts[i];
                 if (child == null || child == scaffold)
                     continue;
-                var solid = child.name.StartsWith("Pole_", StringComparison.Ordinal) ||
-                            child.name.StartsWith("Platform_", StringComparison.Ordinal) ||
-                            child.name.StartsWith("Brace_", StringComparison.Ordinal);
+
+                var name = child.name;
+                var solid = name.StartsWith("Pole_", StringComparison.Ordinal) ||
+                            name.StartsWith("Platform_", StringComparison.Ordinal) ||
+                            name.StartsWith("Brace_", StringComparison.Ordinal) ||
+                            name.StartsWith("Rail", StringComparison.Ordinal);
                 if (!solid)
                     continue;
-                added += AddMeshBoundsCollider(child.gameObject);
+
+                added += AddMeshBoundsCollider(child.gameObject, 0.025f);
             }
             return added;
         }
 
-        private static int AddMeshBoundsCollider(GameObject go)
+        private static int AddMeshBoundsCollider(GameObject go, float padding)
         {
             if (go == null || go.GetComponent<Collider>() != null)
                 return 0;
@@ -144,20 +138,63 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             var bounds = filter.sharedMesh.bounds;
             var collider = go.AddComponent<BoxCollider>();
             collider.center = bounds.center;
-            collider.size = bounds.size;
+            collider.size = bounds.size + Vector3.one * padding * 2f;
             collider.isTrigger = false;
             return 1;
         }
 
-        private static int AddAggregateCollider(Transform root, Vector3 center, Vector3 size)
+        private static int AddAggregateRendererBoundsCollider(Transform root, float horizontalPadding, float verticalPadding)
         {
             if (root == null || root.GetComponent<Collider>() != null)
                 return 0;
+            if (!TryGetLocalRendererBounds(root, out var bounds))
+                return 0;
+
             var collider = root.gameObject.AddComponent<BoxCollider>();
-            collider.center = center;
-            collider.size = size;
+            collider.center = bounds.center;
+            collider.size = new Vector3(
+                bounds.size.x + horizontalPadding * 2f,
+                bounds.size.y + verticalPadding * 2f,
+                bounds.size.z + horizontalPadding * 2f);
             collider.isTrigger = false;
             return 1;
+        }
+
+        private static bool TryGetLocalRendererBounds(Transform root, out Bounds localBounds)
+        {
+            var renderers = root.GetComponentsInChildren<Renderer>(true);
+            localBounds = default;
+            var initialized = false;
+
+            for (var i = 0; i < renderers.Length; i++)
+            {
+                var renderer = renderers[i];
+                if (renderer == null || !renderer.enabled)
+                    continue;
+
+                var world = renderer.bounds;
+                var min = world.min;
+                var max = world.max;
+                for (var corner = 0; corner < 8; corner++)
+                {
+                    var worldPoint = new Vector3(
+                        (corner & 1) == 0 ? min.x : max.x,
+                        (corner & 2) == 0 ? min.y : max.y,
+                        (corner & 4) == 0 ? min.z : max.z);
+                    var localPoint = root.InverseTransformPoint(worldPoint);
+                    if (!initialized)
+                    {
+                        localBounds = new Bounds(localPoint, Vector3.zero);
+                        initialized = true;
+                    }
+                    else
+                    {
+                        localBounds.Encapsulate(localPoint);
+                    }
+                }
+            }
+
+            return initialized;
         }
 
         private static Transform FindBlockDressingRoot(Transform current)
