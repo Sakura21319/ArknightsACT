@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using ArknightsACT.Combat;
@@ -32,6 +33,13 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         public string DisplayName => "赤霄·拔刀";
         public float CooldownRemaining => Mathf.Max(0f, _readyAt - Time.time);
         public bool IsCasting { get; private set; }
+
+        /// <summary>
+        /// Raised exactly when the draw-slash impact frame resolves. Presentation can use this
+        /// independently from damage so the authored skill still shows its arc when no enemy is hit.
+        /// origin, planar forward, runtime range multiplier, hit-any-target.
+        /// </summary>
+        public event Action<Vector3, Vector3, float, bool> ImpactResolved;
 
         private void Awake()
         {
@@ -71,7 +79,13 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             if (impactDelay > 0f)
                 yield return new WaitForSeconds(impactDelay);
 
-            ResolveHit();
+            var hitAny = ResolveHit();
+            var forward = _motor != null ? _motor.PlanarForward : Vector3.right;
+            forward.y = 0f;
+            if (forward.sqrMagnitude < 0.001f)
+                forward = Vector3.right;
+            forward.Normalize();
+            ImpactResolved?.Invoke(transform.position, forward, _runtimeRangeMultiplier, hitAny);
 
             var remaining = Mathf.Max(0f, castLockSeconds - impactDelay);
             if (remaining > 0f)
@@ -79,18 +93,15 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             IsCasting = false;
         }
 
-        private void ResolveHit()
+        private bool ResolveHit()
         {
             if (_entity?.Health == null || _entity.Health.IsDead)
-                return;
+                return false;
 
-            if (_motor25D != null)
-                ResolveHit25D();
-            else
-                ResolveHit2D();
+            return _motor25D != null ? ResolveHit25D() : ResolveHit2D();
         }
 
-        private void ResolveHit2D()
+        private bool ResolveHit2D()
         {
             var facing = _motor != null ? _motor.FacingSign : 1;
             var offset = hitboxOffset;
@@ -115,9 +126,10 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             }
 
             ApplyFeedback(hitAny);
+            return hitAny;
         }
 
-        private void ResolveHit25D()
+        private bool ResolveHit25D()
         {
             var forward = _motor != null ? _motor.PlanarForward : Vector3.forward;
             forward.y = 0f;
@@ -154,6 +166,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             }
 
             ApplyFeedback(hitAny);
+            return hitAny;
         }
 
         private bool CanHit(CombatEntity target, HashSet<CombatEntity> seen)
