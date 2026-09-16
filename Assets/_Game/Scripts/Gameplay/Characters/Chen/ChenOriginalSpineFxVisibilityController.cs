@@ -53,7 +53,8 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             _skeletonAnimation = presentation != null
                 ? presentation.GetComponentInChildren<SkeletonAnimation>(true)
                 : GetComponentsInChildren<SkeletonAnimation>(true)
-                    .FirstOrDefault(item => item != null && !item.name.Contains("MotionSource", StringComparison.OrdinalIgnoreCase));
+                    .FirstOrDefault(item =>
+                        item != null && item.name.IndexOf("MotionSource", StringComparison.OrdinalIgnoreCase) < 0);
 
             if (_skeletonAnimation == null)
                 return false;
@@ -167,7 +168,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                 return true;
             if (value.StartsWith("Bg_Skill_", StringComparison.OrdinalIgnoreCase))
                 return true;
-            return value.Contains("Effect", StringComparison.OrdinalIgnoreCase) ||
+            return value.IndexOf("Effect", StringComparison.OrdinalIgnoreCase) >= 0 ||
                    value.StartsWith("FX", StringComparison.OrdinalIgnoreCase);
         }
     }
