@@ -27,6 +27,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
         private TreasureMonsterBrain25D _monsterBrain;
         private bool _activated;
         private bool _rewardHandled;
+        private bool _destroyScheduled;
 
         public TreasureChestKind Kind => kind;
         public bool IsActivated => _activated;
@@ -83,7 +84,6 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
             if (attacker?.Health == null || attacker.Health.IsDead)
                 return;
 
-            // Spike reflection is based on actual dealt damage, but cannot directly end the run.
             var reflected = Mathf.Max(0f, result.Damage * spikeReflectFraction);
             var safeMaximum = Mathf.Max(0f, attacker.Health.CurrentHealth - 1f);
             reflected = Mathf.Min(reflected, safeMaximum);
@@ -108,25 +108,42 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
             _rewardHandled = true;
             _player ??= FindPlayer();
 
+            DisableCollision();
+
             switch (kind)
             {
                 case TreasureChestKind.Spike:
-                    OpenCollectibleReward("尖刺宝箱 · 藏品二选一", CollectibleRarity.Common, 2, null);
+                    OpenCollectibleReward(
+                        "尖刺宝箱 · 藏品二选一",
+                        CollectibleRarity.Common,
+                        2,
+                        ScheduleDestroy);
                     break;
                 case TreasureChestKind.Monster:
-                    OpenMonsterRewardChain();
+                    OpenMonsterRewardChain(ScheduleDestroy);
                     break;
                 default:
                     GrantNormalReward();
+                    ScheduleDestroy();
                     break;
             }
+        }
 
+        private void DisableCollision()
+        {
             var controller = GetComponent<CharacterController>();
             if (controller != null)
                 controller.enabled = false;
-            var collider = GetComponent<Collider>();
-            if (collider != null)
-                collider.enabled = false;
+            var colliders = GetComponents<Collider>();
+            for (var i = 0; i < colliders.Length; i++)
+                if (colliders[i] != null) colliders[i].enabled = false;
+        }
+
+        private void ScheduleDestroy()
+        {
+            if (_destroyScheduled)
+                return;
+            _destroyScheduled = true;
             Destroy(gameObject, Mathf.Max(0.05f, destroyDelay));
         }
 
@@ -157,7 +174,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
             Debug.Log("[ArknightsACT/Treasure] 普通箱：45秒内所有伤害 +15%。", this);
         }
 
-        private void OpenMonsterRewardChain()
+        private void OpenMonsterRewardChain(System.Action completed)
         {
             var skillRewards = FindFirstObjectByType<CharacterSkillUpgradeRewardController>();
             if (skillRewards != null && skillRewards.OpenReward(
@@ -167,10 +184,10 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
                         "怪物箱 · 额外藏品",
                         CollectibleRarity.Common,
                         2,
-                        null)))
+                        completed)))
                 return;
 
-            OpenCollectibleReward("怪物箱 · 藏品二选一", CollectibleRarity.Common, 2, null);
+            OpenCollectibleReward("怪物箱 · 藏品二选一", CollectibleRarity.Common, 2, completed);
         }
 
         private void OpenCollectibleReward(string title, CollectibleRarity rarity, int count, System.Action completed)
