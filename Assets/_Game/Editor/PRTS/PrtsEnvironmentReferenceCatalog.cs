@@ -45,6 +45,13 @@ namespace ArknightsACT.Editor.PRTS
             BackgroundSourcePage,
             "https://media.prts.wiki/4/42/Avg_bg_bg_cher_2.png",
             Root + "/Avg_bg_bg_cher_2.png",
+            false);
+
+        public static readonly PrtsEnvironmentReference ChernobogCore2 = new(
+            "切尔诺伯格核心城区背景 2",
+            "https://prts.wiki/w/文件:Avg_bg_bg_chercen_2.png",
+            "https://media.prts.wiki/d/df/Avg_bg_bg_chercen_2.png",
+            Root + "/Avg_bg_bg_chercen_2.png",
             true);
 
         public static readonly PrtsEnvironmentReference ChernobogStreet5 = new(
@@ -65,6 +72,7 @@ namespace ArknightsACT.Editor.PRTS
         {
             ChernobogStreet0,
             ChernobogStreet2,
+            ChernobogCore2,
             ChernobogStreet5,
             ChernobogSixDistrictMap
         };
@@ -72,7 +80,7 @@ namespace ArknightsACT.Editor.PRTS
         public static readonly PrtsEnvironmentReference[] RuntimeBackdrops =
         {
             ChernobogStreet0,
-            ChernobogStreet2,
+            ChernobogCore2,
             ChernobogStreet5
         };
     }
