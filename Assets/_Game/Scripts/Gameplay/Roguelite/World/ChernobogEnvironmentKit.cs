@@ -13,6 +13,10 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         [Header("Floor")]
         public Mesh floorPlateMesh;
         public Mesh floorPlateHeavyMesh;
+        public Mesh floorPlateLongXMesh;
+        public Mesh floorPlateLongZMesh;
+        public Mesh floorJointXMesh;
+        public Mesh floorJointZMesh;
         public GameObject floorGrate;
         public GameObject floorServiceHatch;
 
@@ -37,6 +41,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         [Header("Materials")]
         public Material deckMaterial;
         public Material deckHeavyMaterial;
+        public Material deckSecondaryMaterial;
         public Material wallMaterial;
         public Material insetMaterial;
         public Material steelMaterial;
