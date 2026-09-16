@@ -7,9 +7,11 @@ using UnityEngine.Rendering;
 namespace ArknightsACT.Gameplay.Roguelite.World
 {
     /// <summary>
-    /// Rebuilds Active Originium as a red hazardous floor tile inspired by the classic Arknights
-    /// terrain language. The existing ActiveOriginiumZone25D component remains authoritative for
-    /// gameplay; this controller only snaps the zone to a floor socket and replaces its presentation.
+    /// Production presentation for Active Originium terrain.
+    ///
+    /// The gameplay zone remains owned by ActiveOriginiumZone25D. This controller only aligns the
+    /// zone to one floor socket and replaces the prototype red plate / purple crystal visuals with
+    /// a scorched industrial bed full of low amber-black Originium fragments.
     /// </summary>
     [DefaultExecutionOrder(36)]
     [DisallowMultipleComponent]
@@ -17,14 +19,19 @@ namespace ArknightsACT.Gameplay.Roguelite.World
     {
         [SerializeField] private RogueliteStageMapController stageMap;
 
+        private static readonly Mesh[] ShardMeshes = new Mesh[3];
+
         private readonly HashSet<int> _skinned = new();
         private readonly List<Material> _ownedMaterials = new();
         private GameObject _stage;
         private float _nextResolveAt;
-        private Material _redSteel;
-        private Material _redCore;
-        private Material _redGlow;
-        private Material _charcoal;
+
+        private Material _frameMaterial;
+        private Material _scorchedMaterial;
+        private Material _oreBlackMaterial;
+        private Material _oreAmberMaterial;
+        private Material _oreGoldMaterial;
+        private Material _oreGlowMaterial;
 
         public void Configure(RogueliteStageMapController map)
         {
@@ -57,12 +64,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         private void OnDestroy()
         {
-            for (var i = 0; i < _ownedMaterials.Count; i++)
-            {
-                if (_ownedMaterials[i] != null)
-                    Destroy(_ownedMaterials[i]);
-            }
-            _ownedMaterials.Clear();
+            ReleaseMaterials();
         }
 
         private void UpdateOriginiumTiles(Transform stage)
@@ -74,8 +76,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 if (root == null || !root.name.StartsWith("Hazard_ActiveOriginium", StringComparison.Ordinal))
                     continue;
 
-                // Keep suppressing earlier purple/orange presentations in case another late pass
-                // materializes them a frame after this controller first sees the hazard.
                 HideLegacyPresentation(root);
 
                 var id = root.gameObject.GetInstanceID();
@@ -83,7 +83,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                     continue;
 
                 SnapToFloorSocket(root);
-                BuildRedTile(root);
+                BuildOriginiumShardTile(root);
                 _skinned.Add(id);
             }
         }
@@ -100,6 +100,9 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             for (var i = 0; i < sockets.Length; i++)
             {
                 var socket = sockets[i];
+                // Side/corner sockets are intentionally used for special terrain. The central cross
+                // can be visually merged into large plates by FloorComposition, so replacing one of
+                // those cells would leave a broad plate underneath the hazard.
                 if (socket == null || !socket.PitEligible)
                     continue;
 
@@ -121,14 +124,15 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             var trigger = hazard.GetComponent<BoxCollider>();
             if (trigger != null)
             {
-                trigger.center = new Vector3(0f, 0.24f, 0f);
+                trigger.center = new Vector3(0f, 0.22f, 0f);
                 trigger.size = new Vector3(
                     Mathf.Max(1.4f, nearest.Footprint.x * 0.94f),
-                    Mathf.Max(0.50f, trigger.size.y),
+                    Mathf.Max(0.46f, trigger.size.y),
                     Mathf.Max(1.4f, nearest.Footprint.y * 0.94f));
             }
 
             HideUnderlyingFloorSurface(nearest);
+            HideNearbyFloorDetail(world);
         }
 
         private static void HideUnderlyingFloorSurface(RogueliteFloorSocket25D socket)
@@ -136,74 +140,238 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             if (socket == null || socket.transform.parent == null)
                 return;
 
-            var name = socket.name;
             const string prefix = "FloorSocket_";
-            if (!name.StartsWith(prefix, StringComparison.Ordinal))
+            if (!socket.name.StartsWith(prefix, StringComparison.Ordinal))
                 return;
 
-            var suffix = name.Substring(prefix.Length);
+            var suffix = socket.name.Substring(prefix.Length);
             var surface = socket.transform.parent.Find($"FloorSurface_{suffix}");
-            if (surface == null)
-                return;
-
-            var renderer = surface.GetComponent<Renderer>();
+            var renderer = surface != null ? surface.GetComponent<Renderer>() : null;
             if (renderer != null)
                 renderer.enabled = false;
         }
 
-        private void BuildRedTile(Transform root)
+        private void HideNearbyFloorDetail(Vector3 worldPosition)
+        {
+            if (_stage == null)
+                return;
+
+            var root = _stage.transform.Find("[Chernobog_ModularKit]/FloorDetails");
+            if (root == null)
+                return;
+
+            for (var i = 0; i < root.childCount; i++)
+            {
+                var detail = root.GetChild(i);
+                if (detail == null)
+                    continue;
+                var delta = detail.position - worldPosition;
+                delta.y = 0f;
+                if (delta.sqrMagnitude < 0.75f * 0.75f)
+                    detail.gameObject.SetActive(false);
+            }
+        }
+
+        private void BuildOriginiumShardTile(Transform root)
         {
             var trigger = root.GetComponent<BoxCollider>();
             var footprint = trigger != null
                 ? new Vector2(Mathf.Max(1.5f, trigger.size.x), Mathf.Max(1.5f, trigger.size.z))
                 : new Vector2(2.15f, 2.05f);
 
-            var skin = new GameObject("[ActiveOriginiumRedTile]").transform;
+            var oldSkin = root.Find("[ActiveOriginiumShardTile]");
+            if (oldSkin != null)
+                Destroy(oldSkin.gameObject);
+
+            var skin = new GameObject("[ActiveOriginiumShardTile]").transform;
             skin.SetParent(root, false);
 
-            // The tile is a red plate replacing one deck socket, not a purple crystal patch laid on
-            // top of the floor. A dark mechanical frame makes the red field read as an authored map tile.
-            CreateBox(skin, "OuterFrame", new Vector3(0f, 0.020f, 0f),
-                new Vector3(footprint.x, 0.050f, footprint.y), 0.018f, _charcoal, true);
-            CreateBox(skin, "RedPlate", new Vector3(0f, 0.053f, 0f),
-                new Vector3(footprint.x * 0.90f, 0.050f, footprint.y * 0.88f), 0.014f, _redSteel, true);
-            CreateBox(skin, "HotCore", new Vector3(0f, 0.083f, 0f),
-                new Vector3(footprint.x * 0.67f, 0.018f, footprint.y * 0.58f), 0.006f, _redCore, false);
+            // This is still a readable authored terrain tile, but the dangerous area is mineralized
+            // rather than painted red. The normal deck becomes a dark, heat-scorched mineral bed.
+            CreateBox(skin, "IndustrialFrame", new Vector3(0f, 0.018f, 0f),
+                new Vector3(footprint.x, 0.042f, footprint.y), 0.014f, _frameMaterial, true);
+            CreateBox(skin, "ScorchedBed", new Vector3(0f, 0.047f, 0f),
+                new Vector3(footprint.x * 0.91f, 0.030f, footprint.y * 0.88f), 0.010f, _scorchedMaterial, true);
 
-            // Dark framing interrupts the broad red field so it reads as the familiar dangerous
-            // special-tile language rather than a plain colored square.
-            var hx = footprint.x * 0.5f;
-            var hz = footprint.y * 0.5f;
-            CreateBox(skin, "FrameN", new Vector3(0f, 0.087f, hz * 0.88f),
-                new Vector3(footprint.x * 0.72f, 0.030f, 0.075f), 0.010f, _charcoal, false);
-            CreateBox(skin, "FrameS", new Vector3(0f, 0.087f, -hz * 0.88f),
-                new Vector3(footprint.x * 0.72f, 0.030f, 0.075f), 0.010f, _charcoal, false);
-            CreateBox(skin, "FrameE", new Vector3(hx * 0.88f, 0.087f, 0f),
-                new Vector3(0.075f, 0.030f, footprint.y * 0.62f), 0.010f, _charcoal, false);
-            CreateBox(skin, "FrameW", new Vector3(-hx * 0.88f, 0.087f, 0f),
-                new Vector3(0.075f, 0.030f, footprint.y * 0.62f), 0.010f, _charcoal, false);
+            BuildBurntOreCrust(skin, footprint);
+            BuildAmberVeins(skin, footprint);
+            BuildShardClusters(skin, footprint, root);
+        }
 
-            // Four hot fissures and three low Originium fins give the tile energy without creating
-            // tall collision-looking crystals that obscure ACT movement readability.
-            CreateFissure(skin, new Vector3(-0.32f, 0.101f, -0.12f), 0.78f, -18f);
-            CreateFissure(skin, new Vector3(0.30f, 0.103f, 0.18f), 0.64f, 24f);
-            CreateFissure(skin, new Vector3(-0.05f, 0.105f, 0.34f), 0.48f, 68f);
-            CreateFissure(skin, new Vector3(0.10f, 0.106f, -0.38f), 0.40f, -62f);
-
-            for (var i = 0; i < 3; i++)
+        private void BuildBurntOreCrust(Transform parent, Vector2 footprint)
+        {
+            var patches = new[]
             {
-                var fin = CreateBox(skin, "OriginiumFin",
-                    new Vector3(-0.46f + i * 0.47f, 0.15f + (i % 2) * 0.025f, -0.03f + (i - 1) * 0.15f),
-                    new Vector3(0.085f, 0.19f + i * 0.025f, 0.055f), 0.014f, _redGlow, true);
-                fin.transform.localRotation = Quaternion.Euler(10f + i * 5f, 24f + i * 47f, i == 1 ? -14f : 11f);
+                new Vector4(-0.23f, -0.16f, 0.38f, 0.29f),
+                new Vector4(0.18f, 0.17f, 0.33f, 0.25f),
+                new Vector4(0.26f, -0.22f, 0.27f, 0.22f),
+                new Vector4(-0.08f, 0.27f, 0.29f, 0.19f),
+                new Vector4(-0.34f, 0.14f, 0.20f, 0.17f)
+            };
+
+            for (var i = 0; i < patches.Length; i++)
+            {
+                var p = patches[i];
+                var patch = CreateBox(parent, "CarbonizedOrePatch",
+                    new Vector3(p.x * footprint.x, 0.068f + i * 0.0007f, p.y * footprint.y),
+                    new Vector3(p.z * footprint.x, 0.015f, p.w * footprint.y),
+                    0.006f,
+                    i % 2 == 0 ? _oreBlackMaterial : _scorchedMaterial,
+                    false);
+                patch.transform.localRotation = Quaternion.Euler(0f, -27f + i * 31f, 0f);
             }
         }
 
-        private void CreateFissure(Transform parent, Vector3 position, float length, float yaw)
+        private void BuildAmberVeins(Transform parent, Vector2 footprint)
         {
-            var fissure = CreateBox(parent, "HotFissure", position,
-                new Vector3(length, 0.018f, 0.045f), 0.006f, _redGlow, false);
-            fissure.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
+            CreateVein(parent, new Vector3(-footprint.x * 0.13f, 0.078f, -footprint.y * 0.06f), footprint.x * 0.46f, -19f);
+            CreateVein(parent, new Vector3(footprint.x * 0.17f, 0.079f, footprint.y * 0.15f), footprint.x * 0.31f, 31f);
+            CreateVein(parent, new Vector3(footprint.x * 0.04f, 0.080f, -footprint.y * 0.25f), footprint.x * 0.22f, -67f);
+        }
+
+        private void CreateVein(Transform parent, Vector3 localPosition, float length, float yaw)
+        {
+            var vein = CreateBox(parent, "AmberVein", localPosition,
+                new Vector3(length, 0.008f, 0.028f), 0.003f, _oreGlowMaterial, false);
+            vein.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
+        }
+
+        private void BuildShardClusters(Transform parent, Vector2 footprint, Transform root)
+        {
+            var seed = unchecked(
+                stageMap.StageIndex * 73856093 ^
+                Mathf.RoundToInt(root.position.x * 100f) * 19349663 ^
+                Mathf.RoundToInt(root.position.z * 100f) * 83492791);
+            var rng = new System.Random(seed);
+
+            // Clustering is deliberate: natural mineral debris gathers in several pockets instead of
+            // filling the whole tile with a regular grid of spikes.
+            var centers = new[]
+            {
+                new Vector2(-0.24f, -0.16f),
+                new Vector2(0.21f, 0.18f),
+                new Vector2(0.30f, -0.23f),
+                new Vector2(-0.10f, 0.28f)
+            };
+
+            for (var i = 0; i < 18; i++)
+            {
+                var center = centers[i % centers.Length];
+                var x = center.x * footprint.x + Range(rng, -0.16f, 0.16f) * footprint.x;
+                var z = center.y * footprint.y + Range(rng, -0.13f, 0.13f) * footprint.y;
+                var chip = i % 4 == 0 || i % 7 == 0;
+
+                var width = chip ? Range(rng, 0.13f, 0.23f) : Range(rng, 0.075f, 0.14f);
+                var depth = chip ? Range(rng, 0.10f, 0.20f) : Range(rng, 0.060f, 0.12f);
+                var height = chip ? Range(rng, 0.045f, 0.085f) : Range(rng, 0.12f, 0.30f);
+                var y = 0.073f + (chip ? 0.004f : 0.008f);
+
+                var materialRoll = rng.NextDouble();
+                var material = materialRoll < 0.47
+                    ? _oreBlackMaterial
+                    : materialRoll < 0.84
+                        ? _oreAmberMaterial
+                        : materialRoll < 0.96
+                            ? _oreGoldMaterial
+                            : _oreGlowMaterial;
+
+                var shard = CreateShard(parent, i % ShardMeshes.Length, new Vector3(x, y, z),
+                    new Vector3(width, height, depth), material, true);
+                shard.name = chip ? "OriginiumChip" : "OriginiumShard";
+                shard.transform.localRotation = Quaternion.Euler(
+                    chip ? Range(rng, 58f, 82f) : Range(rng, -12f, 12f),
+                    Range(rng, 0f, 360f),
+                    chip ? Range(rng, -18f, 18f) : Range(rng, -14f, 14f));
+            }
+        }
+
+        private static float Range(System.Random rng, float min, float max)
+        {
+            return min + (float)rng.NextDouble() * (max - min);
+        }
+
+        private static GameObject CreateShard(
+            Transform parent,
+            int variant,
+            Vector3 localPosition,
+            Vector3 localScale,
+            Material material,
+            bool castShadows)
+        {
+            var go = new GameObject("OriginiumShard");
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPosition;
+            go.transform.localScale = localScale;
+
+            var filter = go.AddComponent<MeshFilter>();
+            filter.sharedMesh = GetShardMesh(variant);
+            var renderer = go.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = castShadows ? ShadowCastingMode.On : ShadowCastingMode.Off;
+            renderer.receiveShadows = true;
+            return go;
+        }
+
+        private static Mesh GetShardMesh(int variant)
+        {
+            variant = Mathf.Abs(variant) % ShardMeshes.Length;
+            if (ShardMeshes[variant] != null)
+                return ShardMeshes[variant];
+
+            const int sides = 5;
+            var bottom = new Vector3[sides];
+            var shoulder = new Vector3[sides];
+            var angleOffset = variant * 0.17f;
+            for (var i = 0; i < sides; i++)
+            {
+                var angle = angleOffset + Mathf.PI * 2f * i / sides;
+                var irregular = 0.86f + 0.10f * Mathf.Sin(i * 2.17f + variant * 1.31f);
+                bottom[i] = new Vector3(Mathf.Cos(angle) * 0.50f * irregular, 0f, Mathf.Sin(angle) * 0.43f * irregular);
+                shoulder[i] = new Vector3(
+                    Mathf.Cos(angle + 0.05f) * 0.30f * irregular,
+                    0.64f + 0.04f * Mathf.Sin(i + variant),
+                    Mathf.Sin(angle + 0.05f) * 0.26f * irregular);
+            }
+
+            var tip = new Vector3(
+                variant == 1 ? 0.09f : variant == 2 ? -0.07f : 0.03f,
+                1f,
+                variant == 2 ? 0.08f : -0.035f);
+            var bottomCenter = new Vector3(0f, 0f, 0f);
+
+            var vertices = new List<Vector3>(sides * 18);
+            var triangles = new List<int>(sides * 18);
+            for (var i = 0; i < sides; i++)
+            {
+                var next = (i + 1) % sides;
+                AddTriangle(vertices, triangles, bottom[i], shoulder[i], shoulder[next]);
+                AddTriangle(vertices, triangles, bottom[i], shoulder[next], bottom[next]);
+                AddTriangle(vertices, triangles, shoulder[i], tip, shoulder[next]);
+                AddTriangle(vertices, triangles, bottomCenter, bottom[next], bottom[i]);
+            }
+
+            var mesh = new Mesh
+            {
+                name = $"Runtime_OriginiumShard_{variant}",
+                hideFlags = HideFlags.DontSave
+            };
+            mesh.SetVertices(vertices);
+            mesh.SetTriangles(triangles, 0);
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            ShardMeshes[variant] = mesh;
+            return mesh;
+        }
+
+        private static void AddTriangle(List<Vector3> vertices, List<int> triangles, Vector3 a, Vector3 b, Vector3 c)
+        {
+            var index = vertices.Count;
+            vertices.Add(a);
+            vertices.Add(b);
+            vertices.Add(c);
+            triangles.Add(index);
+            triangles.Add(index + 1);
+            triangles.Add(index + 2);
         }
 
         private static void HideLegacyPresentation(Transform root)
@@ -216,7 +384,8 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
                 if (string.Equals(child.name, "OriginiumTile", StringComparison.Ordinal) ||
                     string.Equals(child.name, "OriginiumCrystal", StringComparison.Ordinal) ||
-                    string.Equals(child.name, "[ActiveOriginiumSkin]", StringComparison.Ordinal))
+                    string.Equals(child.name, "[ActiveOriginiumSkin]", StringComparison.Ordinal) ||
+                    string.Equals(child.name, "[ActiveOriginiumRedTile]", StringComparison.Ordinal))
                 {
                     child.gameObject.SetActive(false);
                 }
@@ -233,21 +402,28 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                                FirstMaterial(renderers);
             var accent = FindMaterial(renderers, "TacticalAccent") ?? baseMaterial;
 
-            _charcoal = Clone(baseMaterial, "Runtime_ActiveOriginium_Frame",
-                new Color(0.070f, 0.045f, 0.045f, 1f), 0.42f, 0.11f);
-            _redSteel = Clone(baseMaterial, "Runtime_ActiveOriginium_RedSteel",
-                new Color(0.39f, 0.035f, 0.028f, 1f), 0.28f, 0.18f);
-            _redCore = Clone(accent ?? baseMaterial, "Runtime_ActiveOriginium_RedCore",
-                new Color(0.67f, 0.050f, 0.026f, 1f), 0.18f, 0.24f);
-            _redGlow = Clone(accent ?? baseMaterial, "Runtime_ActiveOriginium_Glow",
-                new Color(0.95f, 0.075f, 0.020f, 1f), 0.08f, 0.34f);
-            EnableEmission(_redGlow, new Color(3.4f, 0.24f, 0.035f, 1f));
+            // The reference mineral reads black / smoke-brown in shadow and amber-gold on exposed
+            // facets. Keep the bed very rough; only crystal faces get a controlled hard highlight.
+            _frameMaterial = Clone(baseMaterial, "Runtime_ActiveOriginium_Frame",
+                new Color(0.070f, 0.075f, 0.078f, 1f), 0.18f, 0.07f);
+            _scorchedMaterial = Clone(baseMaterial, "Runtime_ActiveOriginium_Scorched",
+                new Color(0.095f, 0.074f, 0.040f, 1f), 0.04f, 0.055f);
+            _oreBlackMaterial = Clone(baseMaterial, "Runtime_ActiveOriginium_BlackOre",
+                new Color(0.050f, 0.041f, 0.025f, 1f), 0.02f, 0.16f);
+            _oreAmberMaterial = Clone(accent ?? baseMaterial, "Runtime_ActiveOriginium_Amber",
+                new Color(0.34f, 0.205f, 0.045f, 1f), 0.01f, 0.24f);
+            _oreGoldMaterial = Clone(accent ?? baseMaterial, "Runtime_ActiveOriginium_GoldFacet",
+                new Color(0.62f, 0.39f, 0.075f, 1f), 0.01f, 0.29f);
+            _oreGlowMaterial = Clone(accent ?? baseMaterial, "Runtime_ActiveOriginium_AmberGlow",
+                new Color(0.78f, 0.47f, 0.070f, 1f), 0.00f, 0.26f);
+            EnableEmission(_oreGlowMaterial, new Color(1.25f, 0.62f, 0.08f, 1f));
         }
 
         private Material Clone(Material source, string name, Color color, float metallic, float smoothness)
         {
             if (source == null)
                 return null;
+
             var material = new Material(source) { name = name };
             if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", color);
             if (material.HasProperty("_Color")) material.SetColor("_Color", color);
@@ -322,10 +498,12 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                     Destroy(_ownedMaterials[i]);
             }
             _ownedMaterials.Clear();
-            _redSteel = null;
-            _redCore = null;
-            _redGlow = null;
-            _charcoal = null;
+            _frameMaterial = null;
+            _scorchedMaterial = null;
+            _oreBlackMaterial = null;
+            _oreAmberMaterial = null;
+            _oreGoldMaterial = null;
+            _oreGlowMaterial = null;
         }
     }
 }
