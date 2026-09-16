@@ -14,8 +14,8 @@ namespace ArknightsACT.Gameplay.Roguelite.World
     [DisallowMultipleComponent]
     public sealed class RogueliteStageLightingController : MonoBehaviour
     {
-        private const float ChunkWidth = 14f;
-        private const float ChunkDepth = 11f;
+        private const float ChunkWidth = 18f;
+        private const float ChunkDepth = 14f;
 
         [SerializeField] private RogueliteStageMapController stageMap;
 
@@ -48,13 +48,11 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             ConfigureCamera();
 
             _preparedStage = stage;
-            Debug.Log($"[ArknightsACT/Lighting] Stage {stageMap.StageIndex}: brighter Chernobog key/fill/practical lighting rig applied.", this);
+            Debug.Log($"[ArknightsACT/Lighting] Stage {stageMap.StageIndex}: brighter expanded Chernobog lighting rig applied.", this);
         }
 
         private static void ConfigureEnvironment()
         {
-            // Keep the cool Chernobog mood, but lift the baseline enough that material roughness,
-            // scratches and bevels remain visible on ordinary monitors instead of collapsing to black.
             RenderSettings.ambientMode = AmbientMode.Trilight;
             RenderSettings.ambientSkyColor = new Color(0.255f, 0.300f, 0.385f, 1f);
             RenderSettings.ambientEquatorColor = new Color(0.145f, 0.170f, 0.225f, 1f);
@@ -64,8 +62,8 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogColor = new Color(0.052f, 0.063f, 0.082f, 1f);
-            RenderSettings.fogStartDistance = 34f;
-            RenderSettings.fogEndDistance = 82f;
+            RenderSettings.fogStartDistance = 38f;
+            RenderSettings.fogEndDistance = 96f;
         }
 
         private static void ConfigureMainKey()
@@ -123,69 +121,63 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             var root = new GameObject("[ChernobogLightingRig]").transform;
             root.SetParent(stage, false);
 
-            // Broad cool fill from the camera side. This is intentionally stronger than the first
-            // lighting revision because the production albedo is physically darker than the prototype.
             CreateSpot(
                 root,
                 "CoolDeckFill",
-                new Vector3(-width * 0.34f, 9.8f, -depth * 0.28f),
+                new Vector3(-width * 0.34f, 11.2f, -depth * 0.28f),
                 new Vector3(width * 0.02f, 0.2f, depth * 0.03f),
                 new Color(0.50f, 0.65f, 0.90f, 1f),
-                Mathf.Clamp(diagonal * 0.78f, 20f, 46f),
-                84f,
-                0.90f,
+                Mathf.Clamp(diagonal * 0.82f, 24f, 58f),
+                86f,
+                0.92f,
                 false);
 
-            // Far-side rim remains weaker than the fill, preserving depth while giving hard-surface
-            // bevels and HVAC silhouettes a readable metal edge.
             CreateSpot(
                 root,
                 "CoolIndustrialRim",
-                new Vector3(width * 0.34f, 8.6f, depth * 0.42f),
+                new Vector3(width * 0.34f, 9.8f, depth * 0.42f),
                 new Vector3(width * 0.04f, 0.65f, depth * 0.10f),
                 new Color(0.41f, 0.55f, 0.79f, 1f),
-                Mathf.Clamp(diagonal * 0.62f, 18f, 36f),
-                68f,
-                0.60f,
+                Mathf.Clamp(diagonal * 0.68f, 22f, 48f),
+                70f,
+                0.62f,
                 false);
 
-            // Warm service pools stay local so the deck remains primarily cool rather than orange.
             CreateSpot(
                 root,
                 "WarmNorthServiceA",
-                new Vector3(-width * 0.24f, 4.2f, depth * 0.47f),
+                new Vector3(-width * 0.24f, 4.8f, depth * 0.47f),
                 new Vector3(-width * 0.18f, 0.1f, depth * 0.24f),
                 new Color(1.0f, 0.50f, 0.18f, 1f),
-                10.5f,
-                52f,
+                12.5f,
+                54f,
                 1.55f,
                 false);
 
             CreateSpot(
                 root,
                 "WarmNorthServiceB",
-                new Vector3(width * 0.18f, 4.0f, depth * 0.47f),
+                new Vector3(width * 0.18f, 4.6f, depth * 0.47f),
                 new Vector3(width * 0.14f, 0.1f, depth * 0.22f),
                 new Color(1.0f, 0.46f, 0.15f, 1f),
-                9.5f,
-                48f,
+                11.5f,
+                50f,
                 1.34f,
                 false);
 
             CreateSpot(
                 root,
                 "WarmEastService",
-                new Vector3(width * 0.47f, 3.8f, depth * 0.08f),
+                new Vector3(width * 0.47f, 4.4f, depth * 0.08f),
                 new Vector3(width * 0.24f, 0.1f, depth * 0.05f),
                 new Color(1.0f, 0.48f, 0.16f, 1f),
-                9.0f,
-                50f,
+                11.0f,
+                52f,
                 1.26f,
                 false);
 
-            // Tiny local practicals are for specular accents only; they should not lift the whole stage.
-            CreatePoint(root, "WarmPractical_North", new Vector3(0f, 1.15f, depth * 0.47f), 5.0f, 0.76f);
-            CreatePoint(root, "WarmPractical_East", new Vector3(width * 0.47f, 1.05f, -depth * 0.10f), 4.5f, 0.66f);
+            CreatePoint(root, "WarmPractical_North", new Vector3(0f, 1.15f, depth * 0.47f), 5.8f, 0.76f);
+            CreatePoint(root, "WarmPractical_East", new Vector3(width * 0.47f, 1.05f, -depth * 0.10f), 5.2f, 0.66f);
         }
 
         private static void CreateSpot(
