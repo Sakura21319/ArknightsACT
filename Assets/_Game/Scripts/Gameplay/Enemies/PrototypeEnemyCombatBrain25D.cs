@@ -1,13 +1,17 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using ArknightsACT.Combat;
+using ArknightsACT.Gameplay.Navigation;
 using UnityEngine;
 
 namespace ArknightsACT.Gameplay.Enemies
 {
     /// <summary>
-    /// 2.5D/XZ enemy brain for the migrated main prototype. Enemies only acquire the player
-    /// inside a forward vision cone with line of sight, then chase/attack using 3D collisions.
+    /// 2.5D/XZ enemy brain for the migrated main prototype. Initial acquisition requires the
+    /// player to be inside the forward cone with clear LOS. Once alerted, the enemy can remember
+    /// the last seen position briefly and use the lightweight navigation graph to reach ramps and
+    /// upper floors instead of walking straight into walls.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(CharacterController), typeof(CombatEntity))]
@@ -21,10 +25,17 @@ namespace ArknightsACT.Gameplay.Enemies
         [Header("Vision")]
         [SerializeField, Min(0.5f)] private float viewDistance = 7f;
         [SerializeField, Range(10f, 170f)] private float viewAngle = 85f;
-        [SerializeField, Min(0f)] private float loseSightDelay = 1.0f;
+        [SerializeField, Min(0f)] private float loseSightDelay = 3.25f;
         [SerializeField, Range(0.35f, 1.2f)] private float visionProbeHeight = 0.62f;
         [SerializeField, Range(0.05f, 0.35f)] private float visionProbeRadius = 0.16f;
         [SerializeField] private Vector3 initialForward = Vector3.back;
+
+        [Header("Navigation")]
+        [SerializeField, Min(0.05f)] private float pathRefreshSeconds = 0.35f;
+        [SerializeField, Min(0.1f)] private float waypointReachDistance = 0.42f;
+        [SerializeField, Min(0.05f)] private float walkProbeRadius = 0.24f;
+        [SerializeField, Min(0.1f)] private float walkProbeHeight = 0.55f;
+        [SerializeField, Min(0.1f)] private float directWalkHeightTolerance = 0.70f;
 
         [Header("Combat")]
         [SerializeField, Min(0.1f)] private float moveSpeed = 2.4f;
@@ -34,17 +45,26 @@ namespace ArknightsACT.Gameplay.Enemies
         [SerializeField, Min(0f)] private float attackRecovery = 0.18f;
         [SerializeField, Min(0.1f)] private float attackDamage = 5f;
         [SerializeField, Min(0.1f)] private float attackCooldown = 0.8f;
+        [SerializeField, Min(0.1f)] private float maxMeleeHeightDifference = 1.05f;
+        [SerializeField, Min(0.1f)] private float maxRangedHeightDifference = 2.45f;
         [SerializeField] private float gravity = -24f;
+
+        private readonly List<Vector3> _path = new(16);
 
         private CharacterController _controller;
         private CombatEntity _entity;
         private CombatEntity _target;
+        private PrototypeNavigationGraph25D _navigation;
         private Vector3 _forward;
+        private Vector3 _lastKnownTargetPosition;
         private Coroutine _attackRoutine;
+        private int _pathIndex;
         private float _lastVisibleAt = float.NegativeInfinity;
         private float _nextAttackAt;
         private float _nextSearchAt;
+        private float _nextPathRefreshAt;
         private float _verticalVelocity;
+        private bool _hasLastKnownTarget;
 
         public event Action<int> AttackStarted;
 
@@ -69,6 +89,7 @@ namespace ArknightsACT.Gameplay.Enemies
         {
             _controller = GetComponent<CharacterController>();
             _entity = GetComponent<CombatEntity>();
+            _navigation = PrototypeNavigationGraph25D.Instance;
             ApplyArchetypeDefaults();
             ResetForward();
         }
@@ -80,6 +101,8 @@ namespace ArknightsACT.Gameplay.Enemies
                 StopCoroutine(_attackRoutine);
                 _attackRoutine = null;
             }
+            _path.Clear();
+            _pathIndex = 0;
             IsMoving = false;
         }
 
@@ -92,8 +115,7 @@ namespace ArknightsACT.Gameplay.Enemies
             AcquirePlayerCandidate();
             if (_target == null || _target.Health == null || _target.Health.IsDead)
             {
-                IsMoving = false;
-                IsAlerted = false;
+                ClearAlertState(clearTarget: true);
                 return;
             }
 
@@ -105,28 +127,18 @@ namespace ArknightsACT.Gameplay.Enemies
                     IsMoving = false;
                     return;
                 }
+
                 IsAlerted = true;
-                _lastVisibleAt = Time.time;
+                RememberVisibleTarget();
             }
             else if (visible)
             {
-                _lastVisibleAt = Time.time;
+                RememberVisibleTarget();
             }
             else if (Time.time - _lastVisibleAt > loseSightDelay)
             {
-                IsAlerted = false;
-                IsMoving = false;
-                _target = null;
+                ClearAlertState(clearTarget: true);
                 return;
-            }
-
-            var delta = _target.transform.position - transform.position;
-            delta.y = 0f;
-            var distance = delta.magnitude;
-            if (distance > 0.04f)
-            {
-                _forward = delta / distance;
-                UpdateFacingSign();
             }
 
             if (IsAttacking)
@@ -135,56 +147,58 @@ namespace ArknightsACT.Gameplay.Enemies
                 return;
             }
 
-            if (archetype == PrototypeEnemyArchetype.Ranged)
-                TickRanged(distance);
-            else
-                TickMelee(distance);
-        }
+            var targetPosition = _target.transform.position;
+            var planarDistance = PlanarDistance(transform.position, targetPosition);
+            var heightDifference = Mathf.Abs(targetPosition.y - transform.position.y);
 
-        private void TickMelee(float distance)
-        {
-            if (distance <= attackRange)
+            if (visible)
             {
-                IsMoving = false;
-                TryAttack();
-                return;
-            }
-            Move(_forward);
-        }
+                FaceToward(targetPosition);
 
-        private void TickRanged(float distance)
-        {
-            if (distance < preferredRange * 0.62f)
-            {
-                Move(-_forward);
-                return;
-            }
-            if (distance > preferredRange * 1.15f)
-            {
-                Move(_forward);
-                return;
+                if (archetype == PrototypeEnemyArchetype.Ranged)
+                {
+                    var retreatDistance = preferredRange * 0.62f;
+                    if (heightDifference <= maxRangedHeightDifference && HasClearCombatLine())
+                    {
+                        if (planarDistance < retreatDistance)
+                        {
+                            var away = transform.position - targetPosition;
+                            away.y = 0f;
+                            Move(away);
+                            return;
+                        }
+
+                        if (planarDistance <= preferredRange * 1.18f)
+                        {
+                            IsMoving = false;
+                            TryAttack();
+                            return;
+                        }
+                    }
+                }
+                else if (heightDifference <= maxMeleeHeightDifference &&
+                         planarDistance <= attackRange &&
+                         HasClearCombatLine())
+                {
+                    IsMoving = false;
+                    TryAttack();
+                    return;
+                }
             }
 
-            IsMoving = false;
-            TryAttack();
-        }
-
-        private void Move(Vector3 direction)
-        {
-            direction.y = 0f;
-            if (direction.sqrMagnitude < 0.001f)
-            {
-                IsMoving = false;
-                return;
-            }
-            direction.Normalize();
-            _controller.Move(direction * (moveSpeed * Time.deltaTime));
-            IsMoving = true;
+            var chaseDestination = visible
+                ? targetPosition
+                : (_hasLastKnownTarget ? _lastKnownTargetPosition : targetPosition);
+            var chasePoint = ResolveChasePoint(chaseDestination);
+            FaceToward(chasePoint);
+            Move(chasePoint - transform.position);
         }
 
         private void TryAttack()
         {
             if (Time.time < _nextAttackAt || _target == null || _attackRoutine != null)
+                return;
+            if (!CanAttackTargetNow())
                 return;
 
             IsMoving = false;
@@ -198,25 +212,16 @@ namespace ArknightsACT.Gameplay.Enemies
             if (attackWindup > 0f)
                 yield return new WaitForSeconds(attackWindup);
 
-            if (_target != null && _target.Health != null && !_target.Health.IsDead)
+            if (CanAttackTargetNow())
             {
-                var delta = _target.transform.position - transform.position;
-                delta.y = 0f;
-                var maxRange = archetype == PrototypeEnemyArchetype.Ranged
-                    ? preferredRange * 1.45f
-                    : attackRange + 0.3f;
-
-                if (delta.magnitude <= maxRange)
-                {
-                    DamageSystem.Apply(new DamageContext(
-                        _entity,
-                        _entity,
-                        _target,
-                        attackDamage,
-                        DamageType.Physical,
-                        Vector2.zero,
-                        sourceId: "PrototypeEnemy25D_" + archetype));
-                }
+                DamageSystem.Apply(new DamageContext(
+                    _entity,
+                    _entity,
+                    _target,
+                    attackDamage,
+                    DamageType.Physical,
+                    Vector2.zero,
+                    sourceId: "PrototypeEnemy25D_" + archetype));
             }
 
             if (attackRecovery > 0f)
@@ -224,6 +229,26 @@ namespace ArknightsACT.Gameplay.Enemies
 
             _attackRoutine = null;
             _nextAttackAt = Time.time + attackCooldown;
+        }
+
+        private bool CanAttackTargetNow()
+        {
+            if (_target == null || _target.Health == null || _target.Health.IsDead)
+                return false;
+
+            var targetPosition = _target.transform.position;
+            var planarDistance = PlanarDistance(transform.position, targetPosition);
+            var heightDifference = Mathf.Abs(targetPosition.y - transform.position.y);
+            var maxRange = archetype == PrototypeEnemyArchetype.Ranged
+                ? preferredRange * 1.45f
+                : attackRange + 0.30f;
+            var maxHeight = archetype == PrototypeEnemyArchetype.Ranged
+                ? maxRangedHeightDifference
+                : maxMeleeHeightDifference;
+
+            return planarDistance <= maxRange &&
+                   heightDifference <= maxHeight &&
+                   HasClearCombatLine();
         }
 
         private void AcquirePlayerCandidate()
@@ -243,11 +268,10 @@ namespace ArknightsACT.Gameplay.Enemies
                 if (candidate == null || candidate.Team != Team.Player || candidate.Health == null || candidate.Health.IsDead)
                     continue;
                 var delta = candidate.transform.position - transform.position;
-                delta.y = 0f;
-                var sqr = delta.sqrMagnitude;
-                if (sqr > viewDistance * viewDistance || sqr >= bestSqr)
+                var planarSqr = delta.x * delta.x + delta.z * delta.z;
+                if (planarSqr > viewDistance * viewDistance || planarSqr >= bestSqr)
                     continue;
-                bestSqr = sqr;
+                bestSqr = planarSqr;
                 best = candidate;
             }
             _target = best;
@@ -268,11 +292,18 @@ namespace ArknightsACT.Gameplay.Enemies
             if (Vector3.Angle(LogicForward, planarDirection) > viewAngle * 0.5f)
                 return false;
 
-            // Use a small-radius chest-height probe rather than a thin eye-level ray. This makes
-            // the existing crates, road barriers, medians, walls and floor slabs meaningful LOS
-            // blockers instead of letting enemies see just over 0.5-0.7 m obstacles.
+            return HasClearLineTo(_target.transform.position, _target);
+        }
+
+        private bool HasClearCombatLine()
+        {
+            return _target != null && HasClearLineTo(_target.transform.position, _target);
+        }
+
+        private bool HasClearLineTo(Vector3 targetPosition, CombatEntity expectedTarget)
+        {
             var origin = transform.position + Vector3.up * visionProbeHeight;
-            var destination = _target.transform.position + Vector3.up * visionProbeHeight;
+            var destination = targetPosition + Vector3.up * visionProbeHeight;
             var cast = destination - origin;
             var castDistance = cast.magnitude;
             if (castDistance < 0.001f)
@@ -296,11 +327,8 @@ namespace ArknightsACT.Gameplay.Enemies
                 var hitEntity = collider.GetComponentInParent<CombatEntity>();
                 if (hitEntity != null)
                 {
-                    if (hitEntity == _target)
+                    if (expectedTarget != null && hitEntity == expectedTarget)
                         return true;
-
-                    // Other actors do not count as permanent world occluders. Continue until we
-                    // either reach the target or hit actual map geometry.
                     continue;
                 }
 
@@ -308,6 +336,121 @@ namespace ArknightsACT.Gameplay.Enemies
             }
 
             return true;
+        }
+
+        private Vector3 ResolveChasePoint(Vector3 destination)
+        {
+            if (HasDirectWalkPath(destination))
+            {
+                _path.Clear();
+                _pathIndex = 0;
+                return destination;
+            }
+
+            if (_navigation == null)
+                _navigation = PrototypeNavigationGraph25D.Instance ??
+                              FindFirstObjectByType<PrototypeNavigationGraph25D>();
+            if (_navigation == null)
+                return destination;
+
+            if (_path.Count == 0 || _pathIndex >= _path.Count || Time.time >= _nextPathRefreshAt)
+            {
+                _nextPathRefreshAt = Time.time + pathRefreshSeconds;
+                if (_navigation.TryBuildPath(transform.position, destination, _path))
+                    _pathIndex = 0;
+                else
+                    _path.Clear();
+            }
+
+            AdvanceReachedWaypoints();
+            return _pathIndex < _path.Count ? _path[_pathIndex] : destination;
+        }
+
+        private void AdvanceReachedWaypoints()
+        {
+            while (_pathIndex < _path.Count)
+            {
+                var waypoint = _path[_pathIndex];
+                var planar = PlanarDistance(transform.position, waypoint);
+                var vertical = Mathf.Abs(transform.position.y - waypoint.y);
+                if (planar > waypointReachDistance || vertical > 0.72f)
+                    break;
+                _pathIndex++;
+            }
+        }
+
+        private bool HasDirectWalkPath(Vector3 destination)
+        {
+            if (Mathf.Abs(destination.y - transform.position.y) > directWalkHeightTolerance)
+                return false;
+
+            var planar = destination - transform.position;
+            planar.y = 0f;
+            var distance = planar.magnitude;
+            if (distance <= 0.10f)
+                return true;
+
+            var origin = transform.position + Vector3.up * walkProbeHeight;
+            var hits = Physics.SphereCastAll(
+                origin,
+                walkProbeRadius,
+                planar / distance,
+                distance,
+                ~0,
+                QueryTriggerInteraction.Ignore);
+            Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
+            for (var i = 0; i < hits.Length; i++)
+            {
+                var collider = hits[i].collider;
+                if (collider == null || collider.transform.IsChildOf(transform))
+                    continue;
+                if (collider.GetComponentInParent<CombatEntity>() != null)
+                    continue;
+                return false;
+            }
+            return true;
+        }
+
+        private void RememberVisibleTarget()
+        {
+            _lastVisibleAt = Time.time;
+            _lastKnownTargetPosition = _target.transform.position;
+            _hasLastKnownTarget = true;
+        }
+
+        private void ClearAlertState(bool clearTarget)
+        {
+            IsAlerted = false;
+            IsMoving = false;
+            _hasLastKnownTarget = false;
+            _path.Clear();
+            _pathIndex = 0;
+            if (clearTarget)
+                _target = null;
+        }
+
+        private void FaceToward(Vector3 position)
+        {
+            var direction = position - transform.position;
+            direction.y = 0f;
+            if (direction.sqrMagnitude < 0.001f)
+                return;
+            _forward = direction.normalized;
+            UpdateFacingSign();
+        }
+
+        private void Move(Vector3 direction)
+        {
+            direction.y = 0f;
+            if (direction.sqrMagnitude < 0.001f)
+            {
+                IsMoving = false;
+                return;
+            }
+            direction.Normalize();
+            _controller.Move(direction * (moveSpeed * Time.deltaTime));
+            IsMoving = true;
         }
 
         private void ApplyGravity()
@@ -384,6 +527,13 @@ namespace ArknightsACT.Gameplay.Enemies
             var dot = Vector3.Dot(LogicForward, right);
             if (Mathf.Abs(dot) >= FacingHorizontalDeadzone)
                 FacingSign = dot >= 0f ? 1 : -1;
+        }
+
+        private static float PlanarDistance(Vector3 a, Vector3 b)
+        {
+            var dx = a.x - b.x;
+            var dz = a.z - b.z;
+            return Mathf.Sqrt(dx * dx + dz * dz);
         }
     }
 }
