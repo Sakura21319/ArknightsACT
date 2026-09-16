@@ -5,6 +5,7 @@ using ArknightsACT.Combat;
 using ArknightsACT.Gameplay.Abilities;
 using ArknightsACT.Gameplay.Characters;
 using ArknightsACT.Gameplay.Combat;
+using ArknightsACT.Gameplay.Feedback;
 using ArknightsACT.Gameplay.Roguelite.Progression;
 using UnityEngine;
 
@@ -104,6 +105,8 @@ namespace ArknightsACT.Gameplay.Rooms
         private void Update()
         {
             if (CurrentRoom <= 0 || _roomClearHandled || _transitionRoutine != null)
+                return;
+            if (GameplayPauseService.Instance != null && GameplayPauseService.Instance.IsPaused)
                 return;
             if (_activeEnemies.Count == 0 || CountLivingEnemies() > 0)
                 return;
