@@ -7,24 +7,24 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 {
     /// <summary>
     /// Final one-shot spatial cleanup for procedural dressing. It moves bulky dressing between a set of
-    /// safe corner pockets until its visible bounds no longer intersect authored architecture colliders.
-    /// This removes the most common scaffold/rubble/building interpenetration without changing gameplay
-    /// routes or deleting visual variety.
+    /// safe street-side pockets until its visible bounds no longer intersect authored architecture.
     /// </summary>
     [DefaultExecutionOrder(24)]
     [DisallowMultipleComponent]
     public sealed class RogueliteStageCompositionCleanupController : MonoBehaviour
     {
+        // These sit just outside the protected cardinal road cross but inside the north facade / south
+        // playable-building bands. They are deliberately less extreme than the old corner pockets.
         private static readonly Vector3[] CandidatePockets =
         {
-            new(-5.20f, 0f, -4.55f),
-            new(5.20f, 0f, -4.55f),
-            new(-5.25f, 0f, 4.45f),
-            new(5.25f, 0f, 4.45f),
-            new(-6.05f, 0f, -3.35f),
-            new(6.05f, 0f, 3.35f),
-            new(-6.05f, 0f, 3.35f),
-            new(6.05f, 0f, -3.35f)
+            new(-4.65f, 0f, -3.02f),
+            new(4.65f, 0f, -3.02f),
+            new(-4.65f, 0f, 3.02f),
+            new(4.65f, 0f, 3.02f),
+            new(-5.85f, 0f, -3.10f),
+            new(5.85f, 0f, 3.10f),
+            new(-5.85f, 0f, 3.10f),
+            new(5.85f, 0f, -3.10f)
         };
 
         [SerializeField] private RogueliteStageMapController stageMap;
@@ -66,7 +66,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             var moved = ResolveDressing(dressing, architectureColliders);
             Physics.SyncTransforms();
             _preparedStage = stage;
-            Debug.Log($"[ArknightsACT/CompositionCleanup] Stage {stageMap.StageIndex}: {moved} dressing features repositioned away from urban/playable/city architecture.", this);
+            Debug.Log($"[ArknightsACT/CompositionCleanup] Stage {stageMap.StageIndex}: {moved} dressing features repositioned into street-safe pockets.", this);
         }
 
         private static int ResolveDressing(Transform dressing, List<Collider> architectureColliders)
@@ -92,7 +92,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                     {
                         var candidate = CandidatePockets[(start + attempt) % CandidatePockets.Length];
                         feature.localPosition = new Vector3(candidate.x, original.y, candidate.z);
-                        if (!IntersectsArchitecture(feature, architectureColliders, 0.10f))
+                        if (!IntersectsArchitecture(feature, architectureColliders, 0.12f))
                         {
                             placed = true;
                             break;
@@ -101,13 +101,12 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
                     if (!placed)
                     {
-                        // Keep the least intrusive deterministic fallback rather than allowing a feature
-                        // to remain embedded in a building facade.
-                        var fallback = CandidatePockets[start];
-                        feature.localPosition = new Vector3(fallback.x, original.y, fallback.z);
+                        // If every pocket is occupied, disable the one dressing feature rather than
+                        // knowingly leaving it embedded inside a building/collider.
+                        feature.gameObject.SetActive(false);
                     }
 
-                    if ((feature.localPosition - original).sqrMagnitude > 0.001f)
+                    if (placed && (feature.localPosition - original).sqrMagnitude > 0.001f)
                         moved++;
                     featureSerial++;
                 }
