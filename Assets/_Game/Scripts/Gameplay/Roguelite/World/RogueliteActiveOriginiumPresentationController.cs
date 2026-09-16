@@ -100,9 +100,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             for (var i = 0; i < sockets.Length; i++)
             {
                 var socket = sockets[i];
-                // Side/corner sockets are intentionally used for special terrain. The central cross
-                // can be visually merged into large plates by FloorComposition, so replacing one of
-                // those cells would leave a broad plate underneath the hazard.
                 if (socket == null || !socket.PitEligible)
                     continue;
 
@@ -186,8 +183,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             var skin = new GameObject("[ActiveOriginiumShardTile]").transform;
             skin.SetParent(root, false);
 
-            // This is still a readable authored terrain tile, but the dangerous area is mineralized
-            // rather than painted red. The normal deck becomes a dark, heat-scorched mineral bed.
             CreateBox(skin, "IndustrialFrame", new Vector3(0f, 0.018f, 0f),
                 new Vector3(footprint.x, 0.042f, footprint.y), 0.014f, _frameMaterial, true);
             CreateBox(skin, "ScorchedBed", new Vector3(0f, 0.047f, 0f),
@@ -244,8 +239,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 Mathf.RoundToInt(root.position.z * 100f) * 83492791);
             var rng = new System.Random(seed);
 
-            // Clustering is deliberate: natural mineral debris gathers in several pockets instead of
-            // filling the whole tile with a regular grid of spikes.
             var centers = new[]
             {
                 new Vector2(-0.24f, -0.16f),
@@ -337,7 +330,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 variant == 1 ? 0.09f : variant == 2 ? -0.07f : 0.03f,
                 1f,
                 variant == 2 ? 0.08f : -0.035f);
-            var bottomCenter = new Vector3(0f, 0f, 0f);
+            var bottomCenter = Vector3.zero;
 
             var vertices = new List<Vector3>(sides * 18);
             var triangles = new List<int>(sides * 18);
@@ -402,8 +395,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                                FirstMaterial(renderers);
             var accent = FindMaterial(renderers, "TacticalAccent") ?? baseMaterial;
 
-            // The reference mineral reads black / smoke-brown in shadow and amber-gold on exposed
-            // facets. Keep the bed very rough; only crystal faces get a controlled hard highlight.
             _frameMaterial = Clone(baseMaterial, "Runtime_ActiveOriginium_Frame",
                 new Color(0.070f, 0.075f, 0.078f, 1f), 0.18f, 0.07f);
             _scorchedMaterial = Clone(baseMaterial, "Runtime_ActiveOriginium_Scorched",
@@ -416,6 +407,11 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 new Color(0.62f, 0.39f, 0.075f, 1f), 0.01f, 0.29f);
             _oreGlowMaterial = Clone(accent ?? baseMaterial, "Runtime_ActiveOriginium_AmberGlow",
                 new Color(0.78f, 0.47f, 0.070f, 1f), 0.00f, 0.26f);
+
+            StripDeckSurfaceMaps(_oreBlackMaterial);
+            StripDeckSurfaceMaps(_oreAmberMaterial);
+            StripDeckSurfaceMaps(_oreGoldMaterial);
+            StripDeckSurfaceMaps(_oreGlowMaterial);
             EnableEmission(_oreGlowMaterial, new Color(1.25f, 0.62f, 0.08f, 1f));
         }
 
@@ -432,6 +428,16 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             if (material.HasProperty("_Glossiness")) material.SetFloat("_Glossiness", smoothness);
             _ownedMaterials.Add(material);
             return material;
+        }
+
+        private static void StripDeckSurfaceMaps(Material material)
+        {
+            if (material == null)
+                return;
+            if (material.HasProperty("_BaseMap")) material.SetTexture("_BaseMap", null);
+            if (material.HasProperty("_MainTex")) material.SetTexture("_MainTex", null);
+            if (material.HasProperty("_BumpMap")) material.SetTexture("_BumpMap", null);
+            if (material.HasProperty("_OcclusionMap")) material.SetTexture("_OcclusionMap", null);
         }
 
         private static void EnableEmission(Material material, Color color)
