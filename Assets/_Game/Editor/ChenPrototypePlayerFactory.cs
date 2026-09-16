@@ -11,6 +11,8 @@ using ArknightsACT.Gameplay.Presentation;
 using ArknightsACT.Gameplay.Roguelite;
 using ArknightsACT.Gameplay.Roguelite.Collectibles;
 using ArknightsACT.Gameplay.Roguelite.Progression;
+using ArknightsACT.Gameplay.Roguelite.SkillUpgrades;
+using ArknightsACT.Gameplay.Roguelite.Treasure;
 using UnityEngine;
 
 namespace ArknightsACT.Editor
@@ -156,6 +158,7 @@ namespace ArknightsACT.Editor
             go.AddComponent<ChenSkill1>();
             go.AddComponent<ChenSkill2>();
             go.AddComponent<PlayerSkillController>();
+            go.AddComponent<ChenSkillUpgradeApplier>();
 
             var profile = go.AddComponent<PlayerCombatProfile>();
             profile.Configure(
@@ -166,6 +169,8 @@ namespace ArknightsACT.Editor
                 CombatFeature.ArtsDamage);
             go.AddComponent<CollectibleInventory>();
             go.AddComponent<LevelUpgradeInventory>();
+            go.AddComponent<CharacterSkillUpgradeInventory>();
+            go.AddComponent<TemporaryCombatBuffs>();
         }
 
         private static void CreatePlaceholder(Transform parent)
