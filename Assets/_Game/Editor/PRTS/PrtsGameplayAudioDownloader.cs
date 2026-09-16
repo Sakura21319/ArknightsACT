@@ -16,7 +16,7 @@ namespace ArknightsACT.Editor.PRTS
     /// </summary>
     internal static class PrtsGameplayAudioDownloader
     {
-        [MenuItem("ArknightsACT/Assets/PRTS/Download Gameplay Audio (BGM + Chen)")]
+        [MenuItem("ArknightsACT/Assets/PRTS/Download Gameplay Audio (BGM + Combat + Chen)")]
         private static async void DownloadGameplayAudio()
         {
             var success = new List<string>();
@@ -28,7 +28,7 @@ namespace ArknightsACT.Editor.PRTS
                 {
                     Timeout = TimeSpan.FromSeconds(35)
                 };
-                client.DefaultRequestHeaders.UserAgent.ParseAdd("ArknightsACT-Prototype/0.5");
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("ArknightsACT-Prototype/0.6");
 
                 var assets = PrtsGameplayAudioCatalog.All;
                 for (var i = 0; i < assets.Length; i++)
@@ -77,7 +77,7 @@ namespace ArknightsACT.Editor.PRTS
                 }
                 message.AppendLine();
                 message.AppendLine("音频保存在 Assets/_Game/Art/Audio/PRTS（已被 .gitignore 排除）。");
-                message.AppendLine("接着执行 ArknightsACT > Build Prototype Scene，然后进入 Play 验证 BGM、技能音效与陈的战斗语音。");
+                message.AppendLine("接着执行 ArknightsACT > Build Prototype Scene，然后进入 Play 验证 BGM、技能/普攻/命中/受击/死亡/敌人攻击音效与陈的战斗语音。");
                 EditorUtility.DisplayDialog("PRTS 游戏音频", message.ToString(), "OK");
             }
             finally
