@@ -5,6 +5,7 @@ using ArknightsACT.Gameplay.Roguelite.Collectibles;
 using ArknightsACT.Gameplay.Roguelite.Progression;
 using ArknightsACT.Gameplay.Roguelite.Rewards;
 using ArknightsACT.Gameplay.Roguelite.Routing;
+using ArknightsACT.Gameplay.Roguelite.Shop;
 using ArknightsACT.Gameplay.Roguelite.SkillUpgrades;
 using ArknightsACT.Gameplay.Rooms;
 using UnityEditor;
@@ -72,6 +73,19 @@ namespace ArknightsACT.Editor
 
             var skillRewards = root.AddComponent<CharacterSkillUpgradeRewardController>();
             skillRewards.Configure(skillUpgradeInventory, skillUpgradePool);
+
+            var shop = root.AddComponent<RogueliteShopController>();
+            shop.Configure(
+                player,
+                runState,
+                stageMap,
+                inventory,
+                upgradeInventory,
+                skillUpgradeInventory,
+                profile,
+                collectiblePool,
+                upgradePool,
+                skillUpgradePool);
 
             var hud = root.AddComponent<RogueliteProgressHUD>();
             hud.Configure(runState);
