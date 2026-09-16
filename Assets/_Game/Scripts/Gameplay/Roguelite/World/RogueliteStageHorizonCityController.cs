@@ -5,9 +5,9 @@ using UnityEngine.Rendering;
 namespace ArknightsACT.Gameplay.Roguelite.World
 {
     /// <summary>
-    /// Adds a low-detail city wrap behind the authored distant district. This pass is intentionally
-    /// broad: it seals the camera-right / north-east horizon so no gameplay camera angle can look
-    /// through the finite geometry into an empty black background.
+    /// Adds a low-detail city wrap behind the authored distant district. The horizon intentionally lives
+    /// only beyond the north/east playable edges; it must never sit beneath the playable deck because a
+    /// giant background slab there would hide the detailed mobile-city chassis/deep-base layers.
     /// </summary>
     [DefaultExecutionOrder(28)]
     [DisallowMultipleComponent]
@@ -45,7 +45,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             Build(stage.transform);
             ConfigureAtmosphere();
             _preparedStage = stage;
-            Debug.Log($"[ArknightsACT/HorizonCity] Stage {stageMap.StageIndex}: east/north-east city wrap built.", this);
+            Debug.Log($"[ArknightsACT/HorizonCity] Stage {stageMap.StageIndex}: north/east horizon built without covering the under-city chassis.", this);
         }
 
         private void Build(Transform stage)
@@ -64,9 +64,18 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             var steel = kit.steelMaterial != null ? kit.steelMaterial : wall;
             var grate = kit.grateMaterial != null ? kit.grateMaterial : dark;
 
-            // A broad lower terrace catches any downward-right sightline between nearer buildings.
-            CreateVisualBox(root, "FarCityFoundation", new Vector3(13f, -4.8f, 13f),
-                new Vector3(width + 82f, 6.5f, depth + 82f), 0.30f, dark);
+            // IMPORTANT: do not create a huge slab centered below the stage. The previous FarCityFoundation
+            // overlapped y=-1.5..-8 and visually swallowed MobileCityChassis/MobileCityDeepBase from the
+            // gameplay camera. These terraces start outside the east/north edge instead.
+            CreateVisualBox(root, "FarEastLowerTerrace",
+                new Vector3(width * 0.5f + 24f, -5.2f, 0f),
+                new Vector3(30f, 7.0f, depth + 72f), 0.30f, dark);
+            CreateVisualBox(root, "FarNorthLowerTerrace",
+                new Vector3(0f, -5.2f, depth * 0.5f + 24f),
+                new Vector3(width + 72f, 7.0f, 30f), 0.30f, dark);
+            CreateVisualBox(root, "FarNorthEastLowerTerrace",
+                new Vector3(width * 0.5f + 24f, -5.0f, depth * 0.5f + 24f),
+                new Vector3(30f, 7.4f, 30f), 0.30f, dark);
 
             BuildEastWrap(root, width, depth, wall, dark, steel, grate);
             BuildNorthWrap(root, width, depth, wall, dark, steel, grate);
@@ -79,7 +88,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             var wrapX = edgeX + 22f;
             var span = depth + 58f;
 
-            // The far mass is a visual safety net; foreground towers break it into believable city blocks.
             CreateVisualBox(root, "EastHorizonMass", new Vector3(wrapX + 9f, 4.6f, 0f),
                 new Vector3(15f, 15.5f, span), 0.22f, dark);
             CreateVisualBox(root, "EastHorizonBase", new Vector3(edgeX + 12f, -1.7f, 0f),
@@ -103,10 +111,8 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                     new Vector3(w * 1.05f, 0.20f, d * 1.04f), 0.04f, steel);
 
                 if (i % 2 == 0)
-                {
                     CreateVisualBox(root, $"EastHorizonVent_{i:00}", new Vector3(x - w * 0.5f - 0.035f, Mathf.Min(4.2f, h * 0.55f), z),
                         new Vector3(0.06f, 0.62f, d * 0.56f), 0.006f, grate);
-                }
             }
         }
 
@@ -139,10 +145,8 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                     new Vector3(w * 1.05f, 0.20f, d * 1.04f), 0.04f, steel);
 
                 if (i % 3 == 0)
-                {
                     CreateVisualBox(root, $"NorthMast_{i:00}", new Vector3(x, h + 1.35f, z),
                         new Vector3(0.12f, 2.6f, 0.12f), 0.018f, steel);
-                }
             }
         }
 
@@ -177,19 +181,14 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             RenderSettings.fogEndDistance = 145f;
         }
 
-        private static GameObject CreateVisualBox(
-            Transform parent,
-            string name,
-            Vector3 localPosition,
-            Vector3 size,
-            float bevel,
-            Material material)
+        private static GameObject CreateVisualBox(Transform parent, string name, Vector3 localPosition, Vector3 size, float bevel, Material material)
         {
             var go = new GameObject(name);
             go.transform.SetParent(parent, false);
             go.transform.localPosition = localPosition;
             var filter = go.AddComponent<MeshFilter>();
-            filter.sharedMesh = ChernobogBeveledMeshFactory.GetBox(size, Mathf.Min(bevel, Mathf.Min(size.x, Mathf.Min(size.y, size.z)) * 0.18f));
+            filter.sharedMesh = ChernobogBeveledMeshFactory.GetBox(size,
+                Mathf.Min(bevel, Mathf.Min(size.x, Mathf.Min(size.y, size.z)) * 0.18f));
             var renderer = go.AddComponent<MeshRenderer>();
             renderer.sharedMaterial = material;
             renderer.shadowCastingMode = ShadowCastingMode.Off;
