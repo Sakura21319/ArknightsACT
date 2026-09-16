@@ -72,7 +72,19 @@ namespace ArknightsACT.Editor
                 {
                     LoadAudio(PrtsGameplayAudioCatalog.ChenVoice027.LocalPath),
                     LoadAudio(PrtsGameplayAudioCatalog.ChenVoice028.LocalPath)
-                });
+                },
+                new[]
+                {
+                    LoadAudio(PrtsGameplayAudioCatalog.ChenAttackSwing1.LocalPath),
+                    LoadAudio(PrtsGameplayAudioCatalog.ChenAttackSwing2.LocalPath),
+                    LoadAudio(PrtsGameplayAudioCatalog.ChenAttackSwing3.LocalPath)
+                },
+                LoadAudio(PrtsGameplayAudioCatalog.ChenSwordImpact.LocalPath),
+                LoadAudio(PrtsGameplayAudioCatalog.PlayerHurt.LocalPath),
+                LoadAudio(PrtsGameplayAudioCatalog.PlayerDeath.LocalPath),
+                LoadAudio(PrtsGameplayAudioCatalog.EnemyMeleeAttack.LocalPath),
+                LoadAudio(PrtsGameplayAudioCatalog.EnemyRangedAttack.LocalPath),
+                LoadAudio(PrtsGameplayAudioCatalog.EnemyDeath.LocalPath));
 
             // physical floor/layout -> district assignment -> modular presentation -> industrial shell ->
             // playable rooms/decks -> district-specific streets/facades -> legacy density cleanup -> dressing
