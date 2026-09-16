@@ -61,6 +61,7 @@ namespace ArknightsACT.Editor
             AddSharedGameplay(go, attacks);
             go.AddComponent<PlayerMotor2D>();
             go.AddComponent<ChenPresentationDriver2D>();
+            go.AddComponent<ChenSkill1VfxController>();
             go.AddComponent<ChenSkill2VfxController>();
             go.AddComponent<DamageTintFlash2D>();
             go.AddComponent<WorldHealthBar2D>();
@@ -112,6 +113,7 @@ namespace ArknightsACT.Editor
             }
 
             go.AddComponent<ChenPresentationDriver25D>();
+            go.AddComponent<ChenSkill1VfxController>();
             go.AddComponent<ChenSkill2VfxController>();
             go.AddComponent<DamageTintFlash2D>();
             go.AddComponent<WorldHealthBar2D>();
