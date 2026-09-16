@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
@@ -10,12 +11,11 @@ namespace ArknightsACT.Editor.PRTS
     /// <summary>
     /// Keeps the downloaded PRTS Spine data authoritative for Ch'en's combat effects.
     ///
-    /// Arknights stores the normal-attack / Skill_2 / Skill_3 effect sprites and their animation
-    /// timelines inside the combat Spine itself. Several of those slots use Spine blend modes.
-    /// The default Spine importer can keep additive slots in the single-batch PMA path; for this
-    /// prototype we explicitly materialize Additive / Multiply / Screen replacement materials so
-    /// the authored bright slash sprites are rendered with their original blend intent instead of
-    /// being replaced by hand-authored Unity LineRenderer effects.
+    /// Ch'en's default battle-front atlas contains the original BG/BG1..BG6 combat-effect regions.
+    /// The installed Spine runtime is designed to render additive slots in the normal PMA batch when
+    /// SkeletonRenderer.pmaVertexColors is enabled. Do not force a separate Additive material here:
+    /// doing so changes the extracted Arknights asset's render path and can make the authored effect
+    /// attachments disappear even though the animation and setup log still succeed.
     /// </summary>
     internal static class PrtsOriginalSpineFxSetup
     {
@@ -33,21 +33,22 @@ namespace ArknightsACT.Editor.PRTS
 
             try
             {
-                EnableExplicitAdditiveMaterials(skeletonDataAsset);
+                ConfigureNativePmaAdditivePath(skeletonDataAsset);
                 RefreshBlendModeMaterials(skeletonDataAsset);
                 EditorUtility.SetDirty(skeletonDataAsset);
                 AssetDatabase.SaveAssets();
 
+                var atlasFx = DescribeAtlasEffectRegions(descriptor);
                 Debug.Log(
-                    "[ArknightsACT/PRTS] Refreshed Ch'en original Spine FX blend materials " +
-                    "(Additive / Multiply / Screen). Attack, Skill_2 and Skill_3 keep the authored PRTS attachments.",
+                    "[ArknightsACT/PRTS] Ch'en original Spine FX prepared with native PMA additive slots " +
+                    "(no synthetic VFX, no forced Additive replacement material). " + atlasFx,
                     skeletonDataAsset);
                 return true;
             }
             catch (Exception exception)
             {
                 Debug.LogWarning(
-                    "[ArknightsACT/PRTS] Could not refresh Ch'en original Spine FX materials: " +
+                    "[ArknightsACT/PRTS] Could not prepare Ch'en original Spine FX: " +
                     exception.GetBaseException().Message,
                     skeletonDataAsset);
                 return false;
@@ -68,8 +69,6 @@ namespace ArknightsACT.Editor.PRTS
                     return asset;
             }
 
-            // The Spine importer may not expose the custom ScriptableObject type to Unity's t: query
-            // on every runtime version, so keep the same broad fallback used by the prefab builder.
             guids = AssetDatabase.FindAssets(string.Empty, new[] { directory });
             foreach (var guid in guids)
             {
@@ -82,7 +81,7 @@ namespace ArknightsACT.Editor.PRTS
             return null;
         }
 
-        private static void EnableExplicitAdditiveMaterials(UnityEngine.Object skeletonDataAsset)
+        private static void ConfigureNativePmaAdditivePath(UnityEngine.Object skeletonDataAsset)
         {
             var serialized = new SerializedObject(skeletonDataAsset);
             var blendModes = serialized.FindProperty("blendModeMaterials");
@@ -90,9 +89,11 @@ namespace ArknightsACT.Editor.PRTS
             if (applyAdditive == null)
                 throw new MissingFieldException("SkeletonDataAsset.blendModeMaterials.applyAdditiveMaterial");
 
-            if (!applyAdditive.boolValue)
+            // Spine's normal PMA shader + pmaVertexColors handles additive slots in one batch.
+            // The previous explicit-material experiment is intentionally reverted here.
+            if (applyAdditive.boolValue)
             {
-                applyAdditive.boolValue = true;
+                applyAdditive.boolValue = false;
                 serialized.ApplyModifiedPropertiesWithoutUndo();
             }
         }
@@ -120,6 +121,26 @@ namespace ArknightsACT.Editor.PRTS
                 throw new MissingMethodException(utilityType.FullName, "UpdateBlendModeMaterials(SkeletonDataAsset)");
 
             method.Invoke(null, new object[] { skeletonDataAsset });
+        }
+
+        private static string DescribeAtlasEffectRegions(PrtsAssetDescriptor descriptor)
+        {
+            var atlasPath = Path.Combine(descriptor.TargetDirectory, descriptor.BaseName + ".atlas.txt");
+            if (!File.Exists(atlasPath))
+                return "Atlas effect-region check: atlas text missing.";
+
+            var lines = File.ReadAllLines(atlasPath);
+            var regions = lines
+                .Select(line => line.Trim())
+                .Where(line =>
+                    line.Equals("BG", StringComparison.OrdinalIgnoreCase) ||
+                    (line.StartsWith("BG", StringComparison.OrdinalIgnoreCase) && !line.Contains(":")))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            return regions.Length > 0
+                ? "Original atlas FX regions: " + string.Join(", ", regions) + "."
+                : "Atlas effect-region check: no BG-family regions found.";
         }
     }
 }
