@@ -56,10 +56,11 @@ namespace ArknightsACT.Editor
                 Load("HazardBand"));
 
             // Keep route/encounter code stable. Presentation is layered deliberately:
-            // physical floor/layout -> palette -> legacy base -> Concept-01 placement hints ->
+            // physical floor/layout -> hazard policy -> palette -> legacy base -> Concept-01 hints ->
             // persistent modular assets -> broad floor composition -> bevel fallback -> modular backdrop ->
-            // art-direction rhythm -> PBR/lighting -> real pit binding -> iconic terrain -> optional PRTS backdrop.
+            // art-direction rhythm -> PBR/lighting -> iconic terrain -> red Active Originium -> optional PRTS backdrop.
             go.AddComponent<RogueliteStageLayoutController>().Configure(stageMap);
+            go.AddComponent<RogueliteStageHazardPolicyController>().Configure(stageMap);
             go.AddComponent<RogueliteStagePaletteController>().Configure(stageMap);
             go.AddComponent<RogueliteStageAuthenticityController>().Configure(stageMap);
             go.AddComponent<RogueliteStageConceptOneController>().Configure(stageMap);
@@ -69,8 +70,8 @@ namespace ArknightsACT.Editor
             go.AddComponent<RogueliteStageBackdropFacadeController>().Configure(stageMap, environmentKit);
             go.AddComponent<RogueliteStageArtDirectionController>().Configure(stageMap);
             go.AddComponent<RogueliteStageQualityPassController>().Configure(stageMap);
-            go.AddComponent<RoguelitePitFloorSyncController>().Configure(stageMap);
             go.AddComponent<RogueliteStageTerrainPresentationController>().Configure(stageMap);
+            go.AddComponent<RogueliteActiveOriginiumPresentationController>().Configure(stageMap);
             go.AddComponent<RogueliteStageBackdropReferenceController>().Configure(stageMap, LoadEnvironmentBackdrops());
             return go;
         }
