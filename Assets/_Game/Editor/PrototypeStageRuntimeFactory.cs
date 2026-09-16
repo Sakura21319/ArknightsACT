@@ -30,9 +30,6 @@ namespace ArknightsACT.Editor
                 return null;
             }
 
-            // The selected visual direction now has a persistent modular asset kit. Ensure it exists
-            // before the generated scene serializes references to its meshes/materials/prefabs. Floor
-            // extensions run first so production + fine-detail material passes can also tune DeckSecondary.
             var environmentKit = ChernobogEnvironmentKitBuilder.EnsureBuilt();
             ChernobogFloorProductionPass.EnsureApplied(environmentKit);
             ChernobogMaterialProductionPass.EnsureApplied(environmentKit);
@@ -57,12 +54,11 @@ namespace ArknightsACT.Editor
                 Load("TacticalAccent"),
                 Load("HazardBand"));
 
-            // Keep route/encounter code stable. Presentation is layered deliberately:
-            // physical floor/layout -> hazard policy -> palette -> legacy base -> Concept-01 hints ->
-            // persistent modular assets -> broad floor composition -> bevel fallback -> modular backdrop ->
-            // art-direction rhythm -> PBR maps -> per-module variation -> authored key/fill/practical lighting ->
-            // iconic terrain -> amber-black Originium shards -> optional PRTS backdrop.
+            // physical floor/layout -> expanded 18x14 presentation -> hazard policy -> palette ->
+            // modular hard-surface kit -> broad floor composition -> backdrop/art direction -> material/light ->
+            // visible mobile-city chassis -> iconic terrain -> Originium -> optional PRTS backdrop.
             go.AddComponent<RogueliteStageLayoutController>().Configure(stageMap);
+            go.AddComponent<RogueliteStageExpansionController>().Configure(stageMap);
             go.AddComponent<RogueliteStageHazardPolicyController>().Configure(stageMap);
             go.AddComponent<RogueliteStagePaletteController>().Configure(stageMap);
             go.AddComponent<RogueliteStageAuthenticityController>().Configure(stageMap);
@@ -75,6 +71,7 @@ namespace ArknightsACT.Editor
             go.AddComponent<RogueliteStageQualityPassController>().Configure(stageMap);
             go.AddComponent<RogueliteStageMaterialVariationController>().Configure(stageMap);
             go.AddComponent<RogueliteStageLightingController>().Configure(stageMap);
+            go.AddComponent<RogueliteMobileCityChassisController>().Configure(stageMap, environmentKit);
             go.AddComponent<RogueliteStageTerrainPresentationController>().Configure(stageMap);
             go.AddComponent<RogueliteActiveOriginiumPresentationController>().Configure(stageMap);
             go.AddComponent<RogueliteStageBackdropReferenceController>().Configure(stageMap, LoadEnvironmentBackdrops());
