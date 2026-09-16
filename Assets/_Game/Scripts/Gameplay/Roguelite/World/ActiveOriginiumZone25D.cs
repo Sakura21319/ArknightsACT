@@ -36,7 +36,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         private void OnTriggerEnter(Collider other)
         {
             var entity = other.GetComponentInParent<CombatEntity>();
-            if (!IsValid(entity))
+            if (!IsValid(entity) || _nextTickAt.ContainsKey(entity))
                 return;
             AddExposure(entity);
             _nextTickAt[entity] = Time.time + tickInterval;
@@ -70,10 +70,9 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         private void OnTriggerExit(Collider other)
         {
             var entity = other.GetComponentInParent<CombatEntity>();
-            if (entity == null)
+            if (entity == null || !_nextTickAt.Remove(entity))
                 return;
             RemoveExposure(entity);
-            _nextTickAt.Remove(entity);
         }
 
         private void OnDisable()
@@ -100,32 +99,5 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         private static bool IsValid(CombatEntity entity) =>
             entity != null && entity.Health != null && !entity.Health.IsDead;
-    }
-
-    [DisallowMultipleComponent]
-    public sealed class ActiveOriginiumExposure25D : MonoBehaviour, IDamageModifier
-    {
-        private int _zoneCount;
-        private float _largestBonus;
-
-        public void AddZone(float outgoingBonus)
-        {
-            _zoneCount++;
-            _largestBonus = Mathf.Max(_largestBonus, Mathf.Max(0f, outgoingBonus));
-        }
-
-        public void RemoveZone()
-        {
-            _zoneCount = Mathf.Max(0, _zoneCount - 1);
-            if (_zoneCount == 0)
-                _largestBonus = 0f;
-        }
-
-        public float ModifyOutgoingDamage(in DamageContext context, float currentDamage)
-        {
-            return _zoneCount > 0 ? currentDamage * (1f + _largestBonus) : currentDamage;
-        }
-
-        public float ModifyIncomingDamage(in DamageContext context, float currentDamage) => currentDamage;
     }
 }
