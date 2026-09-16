@@ -5,9 +5,9 @@ using UnityEngine;
 namespace ArknightsACT.Gameplay.Roguelite.World
 {
     /// <summary>
-    /// ACT adaptation of Arknights active Originium terrain: actors standing on the tile
-    /// take periodic true damage but deal increased outgoing damage. Attack-speed handling is
-    /// intentionally deferred until locomotion/action playback modifiers are centralized.
+    /// ACT adaptation of active Originium terrain. Actors on the tile take periodic true damage.
+    /// Enemies keep the damage bonus permanently once exposed; the player keeps it for ten seconds
+    /// after the most recent contact with the tile.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(BoxCollider))]
@@ -16,6 +16,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         [SerializeField, Range(0.001f, 0.20f)] private float maxHealthDamagePerSecond = 0.025f;
         [SerializeField, Range(0f, 1f)] private float outgoingDamageBonus = 0.30f;
         [SerializeField, Min(0.1f)] private float tickInterval = 0.50f;
+        [SerializeField, Min(0.1f)] private float playerBuffDuration = 10f;
 
         private readonly Dictionary<CombatEntity, float> _nextTickAt = new();
 
@@ -36,9 +37,10 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         private void OnTriggerEnter(Collider other)
         {
             var entity = other.GetComponentInParent<CombatEntity>();
-            if (!IsValid(entity) || _nextTickAt.ContainsKey(entity))
+            if (!IsValid(entity))
                 return;
-            AddExposure(entity);
+
+            ApplyExposure(entity);
             _nextTickAt[entity] = Time.time + tickInterval;
         }
 
@@ -47,14 +49,16 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             var entity = other.GetComponentInParent<CombatEntity>();
             if (!IsValid(entity))
                 return;
-            if (!_nextTickAt.ContainsKey(entity))
+
+            ApplyExposure(entity);
+            if (!_nextTickAt.TryGetValue(entity, out var nextTick))
+                nextTick = Time.time + tickInterval;
+            if (Time.time < nextTick)
             {
-                AddExposure(entity);
-                _nextTickAt[entity] = Time.time + tickInterval;
+                _nextTickAt[entity] = nextTick;
+                return;
             }
 
-            if (Time.time < _nextTickAt[entity])
-                return;
             _nextTickAt[entity] = Time.time + tickInterval;
             var damage = entity.Health.MaxHealth * maxHealthDamagePerSecond * tickInterval;
             DamageSystem.Apply(new DamageContext(
@@ -70,31 +74,25 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         private void OnTriggerExit(Collider other)
         {
             var entity = other.GetComponentInParent<CombatEntity>();
-            if (entity == null || !_nextTickAt.Remove(entity))
-                return;
-            RemoveExposure(entity);
+            if (entity != null)
+                _nextTickAt.Remove(entity);
         }
 
         private void OnDisable()
         {
-            foreach (var entity in _nextTickAt.Keys)
-                RemoveExposure(entity);
             _nextTickAt.Clear();
         }
 
-        private void AddExposure(CombatEntity entity)
+        private void ApplyExposure(CombatEntity entity)
         {
             var buff = entity.GetComponent<ActiveOriginiumExposure25D>();
             if (buff == null)
                 buff = entity.gameObject.AddComponent<ActiveOriginiumExposure25D>();
-            buff.AddZone(outgoingDamageBonus);
-        }
 
-        private static void RemoveExposure(CombatEntity entity)
-        {
-            if (entity == null)
-                return;
-            entity.GetComponent<ActiveOriginiumExposure25D>()?.RemoveZone();
+            if (entity.Team == Team.Player)
+                buff.RefreshTimed(outgoingDamageBonus, playerBuffDuration);
+            else if (entity.Team == Team.Enemy)
+                buff.ApplyPermanent(outgoingDamageBonus);
         }
 
         private static bool IsValid(CombatEntity entity) =>
