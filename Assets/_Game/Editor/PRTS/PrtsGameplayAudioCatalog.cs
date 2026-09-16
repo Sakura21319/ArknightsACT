@@ -7,6 +7,7 @@ namespace ArknightsACT.Editor.PRTS
     {
         Music,
         SkillSfx,
+        CombatSfx,
         Voice
     }
 
@@ -33,12 +34,6 @@ namespace ArknightsACT.Editor.PRTS
         }
     }
 
-    /// <summary>
-    /// Canonical/local-only gameplay audio references used by the prototype. Downloaded files live
-    /// below Assets/_Game/Art/Audio/PRTS and are already covered by the repository PRTS ignore rule.
-    /// The code keeps multiple candidate media URLs where PRTS mirrors game paths with different
-    /// casing/root conventions so the editor downloader can fail over without hard-coding one mirror.
-    /// </summary>
     internal static class PrtsGameplayAudioCatalog
     {
         public const string Root = "Assets/_Game/Art/Audio/PRTS";
@@ -66,16 +61,16 @@ namespace ArknightsACT.Editor.PRTS
             AudioBase + "sound_beta_2/music/act9d2d0/m_bat_chernobog_loop.mp3",
             AudioBase + "Sound_Beta_2/Music/act9d2d0/m_bat_chernobog_loop.mp3");
 
-        // Current prototype slot 1 is 陈 · 赤霄·拔刀 (canonical skchr_chen_2).
         public static readonly PrtsGameplayAudioAsset ChenSkill1Sfx = new(
             "陈 · 赤霄·拔刀 技能音效",
             Root + "/Chen_Skill1_ChixiaoBadao.mp3",
             AudioDataPage,
             PrtsGameplayAudioKind.SkillSfx,
             AudioBase + "sound_beta_2/player/p_skill/p_skill_chixiaobadao.mp3",
-            AudioBase + "Sound_Beta_2/Player/p_skill/p_skill_chixiaobadao.mp3");
+            AudioBase + "Sound_Beta_2/Player/p_skill/p_skill_chixiaobadao.mp3",
+            AudioBase + "sound_beta_2/avg/d_sp_chixiaobadao.mp3",
+            AudioBase + "Sound_Beta_2/AVG/d_sp_chixiaobadao.mp3");
 
-        // Current prototype slot 2 is 陈 · 赤霄·绝影 (canonical skchr_chen_3).
         public static readonly PrtsGameplayAudioAsset ChenSkill2Sfx = new(
             "陈 · 赤霄·绝影 技能音效",
             Root + "/Chen_Skill2_Jueying.mp3",
@@ -83,6 +78,27 @@ namespace ArknightsACT.Editor.PRTS
             PrtsGameplayAudioKind.SkillSfx,
             AudioBase + "sound_beta_2/player/p_skill/p_skill_jueying_1.mp3",
             AudioBase + "Sound_Beta_2/Player/p_skill/p_skill_jueying_1.mp3");
+
+        public static readonly PrtsGameplayAudioAsset ChenAttackSwing1 = Combat(
+            "陈 · 普攻挥刀 1", "Chen_AttackSwing_01.mp3", "AVG/d_avg_swordtsing1");
+        public static readonly PrtsGameplayAudioAsset ChenAttackSwing2 = Combat(
+            "陈 · 普攻挥刀 2", "Chen_AttackSwing_02.mp3", "AVG/d_avg_swordtsing2");
+        public static readonly PrtsGameplayAudioAsset ChenAttackSwing3 = Combat(
+            "陈 · 普攻挥刀 3", "Chen_AttackSwing_03.mp3", "AVG/d_avg_swordtsing3");
+        public static readonly PrtsGameplayAudioAsset ChenSwordImpact = Combat(
+            "陈 · 刀剑命中", "Chen_SwordImpact.mp3", "Player/p_imp/p_imp_sword_n");
+        public static readonly PrtsGameplayAudioAsset PlayerHurt = Combat(
+            "角色受击", "Player_Hurt.mp3", "Enemy/e_imp/e_imp_katar_n");
+        public static readonly PrtsGameplayAudioAsset PlayerDeath = Combat(
+            "角色倒地", "Player_Death.mp3", "AVG/d_avg_bodyfallvalley");
+        public static readonly PrtsGameplayAudioAsset EnemyMeleeAttack = Combat(
+            "敌人近战攻击", "Enemy_MeleeAttack.mp3", "Enemy/e_atk/e_atk_blunt_n");
+        public static readonly PrtsGameplayAudioAsset EnemyRangedAttack = Combat(
+            "敌人远程攻击", "Enemy_RangedAttack.mp3", "Enemy/e_atk/e_atk_arrow_h");
+        public static readonly PrtsGameplayAudioAsset EnemyHit = Combat(
+            "敌人受击", "Enemy_Hit.mp3", "Player/p_imp/p_imp_sword_n");
+        public static readonly PrtsGameplayAudioAsset EnemyDeath = Combat(
+            "敌人死亡", "Enemy_Death.mp3", "Battle/b_enemy/b_enemy_dead_n");
 
         public static readonly PrtsGameplayAudioAsset ChenVoice025 = Voice("CN_025", "战斗语音 1");
         public static readonly PrtsGameplayAudioAsset ChenVoice026 = Voice("CN_026", "战斗语音 2");
@@ -95,6 +111,16 @@ namespace ArknightsACT.Editor.PRTS
             ChernobogLoop,
             ChenSkill1Sfx,
             ChenSkill2Sfx,
+            ChenAttackSwing1,
+            ChenAttackSwing2,
+            ChenAttackSwing3,
+            ChenSwordImpact,
+            PlayerHurt,
+            PlayerDeath,
+            EnemyMeleeAttack,
+            EnemyRangedAttack,
+            EnemyHit,
+            EnemyDeath,
             ChenVoice025,
             ChenVoice026,
             ChenVoice027,
@@ -112,6 +138,25 @@ namespace ArknightsACT.Editor.PRTS
             ChenVoice027,
             ChenVoice028
         };
+
+        public static readonly PrtsGameplayAudioAsset[] ChenAttackSwings =
+        {
+            ChenAttackSwing1,
+            ChenAttackSwing2,
+            ChenAttackSwing3
+        };
+
+        private static PrtsGameplayAudioAsset Combat(string displayName, string fileName, string canonicalPath)
+        {
+            var lower = canonicalPath.ToLowerInvariant();
+            return new PrtsGameplayAudioAsset(
+                displayName,
+                Root + "/" + fileName,
+                AudioDataPage,
+                PrtsGameplayAudioKind.CombatSfx,
+                AudioBase + "sound_beta_2/" + lower + ".mp3",
+                AudioBase + "Sound_Beta_2/" + canonicalPath + ".mp3");
+        }
 
         private static PrtsGameplayAudioAsset Voice(string id, string label)
         {
