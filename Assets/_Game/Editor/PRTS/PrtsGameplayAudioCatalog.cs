@@ -95,8 +95,6 @@ namespace ArknightsACT.Editor.PRTS
             "敌人近战攻击", "Enemy_MeleeAttack.mp3", "Enemy/e_atk/e_atk_blunt_n");
         public static readonly PrtsGameplayAudioAsset EnemyRangedAttack = Combat(
             "敌人远程攻击", "Enemy_RangedAttack.mp3", "Enemy/e_atk/e_atk_arrow_h");
-        public static readonly PrtsGameplayAudioAsset EnemyHit = Combat(
-            "敌人受击", "Enemy_Hit.mp3", "Player/p_imp/p_imp_sword_n");
         public static readonly PrtsGameplayAudioAsset EnemyDeath = Combat(
             "敌人死亡", "Enemy_Death.mp3", "Battle/b_enemy/b_enemy_dead_n");
 
@@ -119,7 +117,6 @@ namespace ArknightsACT.Editor.PRTS
             PlayerDeath,
             EnemyMeleeAttack,
             EnemyRangedAttack,
-            EnemyHit,
             EnemyDeath,
             ChenVoice025,
             ChenVoice026,
