@@ -3,20 +3,18 @@ using System.Collections.Generic;
 using ArknightsACT.Gameplay.Roguelite.Routing;
 using UnityEngine;
 using UnityEngine.Rendering;
-using UnityEngine.Rendering.Universal;
 
 namespace ArknightsACT.Gameplay.Roguelite.World
 {
     /// <summary>
-    /// Final presentation pass for the selected Concept-01 look.
+    /// Compile-safe final presentation pass for Concept-01.
     ///
-    /// This pass fixes two weaknesses visible in the first Unity screenshots:
-    /// 1) legacy Phase-08 tile markers could still survive in generated scenes;
-    /// 2) most geometry only had flat albedo + a directional light, so it read as grey blockout.
+    /// This component intentionally depends only on UnityEngine / UnityEngine.Rendering. The first
+    /// quality-pass revision referenced URP volume component types directly, which is unnecessary for
+    /// the map skin and can break compilation when package/editor API revisions differ. Post FX can be
+    /// authored later as an editor asset once the modular environment kit is stable.
     ///
-    /// Gameplay geometry/colliders remain authoritative. This component only removes legacy visual
-    /// clutter, adds tangent-space surface response, enables restrained emission/post FX and builds
-    /// a small lighting rig around the far walls.
+    /// Gameplay colliders, navigation, encounters and hazards are never modified here.
     /// </summary>
     [DefaultExecutionOrder(18)]
     [DisallowMultipleComponent]
@@ -32,14 +30,9 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         private float _nextResolveAt;
 
         private Texture2D _deckNormal;
-        private Texture2D _deckOcclusion;
         private Texture2D _wallNormal;
-        private Texture2D _wallOcclusion;
         private Texture2D _coverNormal;
-        private Texture2D _coverOcclusion;
         private Texture2D _grateNormal;
-        private Texture2D _grateOcclusion;
-        private VolumeProfile _volumeProfile;
 
         public void Configure(RogueliteStageMapController map)
         {
@@ -52,7 +45,8 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 return;
             _nextResolveAt = Time.unscaledTime + 0.15f;
 
-            stageMap ??= FindFirstObjectByType<RogueliteStageMapController>();
+            if (stageMap == null)
+                stageMap = FindFirstObjectByType<RogueliteStageMapController>();
             if (stageMap == null)
                 return;
 
@@ -65,12 +59,10 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             EnsureSurfaceMaps();
             ApplySurfaceResponse(stage);
             ConfigureWorldLighting(stage.transform);
-            ConfigurePostProcessing();
             _preparedStage = stage;
 
             Debug.Log(
-                $"[ArknightsACT/Quality] Stage {stageMap.StageIndex}: legacy tile marks removed, " +
-                "normal/AO response, warm practical lights and restrained URP post FX applied.",
+                $"[ArknightsACT/Quality] Stage {stageMap.StageIndex}: legacy tile marks removed and compile-safe material/lighting quality pass applied.",
                 this);
         }
 
@@ -82,9 +74,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                     Destroy(_ownedTextures[i]);
             }
             _ownedTextures.Clear();
-
-            if (_volumeProfile != null)
-                Destroy(_volumeProfile);
         }
 
         private static void RemoveLegacyTileClutter(Transform stage)
@@ -96,8 +85,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 if (t == null)
                     continue;
 
-                // Old authenticity pass: this root contained the repeated grate + orange ID pattern
-                // visible in the screenshot. Disable the whole visual-only root, never the floor.
                 if (string.Equals(t.name, "[ArknightsTileSkin]", StringComparison.Ordinal) ||
                     string.Equals(t.name, "TileIDPlate", StringComparison.Ordinal) ||
                     string.Equals(t.name, "MaintenancePlate", StringComparison.Ordinal) ||
@@ -108,8 +95,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                     continue;
                 }
 
-                // Runtime used one orange block marker per chunk. It is useful for blockout/debugging,
-                // but it does not belong in the final visual language.
                 if (string.Equals(t.name, "BlockMarker", StringComparison.Ordinal))
                 {
                     var renderer = t.GetComponent<Renderer>();
@@ -121,10 +106,8 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         private void CullCameraNearBackdrop(Transform stage)
         {
-            // Camera follows from the south-west (-X/-Z). Procedural skyline masses on that side can
-            // become giant foreground slabs and hide the board. Keep the skyline on north/east only.
             var skyline = stage.Find("[MobileCityEnvironment]/ChernobogStyleSkyline");
-            if (skyline == null)
+            if (skyline == null || stageMap == null)
                 return;
 
             var width = stageMap.Width * ChunkWidth;
@@ -146,14 +129,10 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             if (_deckNormal != null)
                 return;
 
-            _deckNormal = BuildNormalMap("Concept01_DeckNormal", 256, SurfaceKind.Deck);
-            _deckOcclusion = BuildOcclusionMap("Concept01_DeckAO", 256, SurfaceKind.Deck);
-            _wallNormal = BuildNormalMap("Concept01_WallNormal", 256, SurfaceKind.Wall);
-            _wallOcclusion = BuildOcclusionMap("Concept01_WallAO", 256, SurfaceKind.Wall);
-            _coverNormal = BuildNormalMap("Concept01_CoverNormal", 256, SurfaceKind.Cover);
-            _coverOcclusion = BuildOcclusionMap("Concept01_CoverAO", 256, SurfaceKind.Cover);
-            _grateNormal = BuildNormalMap("Concept01_GrateNormal", 256, SurfaceKind.Grate);
-            _grateOcclusion = BuildOcclusionMap("Concept01_GrateAO", 256, SurfaceKind.Grate);
+            _deckNormal = BuildNormalMap("Concept01_DeckNormal", 128, SurfaceKind.Deck);
+            _wallNormal = BuildNormalMap("Concept01_WallNormal", 128, SurfaceKind.Wall);
+            _coverNormal = BuildNormalMap("Concept01_CoverNormal", 128, SurfaceKind.Cover);
+            _grateNormal = BuildNormalMap("Concept01_GrateNormal", 128, SurfaceKind.Grate);
         }
 
         private void ApplySurfaceResponse(GameObject stage)
@@ -170,38 +149,28 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
                 var name = material.name ?? string.Empty;
                 if (name.StartsWith("Runtime_Concept01_Deck", StringComparison.Ordinal))
-                {
-                    ApplyPbrMaps(material, _deckNormal, _deckOcclusion, 0.62f, 0.17f);
-                }
+                    ApplyNormal(material, _deckNormal, 0.45f, 0.16f);
                 else if (name.StartsWith("Runtime_Concept01_WallInset", StringComparison.Ordinal))
-                {
-                    ApplyPbrMaps(material, _wallNormal, _wallOcclusion, 0.82f, 0.09f);
-                }
+                    ApplyNormal(material, _wallNormal, 0.62f, 0.08f);
                 else if (name.StartsWith("Runtime_Concept01_Wall", StringComparison.Ordinal))
-                {
-                    ApplyPbrMaps(material, _wallNormal, _wallOcclusion, 0.70f, 0.14f);
-                }
+                    ApplyNormal(material, _wallNormal, 0.52f, 0.13f);
                 else if (name.StartsWith("Runtime_Concept01_Cover", StringComparison.Ordinal))
-                {
-                    ApplyPbrMaps(material, _coverNormal, _coverOcclusion, 0.78f, 0.13f);
-                }
+                    ApplyNormal(material, _coverNormal, 0.60f, 0.12f);
                 else if (name.StartsWith("Runtime_Concept01_Grate", StringComparison.Ordinal))
-                {
-                    ApplyPbrMaps(material, _grateNormal, _grateOcclusion, 1.05f, 0.07f);
-                }
+                    ApplyNormal(material, _grateNormal, 0.85f, 0.06f);
                 else if (name.StartsWith("Runtime_Concept01_SteelEdge", StringComparison.Ordinal))
                 {
-                    if (material.HasProperty("_Metallic")) material.SetFloat("_Metallic", 0.58f);
-                    SetSmoothness(material, 0.24f);
+                    if (material.HasProperty("_Metallic")) material.SetFloat("_Metallic", 0.55f);
+                    SetSmoothness(material, 0.22f);
                 }
                 else if (name.StartsWith("Runtime_Concept01_WarmLight", StringComparison.Ordinal))
                 {
-                    EnableEmission(material, new Color(2.8f, 1.25f, 0.22f, 1f));
+                    EnableEmission(material, new Color(2.4f, 1.05f, 0.18f, 1f));
                 }
             }
         }
 
-        private static void ApplyPbrMaps(Material material, Texture2D normal, Texture2D occlusion, float bumpScale, float smoothness)
+        private static void ApplyNormal(Material material, Texture2D normal, float bumpScale, float smoothness)
         {
             if (material.HasProperty("_BumpMap"))
             {
@@ -210,15 +179,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                     material.SetFloat("_BumpScale", bumpScale);
                 material.EnableKeyword("_NORMALMAP");
             }
-
-            if (material.HasProperty("_OcclusionMap"))
-            {
-                material.SetTexture("_OcclusionMap", occlusion);
-                if (material.HasProperty("_OcclusionStrength"))
-                    material.SetFloat("_OcclusionStrength", 0.82f);
-                material.EnableKeyword("_OCCLUSIONMAP");
-            }
-
             SetSmoothness(material, smoothness);
         }
 
@@ -230,12 +190,11 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         private static void EnableEmission(Material material, Color emission)
         {
-            if (material.HasProperty("_EmissionColor"))
-            {
-                material.SetColor("_EmissionColor", emission);
-                material.EnableKeyword("_EMISSION");
-                material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
-            }
+            if (!material.HasProperty("_EmissionColor"))
+                return;
+
+            material.SetColor("_EmissionColor", emission);
+            material.EnableKeyword("_EMISSION");
         }
 
         private void ConfigureWorldLighting(Transform stage)
@@ -248,10 +207,10 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             RenderSettings.fogStartDistance = 24f;
             RenderSettings.fogEndDistance = 58f;
 
-            var directionalLights = FindObjectsByType<Light>(FindObjectsSortMode.None);
-            for (var i = 0; i < directionalLights.Length; i++)
+            var lights = FindObjectsByType<Light>(FindObjectsSortMode.None);
+            for (var i = 0; i < lights.Length; i++)
             {
-                var light = directionalLights[i];
+                var light = lights[i];
                 if (light == null || light.type != LightType.Directional)
                     continue;
 
@@ -270,7 +229,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 camera.allowMSAA = true;
             }
 
-            if (stage.Find("[Concept01_QualityLights]") != null)
+            if (stage.Find("[Concept01_QualityLights]") != null || stageMap == null)
                 return;
 
             var root = new GameObject("[Concept01_QualityLights]").transform;
@@ -278,9 +237,9 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
             var width = stageMap.Width * ChunkWidth;
             var depth = stageMap.Height * ChunkDepth;
-            CreateWarmPoint(root, new Vector3(-width * 0.26f, 1.15f, depth * 0.5f - 0.75f), 4.8f, 1.35f);
-            CreateWarmPoint(root, new Vector3(width * 0.18f, 1.10f, depth * 0.5f - 0.70f), 5.2f, 1.45f);
-            CreateWarmPoint(root, new Vector3(width * 0.5f - 0.70f, 1.05f, depth * 0.14f), 4.6f, 1.20f);
+            CreateWarmPoint(root, new Vector3(-width * 0.26f, 1.15f, depth * 0.5f - 0.75f), 4.8f, 1.20f);
+            CreateWarmPoint(root, new Vector3(width * 0.18f, 1.10f, depth * 0.5f - 0.70f), 5.2f, 1.30f);
+            CreateWarmPoint(root, new Vector3(width * 0.5f - 0.70f, 1.05f, depth * 0.14f), 4.6f, 1.10f);
         }
 
         private static void CreateWarmPoint(Transform parent, Vector3 localPosition, float range, float intensity)
@@ -296,37 +255,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             light.shadows = LightShadows.None;
         }
 
-        private void ConfigurePostProcessing()
-        {
-            var existing = GameObject.Find("[Concept01_PostFX]");
-            if (existing != null)
-                return;
-
-            var go = new GameObject("[Concept01_PostFX]");
-            var volume = go.AddComponent<Volume>();
-            volume.isGlobal = true;
-            volume.priority = 50f;
-            _volumeProfile = ScriptableObject.CreateInstance<VolumeProfile>();
-            volume.profile = _volumeProfile;
-
-            var color = _volumeProfile.Add<ColorAdjustments>(true);
-            color.postExposure.Override(-0.05f);
-            color.contrast.Override(10f);
-            color.saturation.Override(-7f);
-
-            var tonemapping = _volumeProfile.Add<Tonemapping>(true);
-            tonemapping.mode.Override(TonemappingMode.ACES);
-
-            var bloom = _volumeProfile.Add<Bloom>(true);
-            bloom.intensity.Override(0.16f);
-            bloom.threshold.Override(1.05f);
-            bloom.scatter.Override(0.55f);
-
-            var vignette = _volumeProfile.Add<Vignette>(true);
-            vignette.intensity.Override(0.10f);
-            vignette.smoothness.Override(0.42f);
-        }
-
         private Texture2D BuildNormalMap(string name, int size, SurfaceKind kind)
         {
             var height = new float[size * size];
@@ -339,10 +267,10 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 name = name,
                 wrapMode = TextureWrapMode.Repeat,
                 filterMode = FilterMode.Trilinear,
-                anisoLevel = 8
+                anisoLevel = 4
             };
 
-            var strength = kind == SurfaceKind.Grate ? 4.5f : kind == SurfaceKind.Wall ? 2.8f : 2.2f;
+            var strength = kind == SurfaceKind.Grate ? 3.6f : kind == SurfaceKind.Wall ? 2.2f : 1.8f;
             for (var y = 0; y < size; y++)
             for (var x = 0; x < size; x++)
             {
@@ -355,30 +283,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 var normal = new Vector3(dx, dy, 1f).normalized;
                 texture.SetPixel(x, y, new Color(normal.x * 0.5f + 0.5f, normal.y * 0.5f + 0.5f, normal.z * 0.5f + 0.5f, 1f));
             }
-            texture.Apply(true, false);
-            _ownedTextures.Add(texture);
-            return texture;
-        }
 
-        private Texture2D BuildOcclusionMap(string name, int size, SurfaceKind kind)
-        {
-            var texture = new Texture2D(size, size, TextureFormat.RGBA32, true, true)
-            {
-                name = name,
-                wrapMode = TextureWrapMode.Repeat,
-                filterMode = FilterMode.Trilinear,
-                anisoLevel = 8
-            };
-
-            for (var y = 0; y < size; y++)
-            for (var x = 0; x < size; x++)
-            {
-                var h = HeightAt(x, y, size, kind);
-                var ao = Mathf.Clamp01(0.70f + h * 0.28f);
-                if (kind == SurfaceKind.Grate && IsGrateGap(x, y))
-                    ao = 0.28f;
-                texture.SetPixel(x, y, new Color(ao, ao, ao, 1f));
-            }
             texture.Apply(true, false);
             _ownedTextures.Add(texture);
             return texture;
@@ -387,33 +292,27 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         private static float HeightAt(int x, int y, int size, SurfaceKind kind)
         {
             var noise = Hash01(x * 11 + (int)kind * 97, y * 13 + (int)kind * 131);
-            var h = (noise - 0.5f) * 0.12f;
+            var h = (noise - 0.5f) * 0.10f;
 
             var edge = Mathf.Min(Mathf.Min(x, size - 1 - x), Mathf.Min(y, size - 1 - y));
             if (kind == SurfaceKind.Deck)
             {
-                if (edge < 4) h -= (4 - edge) * 0.09f;
-                if ((x + y * 5) % 113 == 0) h -= 0.12f;
+                if (edge < 4) h -= (4 - edge) * 0.08f;
             }
             else if (kind == SurfaceKind.Wall)
             {
-                if (x % 64 < 4 || y % 80 < 4) h -= 0.22f;
+                if (x % 64 < 4 || y % 80 < 4) h -= 0.18f;
             }
             else if (kind == SurfaceKind.Cover)
             {
-                if (x % 86 < 4 || y % 74 < 4) h -= 0.18f;
+                if (x % 72 < 4 || y % 68 < 4) h -= 0.16f;
             }
             else if (kind == SurfaceKind.Grate)
             {
-                h = IsGrateGap(x, y) ? -0.65f : 0.20f;
+                h = (x % 18 > 5 && y % 18 > 5) ? -0.55f : 0.18f;
             }
 
             return h;
-        }
-
-        private static bool IsGrateGap(int x, int y)
-        {
-            return x % 18 > 5 && y % 18 > 5;
         }
 
         private static float Hash01(int x, int y)
