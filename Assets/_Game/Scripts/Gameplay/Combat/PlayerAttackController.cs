@@ -17,6 +17,7 @@ namespace ArknightsACT.Gameplay.Combat
         [SerializeField] private float baseAttack = 10f;
         [SerializeField] private float comboResetSeconds = 0.60f;
         [SerializeField, Min(0f)] private float movementUnlockAfterImpactSeconds = 0.04f;
+        [SerializeField, Min(0.1f)] private float max25DHeightDifference = 1.15f;
 
         private CombatEntity _entity;
         private IPlayerLocomotion _motor;
@@ -254,6 +255,10 @@ namespace ArknightsACT.Gameplay.Combat
                 var target = hit.GetComponentInParent<CombatEntity>();
                 if (!CanHit(target, processed))
                     continue;
+                if (Mathf.Abs(target.transform.position.y - transform.position.y) > max25DHeightDifference)
+                    continue;
+                if (!HasClear25DHitPath(target))
+                    continue;
 
                 if (ApplyHit(target, definition, Vector2.zero))
                     hitAny = true;
@@ -270,6 +275,34 @@ namespace ArknightsACT.Gameplay.Combat
                    target.Health != null &&
                    !target.Health.IsDead &&
                    processed.Add(target);
+        }
+
+        private bool HasClear25DHitPath(CombatEntity target)
+        {
+            var origin = transform.position + Vector3.up * 0.68f;
+            var destination = target.transform.position + Vector3.up * 0.68f;
+            var cast = destination - origin;
+            var distance = cast.magnitude;
+            if (distance < 0.001f)
+                return true;
+
+            var hits = Physics.SphereCastAll(origin, 0.10f, cast / distance, distance, ~0, QueryTriggerInteraction.Ignore);
+            Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            foreach (var hit in hits)
+            {
+                var collider = hit.collider;
+                if (collider == null || collider.transform.IsChildOf(transform))
+                    continue;
+                var entity = collider.GetComponentInParent<CombatEntity>();
+                if (entity != null)
+                {
+                    if (entity == target)
+                        return true;
+                    continue;
+                }
+                return false;
+            }
+            return true;
         }
 
         private bool ApplyHit(CombatEntity target, AttackDefinition definition, Vector2 knockback)
