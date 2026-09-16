@@ -48,22 +48,24 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             ConfigureCamera();
 
             _preparedStage = stage;
-            Debug.Log($"[ArknightsACT/Lighting] Stage {stageMap.StageIndex}: Chernobog key/fill/practical lighting rig applied.", this);
+            Debug.Log($"[ArknightsACT/Lighting] Stage {stageMap.StageIndex}: brighter Chernobog key/fill/practical lighting rig applied.", this);
         }
 
         private static void ConfigureEnvironment()
         {
+            // Keep the cool Chernobog mood, but lift the baseline enough that material roughness,
+            // scratches and bevels remain visible on ordinary monitors instead of collapsing to black.
             RenderSettings.ambientMode = AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.185f, 0.220f, 0.285f, 1f);
-            RenderSettings.ambientEquatorColor = new Color(0.092f, 0.112f, 0.150f, 1f);
-            RenderSettings.ambientGroundColor = new Color(0.035f, 0.041f, 0.052f, 1f);
-            RenderSettings.reflectionIntensity = 0.62f;
+            RenderSettings.ambientSkyColor = new Color(0.255f, 0.300f, 0.385f, 1f);
+            RenderSettings.ambientEquatorColor = new Color(0.145f, 0.170f, 0.225f, 1f);
+            RenderSettings.ambientGroundColor = new Color(0.060f, 0.070f, 0.090f, 1f);
+            RenderSettings.reflectionIntensity = 0.78f;
 
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogColor = new Color(0.035f, 0.043f, 0.056f, 1f);
-            RenderSettings.fogStartDistance = 28f;
-            RenderSettings.fogEndDistance = 68f;
+            RenderSettings.fogColor = new Color(0.052f, 0.063f, 0.082f, 1f);
+            RenderSettings.fogStartDistance = 34f;
+            RenderSettings.fogEndDistance = 82f;
         }
 
         private static void ConfigureMainKey()
@@ -87,12 +89,12 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             }
 
             key.name = "Chernobog_KeyDirectional";
-            key.color = new Color(0.72f, 0.82f, 1.0f, 1f);
-            key.intensity = 1.16f;
+            key.color = new Color(0.77f, 0.86f, 1.0f, 1f);
+            key.intensity = 1.30f;
             key.shadows = LightShadows.Soft;
-            key.shadowStrength = 0.86f;
+            key.shadowStrength = 0.72f;
             key.shadowBias = 0.045f;
-            key.shadowNormalBias = 0.32f;
+            key.shadowNormalBias = 0.30f;
             key.shadowNearPlane = 0.18f;
             key.renderMode = LightRenderMode.ForcePixel;
             key.transform.rotation = Quaternion.Euler(48f, -36f, 0f);
@@ -121,43 +123,42 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             var root = new GameObject("[ChernobogLightingRig]").transform;
             root.SetParent(stage, false);
 
-            // Large, soft-feeling cool fill from the south-west camera side. It does not cast shadows;
-            // the directional key remains the only expensive shadow owner.
+            // Broad cool fill from the camera side. This is intentionally stronger than the first
+            // lighting revision because the production albedo is physically darker than the prototype.
             CreateSpot(
                 root,
                 "CoolDeckFill",
-                new Vector3(-width * 0.34f, 9.5f, -depth * 0.28f),
+                new Vector3(-width * 0.34f, 9.8f, -depth * 0.28f),
                 new Vector3(width * 0.02f, 0.2f, depth * 0.03f),
-                new Color(0.42f, 0.57f, 0.82f, 1f),
-                Mathf.Clamp(diagonal * 0.70f, 18f, 42f),
-                78f,
-                0.62f,
+                new Color(0.50f, 0.65f, 0.90f, 1f),
+                Mathf.Clamp(diagonal * 0.78f, 20f, 46f),
+                84f,
+                0.90f,
                 false);
 
-            // Narrower cool rim from the far industrial side. This catches HVAC / wall top edges and
-            // helps the metal normal/roughness maps read without flattening the whole deck.
+            // Far-side rim remains weaker than the fill, preserving depth while giving hard-surface
+            // bevels and HVAC silhouettes a readable metal edge.
             CreateSpot(
                 root,
                 "CoolIndustrialRim",
-                new Vector3(width * 0.34f, 8.4f, depth * 0.42f),
+                new Vector3(width * 0.34f, 8.6f, depth * 0.42f),
                 new Vector3(width * 0.04f, 0.65f, depth * 0.10f),
-                new Color(0.36f, 0.49f, 0.72f, 1f),
-                Mathf.Clamp(diagonal * 0.58f, 16f, 34f),
-                64f,
-                0.48f,
+                new Color(0.41f, 0.55f, 0.79f, 1f),
+                Mathf.Clamp(diagonal * 0.62f, 18f, 36f),
+                68f,
+                0.60f,
                 false);
 
-            // Warm industrial practicals live near the north/east architecture so the orange accent
-            // is expressed by light pools rather than painted markings across the floor.
+            // Warm service pools stay local so the deck remains primarily cool rather than orange.
             CreateSpot(
                 root,
                 "WarmNorthServiceA",
                 new Vector3(-width * 0.24f, 4.2f, depth * 0.47f),
                 new Vector3(-width * 0.18f, 0.1f, depth * 0.24f),
-                new Color(1.0f, 0.48f, 0.16f, 1f),
-                10.0f,
+                new Color(1.0f, 0.50f, 0.18f, 1f),
+                10.5f,
                 52f,
-                1.45f,
+                1.55f,
                 false);
 
             CreateSpot(
@@ -165,10 +166,10 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 "WarmNorthServiceB",
                 new Vector3(width * 0.18f, 4.0f, depth * 0.47f),
                 new Vector3(width * 0.14f, 0.1f, depth * 0.22f),
-                new Color(1.0f, 0.44f, 0.13f, 1f),
-                9.0f,
+                new Color(1.0f, 0.46f, 0.15f, 1f),
+                9.5f,
                 48f,
-                1.25f,
+                1.34f,
                 false);
 
             CreateSpot(
@@ -176,16 +177,15 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 "WarmEastService",
                 new Vector3(width * 0.47f, 3.8f, depth * 0.08f),
                 new Vector3(width * 0.24f, 0.1f, depth * 0.05f),
-                new Color(1.0f, 0.46f, 0.14f, 1f),
-                8.5f,
+                new Color(1.0f, 0.48f, 0.16f, 1f),
+                9.0f,
                 50f,
-                1.18f,
+                1.26f,
                 false);
 
-            // A few low-energy point lights provide small specular kicks near infrastructure but stay
-            // deliberately local so the stage does not become evenly lit again.
-            CreatePoint(root, "WarmPractical_North", new Vector3(0f, 1.15f, depth * 0.47f), 4.8f, 0.72f);
-            CreatePoint(root, "WarmPractical_East", new Vector3(width * 0.47f, 1.05f, -depth * 0.10f), 4.2f, 0.62f);
+            // Tiny local practicals are for specular accents only; they should not lift the whole stage.
+            CreatePoint(root, "WarmPractical_North", new Vector3(0f, 1.15f, depth * 0.47f), 5.0f, 0.76f);
+            CreatePoint(root, "WarmPractical_East", new Vector3(width * 0.47f, 1.05f, -depth * 0.10f), 4.5f, 0.66f);
         }
 
         private static void CreateSpot(
@@ -225,7 +225,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
             var light = go.AddComponent<Light>();
             light.type = LightType.Point;
-            light.color = new Color(1.0f, 0.46f, 0.15f, 1f);
+            light.color = new Color(1.0f, 0.47f, 0.16f, 1f);
             light.range = range;
             light.intensity = intensity;
             light.shadows = LightShadows.None;
