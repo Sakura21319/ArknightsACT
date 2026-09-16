@@ -15,7 +15,6 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
         private readonly Dictionary<string, Coroutine> _burnRoutines = new();
 
         private CombatEntity _entity;
-        private float _baseMaxHealth;
         private int _chainHitCounter;
 
         public event Action<LevelUpgradeDefinition, int> Upgraded;
@@ -23,7 +22,6 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
         private void Awake()
         {
             _entity = GetComponent<CombatEntity>();
-            _baseMaxHealth = _entity != null && _entity.Health != null ? _entity.Health.MaxHealth : 100f;
         }
 
         private void OnEnable()
@@ -62,9 +60,6 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
             var nextStack = GetStackCount(definition) + 1;
             _stacks[definition.Id] = nextStack;
             _definitions[definition.Id] = definition;
-
-            if (definition.EffectType == LevelUpgradeEffectType.MaxHealthPercent)
-                RecalculateMaxHealth();
 
             Upgraded?.Invoke(definition, nextStack);
             Debug.Log(
@@ -201,21 +196,6 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
                 best = candidate;
             }
             return best;
-        }
-
-        private void RecalculateMaxHealth()
-        {
-            if (_entity?.Health == null)
-                return;
-
-            var oldMax = _entity.Health.MaxHealth;
-            var newMax = Mathf.Max(1f, _baseMaxHealth * (1f + SumEffect(LevelUpgradeEffectType.MaxHealthPercent)));
-            if (Mathf.Approximately(oldMax, newMax))
-                return;
-
-            _entity.Health.SetMaxHealth(newMax, refill: false);
-            if (newMax > oldMax)
-                _entity.Health.Heal(newMax - oldMax);
         }
 
         private float SumEffect(LevelUpgradeEffectType type)
