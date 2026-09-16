@@ -21,7 +21,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         [SerializeField] private RogueliteStageMapController stageMap;
 
-        private readonly MaterialPropertyBlock _block = new();
         private GameObject _preparedStage;
         private float _nextResolveAt;
 
@@ -50,6 +49,11 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         private void ApplyVariation(GameObject stage)
         {
+            // Do not keep MaterialPropertyBlock as a readonly MonoBehaviour field. Unity can restore
+            // serialized component instances without preserving that managed field initializer on some
+            // editor/domain-reload paths, which leaves Renderer.GetPropertyBlock with a null destination.
+            // One reusable local block per pass is cheap and removes that failure mode completely.
+            var propertyBlock = new MaterialPropertyBlock();
             var renderers = stage.GetComponentsInChildren<Renderer>(true);
             for (var i = 0; i < renderers.Length; i++)
             {
@@ -73,46 +77,46 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 var h = Hash01(seed);
                 var h2 = Hash01(seed ^ 0x2c1b3c6d);
 
-                // Variation remains deliberately subtle: enough to break clone repetition without
-                // turning the deck into checkerboard tiles again.
-                var value = Mathf.Lerp(0.955f, 1.035f, h);
-                var coolShift = Mathf.Lerp(-0.010f, 0.012f, h2);
+                // Keep the value variation extremely restrained. Most of the material read should come
+                // from lighting, roughness and micro normal response rather than visible colour patches.
+                var value = Mathf.Lerp(0.975f, 1.025f, h);
+                var coolShift = Mathf.Lerp(-0.007f, 0.008f, h2);
                 var tint = new Color(
-                    Mathf.Clamp(value - coolShift * 0.45f, 0.90f, 1.08f),
-                    Mathf.Clamp(value, 0.90f, 1.08f),
-                    Mathf.Clamp(value + coolShift, 0.90f, 1.08f),
+                    Mathf.Clamp(value - coolShift * 0.45f, 0.93f, 1.06f),
+                    Mathf.Clamp(value, 0.93f, 1.06f),
+                    Mathf.Clamp(value + coolShift, 0.93f, 1.06f),
                     1f);
 
                 var smoothness = Mathf.Clamp01(response.Smoothness + (h2 - 0.5f) * response.SmoothnessSpread);
                 var metallic = Mathf.Clamp01(response.Metallic + (h - 0.5f) * response.MetallicSpread);
 
-                renderer.GetPropertyBlock(_block);
-                _block.SetColor(BaseColorId, tint);
-                _block.SetColor(ColorId, tint);
-                _block.SetFloat(SmoothnessId, smoothness);
-                _block.SetFloat(GlossinessId, smoothness);
-                _block.SetFloat(MetallicId, metallic);
-                renderer.SetPropertyBlock(_block);
-                _block.Clear();
+                propertyBlock.Clear();
+                renderer.GetPropertyBlock(propertyBlock);
+                if (material.HasProperty(BaseColorId)) propertyBlock.SetColor(BaseColorId, tint);
+                if (material.HasProperty(ColorId)) propertyBlock.SetColor(ColorId, tint);
+                if (material.HasProperty(SmoothnessId)) propertyBlock.SetFloat(SmoothnessId, smoothness);
+                if (material.HasProperty(GlossinessId)) propertyBlock.SetFloat(GlossinessId, smoothness);
+                if (material.HasProperty(MetallicId)) propertyBlock.SetFloat(MetallicId, metallic);
+                renderer.SetPropertyBlock(propertyBlock);
             }
         }
 
         private static bool TryGetResponse(string materialName, out SurfaceResponse response)
         {
             if (materialName.StartsWith("Kit_DeckSecondary", StringComparison.Ordinal))
-                response = new SurfaceResponse(0.44f, 0.125f, 0.030f, 0.020f);
+                response = new SurfaceResponse(0.44f, 0.125f, 0.030f, 0.018f);
             else if (materialName.StartsWith("Kit_DeckHeavy", StringComparison.Ordinal))
-                response = new SurfaceResponse(0.47f, 0.120f, 0.030f, 0.020f);
+                response = new SurfaceResponse(0.47f, 0.120f, 0.030f, 0.018f);
             else if (materialName.StartsWith("Kit_Deck", StringComparison.Ordinal))
-                response = new SurfaceResponse(0.42f, 0.140f, 0.025f, 0.018f);
+                response = new SurfaceResponse(0.42f, 0.140f, 0.025f, 0.016f);
             else if (materialName.StartsWith("Kit_Wall", StringComparison.Ordinal))
-                response = new SurfaceResponse(0.38f, 0.105f, 0.025f, 0.018f);
+                response = new SurfaceResponse(0.38f, 0.105f, 0.025f, 0.016f);
             else if (materialName.StartsWith("Kit_Inset", StringComparison.Ordinal))
-                response = new SurfaceResponse(0.16f, 0.045f, 0.018f, 0.012f);
+                response = new SurfaceResponse(0.16f, 0.045f, 0.018f, 0.010f);
             else if (materialName.StartsWith("Kit_Steel", StringComparison.Ordinal))
-                response = new SurfaceResponse(0.72f, 0.190f, 0.035f, 0.025f);
+                response = new SurfaceResponse(0.72f, 0.190f, 0.035f, 0.022f);
             else if (materialName.StartsWith("Kit_Grate", StringComparison.Ordinal))
-                response = new SurfaceResponse(0.52f, 0.055f, 0.030f, 0.012f);
+                response = new SurfaceResponse(0.52f, 0.055f, 0.030f, 0.010f);
             else
             {
                 response = default;
