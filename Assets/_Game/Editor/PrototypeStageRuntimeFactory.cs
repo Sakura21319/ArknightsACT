@@ -50,11 +50,13 @@ namespace ArknightsACT.Editor
 
             // Keep route/encounter code stable. These passes decorate the freshly materialized stage:
             // physical floor/layout -> cold palette -> legacy authenticity base -> selected Concept-01
-            // modular kit -> PBR/lighting quality -> real pit binding -> iconic terrain -> PRTS backdrop.
+            // modular kit -> beveled mesh upgrade -> PBR/lighting quality -> real pit binding ->
+            // iconic terrain -> optional PRTS backdrop.
             go.AddComponent<RogueliteStageLayoutController>().Configure(stageMap);
             go.AddComponent<RogueliteStagePaletteController>().Configure(stageMap);
             go.AddComponent<RogueliteStageAuthenticityController>().Configure(stageMap);
             go.AddComponent<RogueliteStageConceptOneController>().Configure(stageMap);
+            go.AddComponent<RogueliteStageMeshUpgradeController>().Configure(stageMap);
             go.AddComponent<RogueliteStageQualityPassController>().Configure(stageMap);
             go.AddComponent<RoguelitePitFloorSyncController>().Configure(stageMap);
             go.AddComponent<RogueliteStageTerrainPresentationController>().Configure(stageMap);
