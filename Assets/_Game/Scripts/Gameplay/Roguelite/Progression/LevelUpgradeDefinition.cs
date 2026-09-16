@@ -7,7 +7,6 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
         AllDamagePercent,
         PhysicalDamagePercent,
         ArtsDamagePercent,
-        MaxHealthPercent,
         BurnOnHit,
         ChainLightning
     }
