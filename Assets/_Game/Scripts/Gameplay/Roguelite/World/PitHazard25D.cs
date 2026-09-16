@@ -7,8 +7,8 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 {
     /// <summary>
     /// ACT adaptation of tile_hole. Enemies that enter are defeated immediately; the player
-    /// loses a fraction of max HP and is reset to the block safe point so one navigation mistake
-    /// does not end the entire run. A jump can clear the shallow trigger volume.
+    /// loses a fraction of max HP and is reset to the block safe point. The shallow trigger can
+    /// still be cleared by a deliberate jump.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(BoxCollider))]
@@ -36,6 +36,18 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         private void OnTriggerEnter(Collider other)
         {
+            TryProcess(other);
+        }
+
+        private void OnTriggerStay(Collider other)
+        {
+            // CharacterController motion can begin overlapping a trigger between physics steps.
+            // Staying in the hole must still count as falling instead of requiring a clean Enter.
+            TryProcess(other);
+        }
+
+        private void TryProcess(Collider other)
+        {
             var entity = other.GetComponentInParent<CombatEntity>();
             if (entity == null || entity.Health == null || entity.Health.IsDead)
                 return;
@@ -58,14 +70,17 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 return;
             }
 
-            DamageSystem.Apply(new DamageContext(
-                null,
-                null,
-                entity,
-                entity.Health.CurrentHealth + entity.Health.MaxHealth,
-                DamageType.True,
-                Vector2.zero,
-                sourceId: "Environment_Pit"));
+            if (entity.Team == Team.Enemy)
+            {
+                DamageSystem.Apply(new DamageContext(
+                    null,
+                    null,
+                    entity,
+                    entity.Health.CurrentHealth + entity.Health.MaxHealth,
+                    DamageType.True,
+                    Vector2.zero,
+                    sourceId: "Environment_Pit"));
+            }
         }
 
         private void ResetActor(Transform actor)
