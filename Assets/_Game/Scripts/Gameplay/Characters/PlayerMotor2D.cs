@@ -7,7 +7,7 @@ using UnityEngine;
 namespace ArknightsACT.Gameplay.Characters
 {
     [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
-    public sealed class PlayerMotor2D : MonoBehaviour
+    public sealed class PlayerMotor2D : MonoBehaviour, IPlayerLocomotion
     {
         [Header("Movement")]
         [SerializeField] private float moveSpeed = 5.8f;
@@ -32,7 +32,10 @@ namespace ArknightsACT.Gameplay.Characters
         private readonly RaycastHit2D[] _groundHits = new RaycastHit2D[4];
 
         public bool IsGrounded { get; private set; }
+        public bool IsMoving => _body != null && Mathf.Abs(_body.linearVelocity.x) > 0.08f;
         public int FacingSign { get; private set; } = 1;
+        public Vector3 PlanarForward => Vector3.right * FacingSign;
+        public float PlanarSpeed => _body != null ? Mathf.Abs(_body.linearVelocity.x) : 0f;
         public Rigidbody2D Body => _body;
 
         private bool IsDead => _entity != null && _entity.Health != null && _entity.Health.IsDead;

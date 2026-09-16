@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace ArknightsACT.Combat
@@ -5,6 +6,8 @@ namespace ArknightsACT.Combat
     public static class DamageSystem
     {
         public const int MaxProcGeneration = 4;
+
+        public static event Action<DamageContext, DamageResult> DamageApplied;
 
         public static DamageResult Apply(in DamageContext context)
         {
@@ -22,12 +25,23 @@ namespace ArknightsACT.Combat
                     return DamageResult.Rejected;
             }
 
-            var dealt = context.Target.Health.TakeDamage(context.BaseDamage);
+            var damage = context.BaseDamage;
+            damage = ApplyOutgoingModifiers(context.Source, context, damage);
+            if (context.Owner != null && context.Owner != context.Source)
+                damage = ApplyOutgoingModifiers(context.Owner, context, damage);
+            damage = ApplyIncomingModifiers(context.Target, context, damage);
+            damage = Mathf.Max(0f, damage);
+
+            if (damage <= 0f)
+                return DamageResult.Rejected;
+
+            var dealt = context.Target.Health.TakeDamage(damage);
             if (dealt <= 0f)
                 return DamageResult.Rejected;
 
             var result = new DamageResult(true, dealt, context.Target.Health.IsDead);
             context.Target.NotifyDamaged(context, result);
+            DamageApplied?.Invoke(context, result);
 
             // A lethal hit enters the target's death state during TakeDamage. Do not apply a
             // later physics impulse that can make the corpse slide while its Die clip is playing.
@@ -39,6 +53,34 @@ namespace ArknightsACT.Combat
             }
 
             return result;
+        }
+
+        private static float ApplyOutgoingModifiers(CombatEntity entity, in DamageContext context, float damage)
+        {
+            if (entity == null)
+                return damage;
+
+            var behaviours = entity.GetComponents<MonoBehaviour>();
+            for (var i = 0; i < behaviours.Length; i++)
+            {
+                if (behaviours[i] is IDamageModifier modifier)
+                    damage = modifier.ModifyOutgoingDamage(context, damage);
+            }
+            return damage;
+        }
+
+        private static float ApplyIncomingModifiers(CombatEntity entity, in DamageContext context, float damage)
+        {
+            if (entity == null)
+                return damage;
+
+            var behaviours = entity.GetComponents<MonoBehaviour>();
+            for (var i = 0; i < behaviours.Length; i++)
+            {
+                if (behaviours[i] is IDamageModifier modifier)
+                    damage = modifier.ModifyIncomingDamage(context, damage);
+            }
+            return damage;
         }
     }
 }

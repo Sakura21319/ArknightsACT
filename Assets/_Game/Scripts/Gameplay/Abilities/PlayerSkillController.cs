@@ -11,7 +11,7 @@ namespace ArknightsACT.Gameplay.Abilities
     {
         private CombatEntity _entity;
         private IPlayerInputSource _input;
-        private PlayerMotor2D _motor;
+        private IPlayerLocomotion _motor;
         private PlayerAttackController _attack;
         private PlayerDashController _dash;
         private IPlayerSkill _skill1;
@@ -27,7 +27,7 @@ namespace ArknightsACT.Gameplay.Abilities
         {
             _entity = GetComponent<CombatEntity>();
             _input = GetComponent<IPlayerInputSource>();
-            _motor = GetComponent<PlayerMotor2D>();
+            _motor = FindLocomotion();
             _attack = GetComponent<PlayerAttackController>();
             _dash = GetComponent<PlayerDashController>();
 
@@ -71,6 +71,17 @@ namespace ArknightsACT.Gameplay.Abilities
                 return;
 
             SkillCastSucceeded?.Invoke(skill.Slot);
+        }
+
+        private IPlayerLocomotion FindLocomotion()
+        {
+            var behaviours = GetComponents<MonoBehaviour>();
+            for (var i = 0; i < behaviours.Length; i++)
+            {
+                if (behaviours[i] is IPlayerLocomotion locomotion)
+                    return locomotion;
+            }
+            return null;
         }
     }
 }

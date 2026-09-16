@@ -40,6 +40,12 @@ namespace ArknightsACT.Editor.PRTS
             await DownloadPack(PrtsPrototypeAssetCatalog.PrototypeEnemies, "Demo 小兵素材包");
         }
 
+        [MenuItem("ArknightsACT/Assets/PRTS/Download Roguelite Treasure")]
+        private static async void DownloadRogueliteTreasure()
+        {
+            await DownloadPack(PrtsPrototypeAssetCatalog.RogueliteTreasureAssets, "肉鸽宝箱素材包");
+        }
+
         [MenuItem("ArknightsACT/Assets/PRTS/Open Ch'en Source Page")]
         private static void OpenChenPage() => Application.OpenURL(PrtsPrototypeAssetCatalog.Chen.SourcePage);
 
