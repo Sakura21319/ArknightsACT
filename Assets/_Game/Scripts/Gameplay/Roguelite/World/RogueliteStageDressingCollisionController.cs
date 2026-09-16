@@ -5,10 +5,9 @@ using UnityEngine;
 namespace ArknightsACT.Gameplay.Roguelite.World
 {
     /// <summary>
-    /// Promotes selected set-dressing pieces into static blockers while preserving the simple
-    /// cardinal waypoint lanes used by the prototype navigation graph. Rubble, black Originium
-    /// growths and cargo get coarse footprint colliders; scaffold poles/platforms get exact box
-    /// colliders from their generated mesh bounds so the upper decks can be stood on if reached.
+    /// Promotes selected set-dressing pieces into static blockers after the urban-composition pass has
+    /// moved them into safe edge/corner pockets. Rubble/crystal/cargo/slabs use robust aggregate boxes;
+    /// scaffold poles, decks and braces use their authored mesh bounds.
     /// </summary>
     [DefaultExecutionOrder(23)]
     [DisallowMultipleComponent]
@@ -28,7 +27,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         {
             if (Time.unscaledTime < _nextResolveAt)
                 return;
-            _nextResolveAt = Time.unscaledTime + 0.12f;
+            _nextResolveAt = Time.unscaledTime + 0.10f;
 
             stageMap ??= FindFirstObjectByType<RogueliteStageMapController>();
             if (stageMap == null)
@@ -39,12 +38,14 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 return;
 
             var dressing = stage.transform.Find("[Chernobog_SetDressing]");
-            if (dressing == null)
+            var composition = stage.transform.Find("[Chernobog_UrbanArchitecture]");
+            if (dressing == null || composition == null)
                 return;
 
             var added = Apply(dressing);
+            Physics.SyncTransforms();
             _preparedStage = stage;
-            Debug.Log($"[ArknightsACT/DressingCollision] Stage {stageMap.StageIndex}: {added} blocker colliders added outside reserved navigation lanes.", this);
+            Debug.Log($"[ArknightsACT/DressingCollision] Stage {stageMap.StageIndex}: {added} solid dressing colliders installed.", this);
         }
 
         private static int Apply(Transform dressing)
@@ -63,17 +64,28 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                         added += AddScaffoldColliders(feature);
                         break;
                     case "RubbleCluster":
-                        if (!HasAncestorNamed(feature, "BrokenDeckSlab"))
-                            added += AddAggregateCollider(feature, new Vector3(0f, 0.42f, 0f), new Vector3(2.55f, 0.84f, 2.05f));
+                        if (!HasAncestorNamed(feature, "BrokenDeckSlab") &&
+                            !HasAncestorNamed(feature, "BlackOriginiumGrowth"))
+                        {
+                            added += AddAggregateCollider(feature,
+                                new Vector3(0f, 0.46f, 0f),
+                                new Vector3(2.75f, 0.92f, 2.20f));
+                        }
                         break;
                     case "BlackOriginiumGrowth":
-                        added += AddAggregateCollider(feature, new Vector3(0f, 1.02f, 0f), new Vector3(2.45f, 2.05f, 1.95f));
+                        added += AddAggregateCollider(feature,
+                            new Vector3(0f, 1.02f, 0f),
+                            new Vector3(2.65f, 2.10f, 2.10f));
                         break;
                     case "BrokenDeckSlab":
-                        added += AddAggregateCollider(feature, new Vector3(0.15f, 0.28f, -0.10f), new Vector3(3.75f, 0.62f, 2.45f));
+                        added += AddAggregateCollider(feature,
+                            new Vector3(0.10f, 0.30f, -0.08f),
+                            new Vector3(3.95f, 0.72f, 2.65f));
                         break;
                     case "CargoBlocks":
-                        added += AddAggregateCollider(feature, new Vector3(0f, 1.20f, 0f), new Vector3(2.90f, 2.42f, 1.48f));
+                        added += AddAggregateCollider(feature,
+                            new Vector3(0f, 1.22f, 0f),
+                            new Vector3(3.05f, 2.48f, 1.62f));
                         break;
                 }
             }
@@ -88,15 +100,14 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
             var local = blockRoot.InverseTransformPoint(feature.position);
 
-            // The current enemy graph routes through a broad central cross. Keep that entire cross
-            // free of new dressing colliders; blockers live in corner/edge pockets instead.
+            // The current waypoint graph owns the central cardinal cross. UrbanComposition moves all
+            // solid dressing roots outside this reserve before this pass executes.
             const float verticalLaneHalfWidth = 3.0f;
             const float horizontalLaneHalfDepth = 2.55f;
             if (Mathf.Abs(local.x) < verticalLaneHalfWidth || Mathf.Abs(local.z) < horizontalLaneHalfDepth)
                 return false;
 
-            // Keep a small margin from the physical outer bounds too, so a character cannot be pinched
-            // between a dressing object and the perimeter wall.
+            // Keep enough clearance from the invisible perimeter containment and visible edge wall.
             if (Mathf.Abs(local.x) > 7.55f || Mathf.Abs(local.z) > 5.75f)
                 return false;
 
@@ -106,13 +117,16 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         private static int AddScaffoldColliders(Transform scaffold)
         {
             var added = 0;
-            for (var i = 0; i < scaffold.childCount; i++)
+            var parts = scaffold.GetComponentsInChildren<Transform>(true);
+            for (var i = 0; i < parts.Length; i++)
             {
-                var child = scaffold.GetChild(i);
-                if (child == null)
+                var child = parts[i];
+                if (child == null || child == scaffold)
                     continue;
-                if (!child.name.StartsWith("Pole_", StringComparison.Ordinal) &&
-                    !child.name.StartsWith("Platform_", StringComparison.Ordinal))
+                var solid = child.name.StartsWith("Pole_", StringComparison.Ordinal) ||
+                            child.name.StartsWith("Platform_", StringComparison.Ordinal) ||
+                            child.name.StartsWith("Brace_", StringComparison.Ordinal);
+                if (!solid)
                     continue;
                 added += AddMeshBoundsCollider(child.gameObject);
             }
@@ -131,6 +145,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             var collider = go.AddComponent<BoxCollider>();
             collider.center = bounds.center;
             collider.size = bounds.size;
+            collider.isTrigger = false;
             return 1;
         }
 
@@ -141,6 +156,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             var collider = root.gameObject.AddComponent<BoxCollider>();
             collider.center = center;
             collider.size = size;
+            collider.isTrigger = false;
             return 1;
         }
 
