@@ -31,10 +31,11 @@ namespace ArknightsACT.Editor
             }
 
             // The selected visual direction now has a persistent modular asset kit. Ensure it exists
-            // before the generated scene serializes references to its meshes/materials/prefabs, then
-            // layer the current floor and production-detail assets on top.
+            // before the generated scene serializes references to its meshes/materials/prefabs. Floor
+            // extensions run first so the material pass can also tune DeckSecondary in the same build.
             var environmentKit = ChernobogEnvironmentKitBuilder.EnsureBuilt();
             ChernobogFloorProductionPass.EnsureApplied(environmentKit);
+            ChernobogMaterialProductionPass.EnsureApplied(environmentKit);
             ChernobogProductionDetailPass.EnsureApplied(environmentKit);
 
             var go = new GameObject("[StageRuntime]");
