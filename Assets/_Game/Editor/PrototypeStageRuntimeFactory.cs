@@ -32,10 +32,11 @@ namespace ArknightsACT.Editor
 
             // The selected visual direction now has a persistent modular asset kit. Ensure it exists
             // before the generated scene serializes references to its meshes/materials/prefabs. Floor
-            // extensions run first so the material pass can also tune DeckSecondary in the same build.
+            // extensions run first so production + fine-detail material passes can also tune DeckSecondary.
             var environmentKit = ChernobogEnvironmentKitBuilder.EnsureBuilt();
             ChernobogFloorProductionPass.EnsureApplied(environmentKit);
             ChernobogMaterialProductionPass.EnsureApplied(environmentKit);
+            ChernobogMaterialFineDetailPass.EnsureApplied(environmentKit);
             ChernobogProductionDetailPass.EnsureApplied(environmentKit);
 
             var go = new GameObject("[StageRuntime]");
@@ -59,8 +60,8 @@ namespace ArknightsACT.Editor
             // Keep route/encounter code stable. Presentation is layered deliberately:
             // physical floor/layout -> hazard policy -> palette -> legacy base -> Concept-01 hints ->
             // persistent modular assets -> broad floor composition -> bevel fallback -> modular backdrop ->
-            // art-direction rhythm -> PBR/lighting -> subtle per-module material variation -> iconic terrain ->
-            // amber-black Originium shards -> optional PRTS backdrop.
+            // art-direction rhythm -> PBR maps -> per-module variation -> authored key/fill/practical lighting ->
+            // iconic terrain -> amber-black Originium shards -> optional PRTS backdrop.
             go.AddComponent<RogueliteStageLayoutController>().Configure(stageMap);
             go.AddComponent<RogueliteStageHazardPolicyController>().Configure(stageMap);
             go.AddComponent<RogueliteStagePaletteController>().Configure(stageMap);
@@ -73,6 +74,7 @@ namespace ArknightsACT.Editor
             go.AddComponent<RogueliteStageArtDirectionController>().Configure(stageMap);
             go.AddComponent<RogueliteStageQualityPassController>().Configure(stageMap);
             go.AddComponent<RogueliteStageMaterialVariationController>().Configure(stageMap);
+            go.AddComponent<RogueliteStageLightingController>().Configure(stageMap);
             go.AddComponent<RogueliteStageTerrainPresentationController>().Configure(stageMap);
             go.AddComponent<RogueliteActiveOriginiumPresentationController>().Configure(stageMap);
             go.AddComponent<RogueliteStageBackdropReferenceController>().Configure(stageMap, LoadEnvironmentBackdrops());
