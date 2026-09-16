@@ -159,7 +159,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 if (block == null)
                     continue;
 
-                // This corner remains clear even for the two-floor facility layout.
                 CreatePit(block, new Vector3(-3.8f, 0f, -2.65f), block.position + new Vector3(0f, 0.10f, 0f));
                 return;
             }
@@ -211,8 +210,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             body.useGravity = false;
             root.AddComponent<PitHazard25D>().Configure(resetPosition, 0.20f);
 
-            // A broad dark mouth plus a complete hazard frame makes the prototype readable even
-            // before the floor mesh is later segmented into a real opening.
             CreateVisual(root.transform, "PitDepth", new Vector3(0f, 0.020f, 0f), new Vector3(2.45f, 0.040f, 1.95f), _pitMaterial);
             CreateVisual(root.transform, "PitEdgeN", new Vector3(0f, 0.060f, 1.04f), new Vector3(2.72f, 0.10f, 0.14f), _hazardMaterial);
             CreateVisual(root.transform, "PitEdgeS", new Vector3(0f, 0.060f, -1.04f), new Vector3(2.72f, 0.10f, 0.14f), _hazardMaterial);
