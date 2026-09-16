@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using ArknightsACT.Gameplay.Feedback;
+using ArknightsACT.Gameplay.Roguelite.Rewards;
 using ArknightsACT.Gameplay.Roguelite.Routing;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -18,6 +19,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
         private readonly Queue<int> _pendingLevels = new();
         private readonly List<LevelUpgradeDefinition> _choices = new();
         private GameplayPauseService _pause;
+        private RewardSelectionCoordinator _coordinator;
         private bool _isOpen;
         private int _displayLevel;
         private int _inputUnlockFrame;
@@ -39,6 +41,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
         private void OnEnable()
         {
             _pause = GameplayPauseService.Instance;
+            _coordinator = RewardSelectionCoordinator.Instance ?? FindFirstObjectByType<RewardSelectionCoordinator>();
             if (runState != null)
                 runState.LevelIncreased += OnLevelIncreased;
         }
@@ -48,6 +51,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
             if (runState != null)
                 runState.LevelIncreased -= OnLevelIncreased;
             Close();
+            _coordinator?.Release(this);
             _pendingLevels.Clear();
         }
 
@@ -62,11 +66,16 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
             if (_isOpen || _pendingLevels.Count == 0)
                 return;
 
+            _coordinator ??= RewardSelectionCoordinator.Instance ?? FindFirstObjectByType<RewardSelectionCoordinator>();
+            if (_coordinator != null && !_coordinator.TryAcquire(this))
+                return;
+
             _displayLevel = _pendingLevels.Dequeue();
             BuildChoices();
             if (_choices.Count == 0)
             {
                 Debug.LogWarning("[ArknightsACT/Progression] No valid level-up choices remain.", this);
+                _coordinator?.Release(this);
                 TryOpenNext();
                 return;
             }
@@ -83,7 +92,12 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
 
         private void Update()
         {
-            if (!_isOpen || Time.frameCount < _inputUnlockFrame)
+            if (!_isOpen)
+            {
+                TryOpenNext();
+                return;
+            }
+            if (Time.frameCount < _inputUnlockFrame)
                 return;
 
             var keyboard = Keyboard.current;
@@ -168,6 +182,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
                 _pause.Resume(this);
             else
                 Time.timeScale = 1f;
+            _coordinator?.Release(this);
         }
 
         private void OnGUI()
