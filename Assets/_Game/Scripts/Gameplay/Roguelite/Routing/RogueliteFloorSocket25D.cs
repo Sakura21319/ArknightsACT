@@ -3,8 +3,10 @@ using UnityEngine;
 namespace ArknightsACT.Gameplay.Roguelite.Routing
 {
     /// <summary>
-    /// One removable section of a generated chunk floor. The stage-layout layer owns these
-    /// sockets; environment hazards may open an eligible socket without rebuilding route logic.
+    /// One addressable section of a generated chunk floor. The stage-layout layer owns these
+    /// sockets; special terrain can align to eligible side/corner sockets without rebuilding route logic.
+    /// The legacy Open() API is retained for compatibility, although the current prototype no longer
+    /// generates pit hazards.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class RogueliteFloorSocket25D : MonoBehaviour
@@ -18,6 +20,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
         public Vector2 Footprint => footprint;
         public bool PitEligible => pitEligible && !opened;
+        public bool SpecialTerrainEligible => pitEligible && !opened;
         public bool Opened => opened;
 
         public void Configure(
