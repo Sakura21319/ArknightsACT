@@ -20,8 +20,8 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         [SerializeField, Min(0.01f)] private float slashWidth = 0.13f;
         [SerializeField, Min(0f)] private float slashHeight = 0.92f;
         [SerializeField, Range(0.5f, 3f)] private float intensityMultiplier = 1.65f;
-        [SerializeField] private Color slashCore = new Color(1.32f, 1.08f, 0.78f, 1f);
-        [SerializeField] private Color slashGlow = new Color(1.28f, 0.30f, 0.055f, 0.92f);
+        [SerializeField] private Color slashCore = new Color(1.00f, 0.91f, 0.68f, 1f);
+        [SerializeField] private Color slashGlow = new Color(1.00f, 0.22f, 0.035f, 0.86f);
 
         [Header("Final strike")]
         [SerializeField, Min(1f)] private float finalLengthMultiplier = 1.62f;
@@ -38,6 +38,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         private Camera _camera;
         private Transform _effectRoot;
         private Material _lineMaterial;
+        private bool _warnedMissingShader;
 
         private void Awake()
         {
@@ -72,7 +73,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             EnsureResources();
             if (_camera == null)
                 _camera = Camera.main;
-            if (_camera == null)
+            if (_camera == null || _lineMaterial == null)
                 return;
 
             var center = targetPosition + Vector3.up * slashHeight;
@@ -80,8 +81,6 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             var length = slashLength * (isFinal ? finalLengthMultiplier : 1f);
             var duration = isFinal ? finalDuration : slashDuration;
 
-            // Broad additive glow + hot core. The authored Spine effect stays visible underneath;
-            // these target-space streaks merely reinforce it for the 2.5D gameplay camera.
             SpawnSlash(center, angle, length, duration, 1f);
             SpawnSlash(
                 center,
@@ -89,8 +88,6 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                 length * (isFinal ? 0.94f : 0.80f),
                 duration * 0.94f,
                 isFinal ? 0.92f : 0.72f);
-
-            // Tiny crossing spark keeps every hit legible without turning the whole screen orange.
             SpawnSlash(center, angle + 90f, length * 0.28f, duration * 0.58f, 0.48f);
 
             if (isFinal)
@@ -240,7 +237,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
 
             var flash = lightObject.AddComponent<Light>();
             flash.type = LightType.Point;
-            flash.color = new Color(1f, 0.34f, 0.08f);
+            flash.color = new Color(1f, 0.28f, 0.04f);
             flash.range = 3.3f;
             flash.intensity = finalFlashLightIntensity;
             flash.shadows = LightShadows.None;
@@ -267,37 +264,30 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                 _effectRoot = root.transform;
             }
 
-            if (_lineMaterial == null)
+            if (_lineMaterial != null)
+                return;
+
+            // Do not use URP Particles/Unlit with runtime blend-keyword mutation here. On some
+            // renderer configurations it resolves to the magenta/purple error appearance. The
+            // sprite line shader is intentionally simple and respects LineRenderer vertex colors.
+            var shader = Shader.Find("Sprites/Default") ?? Shader.Find("Unlit/Color");
+            if (shader == null)
             {
-                var shader = Shader.Find("Universal Render Pipeline/Particles/Unlit") ??
-                             Shader.Find("Sprites/Default") ??
-                             Shader.Find("Universal Render Pipeline/Unlit") ??
-                             Shader.Find("Unlit/Color");
-                if (shader != null)
+                if (!_warnedMissingShader)
                 {
-                    _lineMaterial = new Material(shader)
-                    {
-                        name = "Chen_Jueying_RuntimeVFX"
-                    };
-
-                    // Prefer additive transparent blending when the selected shader exposes the
-                    // standard URP blend controls. Fallback shaders still use the brighter HDR
-                    // line colors, so this remains safe across Unity/URP versions.
-                    if (_lineMaterial.HasProperty("_Surface"))
-                        _lineMaterial.SetFloat("_Surface", 1f);
-                    if (_lineMaterial.HasProperty("_Blend"))
-                        _lineMaterial.SetFloat("_Blend", 2f);
-                    if (_lineMaterial.HasProperty("_SrcBlend"))
-                        _lineMaterial.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
-                    if (_lineMaterial.HasProperty("_DstBlend"))
-                        _lineMaterial.SetFloat("_DstBlend", (float)BlendMode.One);
-                    if (_lineMaterial.HasProperty("_ZWrite"))
-                        _lineMaterial.SetFloat("_ZWrite", 0f);
-
-                    _lineMaterial.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-                    _lineMaterial.renderQueue = (int)RenderQueue.Transparent + 80;
+                    _warnedMissingShader = true;
+                    Debug.LogWarning("[ArknightsACT/ChenVFX] No safe line shader was found; Jueying enhancement is disabled.", this);
                 }
+                return;
             }
+
+            _lineMaterial = new Material(shader)
+            {
+                name = "Chen_Jueying_RuntimeVFX",
+                renderQueue = (int)RenderQueue.Transparent + 80
+            };
+            if (_lineMaterial.HasProperty("_Color"))
+                _lineMaterial.SetColor("_Color", Color.white);
         }
 
         private void ConfigureLine(LineRenderer line, float width, Color color, int sortingOrder)
