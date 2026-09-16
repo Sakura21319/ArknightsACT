@@ -50,10 +50,11 @@ namespace ArknightsACT.Editor
 
             // Keep route/encounter code stable. These passes decorate the freshly materialized stage:
             // physical floor/layout first, then the Arknights authenticity skin, then pit-floor binding,
-            // and finally the optional local PRTS distant background.
+            // iconic terrain presentation, and finally the optional local PRTS distant background.
             go.AddComponent<RogueliteStageLayoutController>().Configure(stageMap);
             go.AddComponent<RogueliteStageAuthenticityController>().Configure(stageMap);
             go.AddComponent<RoguelitePitFloorSyncController>().Configure(stageMap);
+            go.AddComponent<RogueliteStageTerrainPresentationController>().Configure(stageMap);
             go.AddComponent<RogueliteStageBackdropReferenceController>().Configure(stageMap, LoadEnvironmentBackdrops());
             return go;
         }
