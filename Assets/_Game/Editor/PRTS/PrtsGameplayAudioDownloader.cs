@@ -17,6 +17,7 @@ namespace ArknightsACT.Editor.PRTS
     internal static class PrtsGameplayAudioDownloader
     {
         [MenuItem("ArknightsACT/Assets/PRTS/Download Gameplay Audio (BGM + Combat + Chen)")]
+        [MenuItem("ArknightsACT/Assets/PRTS/Download Gameplay Audio (BGM + Chen)")]
         private static async void DownloadGameplayAudio()
         {
             var success = new List<string>();
