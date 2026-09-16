@@ -12,43 +12,43 @@ namespace ArknightsACT.Editor
 {
     internal static class PrototypeTreasureFactory
     {
-        public static void Create(Camera camera, Transform player)
+        public static GameObject[] CreateTemplates(Camera camera)
         {
-            if (camera == null || player == null)
-                return;
+            if (camera == null)
+                return System.Array.Empty<GameObject>();
 
-            var playerEntity = player.GetComponent<CombatEntity>();
-            var root = new GameObject("[Treasure25D]");
-
-            CreateChest(
+            var root = new GameObject("[TreasureTemplates25D]");
+            var templates = new GameObject[3];
+            templates[0] = CreateChest(
                 root.transform,
-                "Treasure_Normal",
+                "TreasureTemplate_Normal",
                 TreasureChestKind.Normal,
                 PrtsPrototypeAssetCatalog.NormalTreasureChest,
-                new Vector3(-1.2f, 0.03f, 3.25f),
                 45f,
-                camera,
-                playerEntity);
-
-            CreateChest(
+                camera);
+            templates[1] = CreateChest(
                 root.transform,
-                "Treasure_Spike",
+                "TreasureTemplate_Spike",
                 TreasureChestKind.Spike,
                 PrtsPrototypeAssetCatalog.SpikeTreasureChest,
-                new Vector3(2.85f, 0.03f, -2.85f),
                 70f,
-                camera,
-                playerEntity);
-
-            CreateChest(
+                camera);
+            templates[2] = CreateChest(
                 root.transform,
-                "Treasure_Monster",
+                "TreasureTemplate_Monster",
                 TreasureChestKind.Monster,
                 PrtsPrototypeAssetCatalog.ChestSeaborn,
-                new Vector3(8.75f, 0.03f, 1.75f),
                 135f,
-                camera,
-                playerEntity);
+                camera);
+
+            for (var i = 0; i < templates.Length; i++)
+            {
+                if (templates[i] == null)
+                    continue;
+                templates[i].transform.localPosition = new Vector3(i * 1.5f, -30f, 0f);
+                templates[i].SetActive(false);
+            }
+            return templates;
         }
 
         private static GameObject CreateChest(
@@ -56,15 +56,12 @@ namespace ArknightsACT.Editor
             string objectName,
             TreasureChestKind kind,
             PrtsAssetDescriptor descriptor,
-            Vector3 position,
             float maxHealth,
-            Camera camera,
-            CombatEntity player)
+            Camera camera)
         {
             var go = new GameObject(objectName);
             go.SetActive(false);
-            go.transform.SetParent(parent, true);
-            go.transform.position = position;
+            go.transform.SetParent(parent, false);
 
             if (kind == TreasureChestKind.Monster)
             {
@@ -122,7 +119,7 @@ namespace ArknightsACT.Editor
                 go.AddComponent<EnemyExperienceReward>().Configure(90);
             }
 
-            go.AddComponent<TreasureChest25D>().Configure(kind, player);
+            go.AddComponent<TreasureChest25D>().Configure(kind, null);
             go.AddComponent<DamageTintFlash2D>();
             var healthBar = go.AddComponent<WorldHealthBar2D>();
             healthBar.ConfigureWorldLayout(
@@ -130,8 +127,6 @@ namespace ArknightsACT.Editor
                 kind == TreasureChestKind.Monster ? 0.88f : 0.78f,
                 0.065f);
             go.AddComponent<DamageNumberEmitter2D>();
-
-            go.SetActive(true);
             return go;
         }
 
