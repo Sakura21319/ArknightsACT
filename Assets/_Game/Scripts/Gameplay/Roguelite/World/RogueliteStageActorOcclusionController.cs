@@ -2,22 +2,23 @@ using System.Collections.Generic;
 using ArknightsACT.Combat;
 using ArknightsACT.Gameplay.Roguelite.Routing;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace ArknightsACT.Gameplay.Roguelite.World
 {
     /// <summary>
-    /// Keeps actors readable in the fixed 2.5D camera. When a sealed/decorative city building sits
-    /// between the camera and a living combat actor, that building's renderers are temporarily hidden
-    /// while its colliders remain active. This avoids player/enemy disappearance behind tall facades
-    /// without turning the whole city transparent or changing combat collision.
+    /// Keeps actors readable in the fixed 2.5D camera. Occluding city buildings are faded to an
+    /// x-ray silhouette instead of disappearing outright: collision stays solid and the player keeps
+    /// a clear mental model of where the building still exists.
     /// </summary>
     [DefaultExecutionOrder(90)]
     [DisallowMultipleComponent]
     public sealed class RogueliteStageActorOcclusionController : MonoBehaviour
     {
         private const float ProbeRadius = 0.30f;
-        private const float RestoreDelay = 0.16f;
+        private const float RestoreDelay = 0.18f;
         private const float ActorRefreshInterval = 0.45f;
+        private const float OccludedAlpha = 0.20f;
 
         [SerializeField] private RogueliteStageMapController stageMap;
 
@@ -29,13 +30,15 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         {
             public readonly List<RendererState> Renderers = new();
             public float ReleaseAt;
-            public bool Hidden;
+            public bool Faded;
         }
 
-        private struct RendererState
+        private sealed class RendererState
         {
             public Renderer Renderer;
-            public bool Enabled;
+            public Material[] OriginalMaterials;
+            public Material[] FadedMaterials;
+            public ShadowCastingMode OriginalShadowMode;
         }
 
         public void Configure(RogueliteStageMapController map)
@@ -110,41 +113,97 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
                 var root = FindOccludableRoot(collider.transform);
                 if (root != null)
-                    Hide(root, now);
+                    Fade(root, now);
             }
         }
 
-        private void Hide(Transform root, float now)
+        private void Fade(Transform root, float now)
         {
             if (!_states.TryGetValue(root, out var state))
             {
-                state = new OcclusionState();
-                var renderers = root.GetComponentsInChildren<Renderer>(true);
-                for (var i = 0; i < renderers.Length; i++)
-                {
-                    var renderer = renderers[i];
-                    if (renderer == null)
-                        continue;
-                    state.Renderers.Add(new RendererState
-                    {
-                        Renderer = renderer,
-                        Enabled = renderer.enabled
-                    });
-                }
+                state = BuildState(root);
                 _states.Add(root, state);
             }
 
             state.ReleaseAt = now + RestoreDelay;
-            if (state.Hidden)
+            if (state.Faded)
                 return;
 
             for (var i = 0; i < state.Renderers.Count; i++)
             {
                 var entry = state.Renderers[i];
-                if (entry.Renderer != null && entry.Enabled)
-                    entry.Renderer.enabled = false;
+                if (entry.Renderer == null)
+                    continue;
+                entry.Renderer.sharedMaterials = entry.FadedMaterials;
+                entry.Renderer.shadowCastingMode = ShadowCastingMode.Off;
             }
-            state.Hidden = true;
+            state.Faded = true;
+        }
+
+        private static OcclusionState BuildState(Transform root)
+        {
+            var state = new OcclusionState();
+            var renderers = root.GetComponentsInChildren<Renderer>(true);
+            for (var i = 0; i < renderers.Length; i++)
+            {
+                var renderer = renderers[i];
+                if (renderer == null)
+                    continue;
+
+                var originals = renderer.sharedMaterials;
+                var faded = new Material[originals.Length];
+                for (var m = 0; m < originals.Length; m++)
+                    faded[m] = CreateFadedMaterial(originals[m]);
+
+                state.Renderers.Add(new RendererState
+                {
+                    Renderer = renderer,
+                    OriginalMaterials = originals,
+                    FadedMaterials = faded,
+                    OriginalShadowMode = renderer.shadowCastingMode
+                });
+            }
+            return state;
+        }
+
+        private static Material CreateFadedMaterial(Material source)
+        {
+            if (source == null)
+                return null;
+
+            var material = new Material(source)
+            {
+                name = source.name + "_OcclusionXRay",
+                renderQueue = (int)RenderQueue.Transparent
+            };
+
+            var color = Color.white;
+            if (material.HasProperty("_BaseColor"))
+            {
+                color = material.GetColor("_BaseColor");
+                color.a = OccludedAlpha;
+                material.SetColor("_BaseColor", color);
+            }
+            if (material.HasProperty("_Color"))
+            {
+                color = material.GetColor("_Color");
+                color.a = OccludedAlpha;
+                material.SetColor("_Color", color);
+            }
+
+            material.SetOverrideTag("RenderType", "Transparent");
+            if (material.HasProperty("_Surface")) material.SetFloat("_Surface", 1f);
+            if (material.HasProperty("_Mode")) material.SetFloat("_Mode", 3f);
+            if (material.HasProperty("_SrcBlend")) material.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
+            if (material.HasProperty("_DstBlend")) material.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
+            if (material.HasProperty("_ZWrite")) material.SetFloat("_ZWrite", 0f);
+            if (material.HasProperty("_AlphaClip")) material.SetFloat("_AlphaClip", 0f);
+
+            material.DisableKeyword("_SURFACE_TYPE_OPAQUE");
+            material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            material.DisableKeyword("_ALPHATEST_ON");
+            material.EnableKeyword("_ALPHABLEND_ON");
+            return material;
         }
 
         private void RestoreExpired(float now)
@@ -156,10 +215,11 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 var state = pair.Value;
                 if (root == null)
                 {
+                    ReleaseState(state);
                     remove.Add(root);
                     continue;
                 }
-                if (!state.Hidden || now < state.ReleaseAt)
+                if (!state.Faded || now < state.ReleaseAt)
                     continue;
 
                 Restore(state);
@@ -175,10 +235,27 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             for (var i = 0; i < state.Renderers.Count; i++)
             {
                 var entry = state.Renderers[i];
-                if (entry.Renderer != null)
-                    entry.Renderer.enabled = entry.Enabled;
+                if (entry.Renderer == null)
+                    continue;
+                entry.Renderer.sharedMaterials = entry.OriginalMaterials;
+                entry.Renderer.shadowCastingMode = entry.OriginalShadowMode;
             }
-            state.Hidden = false;
+            state.Faded = false;
+        }
+
+        private static void ReleaseState(OcclusionState state)
+        {
+            if (state == null)
+                return;
+            for (var i = 0; i < state.Renderers.Count; i++)
+            {
+                var entry = state.Renderers[i];
+                if (entry?.FadedMaterials == null)
+                    continue;
+                for (var m = 0; m < entry.FadedMaterials.Length; m++)
+                    if (entry.FadedMaterials[m] != null)
+                        Destroy(entry.FadedMaterials[m]);
+            }
         }
 
         private static Transform FindOccludableRoot(Transform start)
@@ -206,9 +283,17 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         {
             foreach (var pair in _states)
             {
-                if (pair.Value != null && pair.Value.Hidden)
+                if (pair.Value != null && pair.Value.Faded)
                     Restore(pair.Value);
             }
+        }
+
+        private void ReleaseAll()
+        {
+            RestoreAll();
+            foreach (var pair in _states)
+                ReleaseState(pair.Value);
+            _states.Clear();
         }
 
         private void OnDisable()
@@ -218,12 +303,9 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         private void OnDestroy()
         {
-            RestoreAll();
+            ReleaseAll();
         }
 
-        /// <summary>
-        /// Tiny local pool avoids allocating a temporary key list every LateUpdate.
-        /// </summary>
         private static class ListPool<T>
         {
             private static readonly Stack<List<T>> Pool = new();
