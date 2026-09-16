@@ -3,7 +3,6 @@ using UnityEngine;
 
 namespace ArknightsACT.Gameplay.Presentation
 {
-    /// <summary>Spawns lightweight floating damage numbers from CombatEntity.Damaged events.</summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(CombatEntity))]
     public sealed class DamageNumberEmitter2D : MonoBehaviour
@@ -43,7 +42,7 @@ namespace ArknightsACT.Gameplay.Presentation
             var isPlayer = _entity != null && _entity.Team == Team.Player;
             go.transform.position = transform.position + new Vector3(
                 Random.Range(-0.12f, 0.12f),
-                isPlayer ? 1.42f : 1.27f,
+                isPlayer ? 1.72f : 1.57f,
                 -0.12f);
 
             var text = go.AddComponent<TextMesh>();
@@ -97,7 +96,11 @@ namespace ArknightsACT.Gameplay.Presentation
         {
             var dt = Time.unscaledDeltaTime;
             _elapsed += dt;
-            transform.position += (Vector3)(_velocity * dt);
+            transform.position += new Vector3(_velocity.x, _velocity.y, 0f) * dt;
+
+            var camera = Camera.main;
+            if (camera != null)
+                transform.rotation = camera.transform.rotation;
 
             if (_text != null)
             {

@@ -18,8 +18,10 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         [SerializeField, Min(0f)] private float finalDamage = 30f;
         [SerializeField, Min(0.5f)] private float targetingRadius = 5.5f;
         [SerializeField, Min(0.1f)] private float castLockSeconds = 2.1f;
+        [SerializeField, Min(0.1f)] private float max25DHeightDifference = 1.35f;
 
         private CombatEntity _entity;
+        private PlayerMotor25D _motor25D;
         private float _readyAt;
 
         public int Slot => 2;
@@ -31,6 +33,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         private void Awake()
         {
             _entity = GetComponent<CombatEntity>();
+            _motor25D = GetComponent<PlayerMotor25D>();
         }
 
         public bool TryCast()
@@ -63,8 +66,13 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                 if (target != null)
                 {
                     var damage = i == strikeCount - 1 ? finalDamage : strikeDamage;
-                    var direction = ((Vector2)target.transform.position - (Vector2)transform.position).normalized;
-                    var knockback = i == strikeCount - 1 ? direction * 3.5f : Vector2.zero;
+                    var knockback = Vector2.zero;
+                    if (_motor25D == null)
+                    {
+                        var direction = ((Vector2)target.transform.position - (Vector2)transform.position).normalized;
+                        knockback = i == strikeCount - 1 ? direction * 3.5f : Vector2.zero;
+                    }
+
                     var context = new DamageContext(
                         _entity,
                         _entity,
@@ -93,6 +101,11 @@ namespace ArknightsACT.Gameplay.Characters.Chen
 
         private CombatEntity FindNearestTarget()
         {
+            return _motor25D != null ? FindNearestTarget25D() : FindNearestTarget2D();
+        }
+
+        private CombatEntity FindNearestTarget2D()
+        {
             var colliders = Physics2D.OverlapCircleAll(transform.position, targetingRadius);
             CombatEntity best = null;
             var bestSqr = float.PositiveInfinity;
@@ -102,8 +115,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                 if (collider == null)
                     continue;
                 var candidate = collider.GetComponentInParent<CombatEntity>();
-                if (candidate == null || candidate == _entity || candidate.Team == _entity.Team ||
-                    candidate.Health == null || candidate.Health.IsDead)
+                if (!CanTarget(candidate))
                     continue;
 
                 var sqr = ((Vector2)candidate.transform.position - (Vector2)transform.position).sqrMagnitude;
@@ -114,6 +126,73 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             }
 
             return best;
+        }
+
+        private CombatEntity FindNearestTarget25D()
+        {
+            var colliders = Physics.OverlapSphere(transform.position, targetingRadius, ~0, QueryTriggerInteraction.Ignore);
+            CombatEntity best = null;
+            var bestSqr = float.PositiveInfinity;
+
+            foreach (var collider in colliders)
+            {
+                if (collider == null)
+                    continue;
+                var candidate = collider.GetComponentInParent<CombatEntity>();
+                if (!CanTarget(candidate))
+                    continue;
+                if (Mathf.Abs(candidate.transform.position.y - transform.position.y) > max25DHeightDifference)
+                    continue;
+                if (!HasClear25DLine(candidate))
+                    continue;
+
+                var delta = candidate.transform.position - transform.position;
+                delta.y = 0f;
+                var sqr = delta.sqrMagnitude;
+                if (sqr >= bestSqr)
+                    continue;
+                bestSqr = sqr;
+                best = candidate;
+            }
+
+            return best;
+        }
+
+        private bool HasClear25DLine(CombatEntity target)
+        {
+            var origin = transform.position + Vector3.up * 0.70f;
+            var destination = target.transform.position + Vector3.up * 0.70f;
+            var cast = destination - origin;
+            var distance = cast.magnitude;
+            if (distance < 0.001f)
+                return true;
+
+            var hits = Physics.SphereCastAll(origin, 0.12f, cast / distance, distance, ~0, QueryTriggerInteraction.Ignore);
+            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            foreach (var hit in hits)
+            {
+                var hitCollider = hit.collider;
+                if (hitCollider == null || hitCollider.transform.IsChildOf(transform))
+                    continue;
+                var entity = hitCollider.GetComponentInParent<CombatEntity>();
+                if (entity != null)
+                {
+                    if (entity == target)
+                        return true;
+                    continue;
+                }
+                return false;
+            }
+            return true;
+        }
+
+        private bool CanTarget(CombatEntity candidate)
+        {
+            return candidate != null &&
+                   candidate != _entity &&
+                   candidate.Team != _entity.Team &&
+                   candidate.Health != null &&
+                   !candidate.Health.IsDead;
         }
     }
 }

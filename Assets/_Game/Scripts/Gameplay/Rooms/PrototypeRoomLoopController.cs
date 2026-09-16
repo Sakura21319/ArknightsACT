@@ -10,14 +10,15 @@ using UnityEngine;
 namespace ArknightsACT.Gameplay.Rooms
 {
     /// <summary>
-    /// Horizontal ACT combat-room loop. Room completion can be gated by an external system
-    /// (roguelite rewards, route selection, events) before the next room starts.
+    /// Combat-room loop shared by the legacy side-view prototype and the migrated 2.5D/XZ scene.
+    /// Room completion can be gated by rewards, route selection and events.
     /// </summary>
     public sealed class PrototypeRoomLoopController : MonoBehaviour
     {
         [SerializeField] private Transform player;
         [SerializeField] private GameObject[] enemyTemplates;
         [SerializeField] private Vector2[] spawnPoints;
+        [SerializeField] private Vector3[] spawnPoints25D;
         [SerializeField] private Vector3 playerRoomStartPosition;
 
         [Header("Progression")]
@@ -40,6 +41,7 @@ namespace ArknightsACT.Gameplay.Rooms
         public int CurrentRoom { get; private set; }
         public int LivingEnemies => CountLivingEnemies();
         public bool IsWaitingForContinue { get; private set; }
+        public bool Uses25D => spawnPoints25D != null && spawnPoints25D.Length > 0;
 
         public event Action<int> RoomStarted;
         public event Action<int> RoomCleared;
@@ -49,15 +51,20 @@ namespace ArknightsACT.Gameplay.Rooms
             player = playerTransform;
             enemyTemplates = templates;
             spawnPoints = points;
-            if (player != null)
-            {
-                playerRoomStartPosition = player.position;
-                CachePlayerActionState();
-            }
+            spawnPoints25D = null;
+            CapturePlayerStart();
+        }
+
+        public void Configure25D(Transform playerTransform, GameObject[] templates, Vector3[] points)
+        {
+            player = playerTransform;
+            enemyTemplates = templates;
+            spawnPoints25D = points;
+            spawnPoints = null;
+            CapturePlayerStart();
         }
 
         public void SetExternalContinueGate(bool enabled) => waitForExternalContinue = enabled;
-
         public bool ContinueToNextRoom() => ContinueToNextRoom(CombatRoomTuning.Default);
 
         public bool ContinueToNextRoom(CombatRoomTuning tuning)
@@ -75,9 +82,7 @@ namespace ArknightsACT.Gameplay.Rooms
         {
             if (!CanSpawn())
             {
-                Debug.LogWarning(
-                    "[ArknightsACT/RoomLoop] Missing player, enemy templates or spawn points. Rebuild Prototype Scene.",
-                    this);
+                Debug.LogWarning("[ArknightsACT/RoomLoop] Missing player, enemy templates or spawn points. Rebuild Prototype Scene.", this);
                 return;
             }
 
@@ -99,13 +104,8 @@ namespace ArknightsACT.Gameplay.Rooms
         {
             if (CurrentRoom <= 0 || _roomClearHandled || _transitionRoutine != null)
                 return;
-
             if (_activeEnemies.Count == 0 || CountLivingEnemies() > 0)
                 return;
-
-            // Do not freeze or transition the player in the middle of an authored action.
-            // A killing Skill 2 must finish all strikes / recovery before reward UI can pause
-            // gameplay, otherwise its coroutine would resume in the next room.
             if (!IsPlayerActionSettled())
                 return;
 
@@ -145,13 +145,11 @@ namespace ArknightsACT.Gameplay.Rooms
             _activeEnemies.Clear();
             ResetPlayerForRoom();
 
-            var baseEnemyCount = Mathf.Clamp(
-                startingEnemyCount + CurrentRoom - 1,
-                startingEnemyCount,
-                maxEnemyCount);
+            var spawnCount = GetSpawnPointCount();
+            var baseEnemyCount = Mathf.Clamp(startingEnemyCount + CurrentRoom - 1, startingEnemyCount, maxEnemyCount);
             var enemyCount = tuning.EnemyCountOverride > 0
-                ? Mathf.Clamp(tuning.EnemyCountOverride, 1, spawnPoints.Length)
-                : Mathf.Clamp(baseEnemyCount + tuning.EnemyCountBonus, 1, spawnPoints.Length);
+                ? Mathf.Clamp(tuning.EnemyCountOverride, 1, spawnCount)
+                : Mathf.Clamp(baseEnemyCount + tuning.EnemyCountBonus, 1, spawnCount);
             var progressionHealthMultiplier = 1f + Mathf.Max(0, CurrentRoom - 1) * healthGrowthPerRoom;
             var healthMultiplier = progressionHealthMultiplier * Mathf.Max(0.1f, tuning.HealthMultiplier);
 
@@ -161,8 +159,8 @@ namespace ArknightsACT.Gameplay.Rooms
                 if (template == null)
                     continue;
 
-                var spawnPoint = spawnPoints[i % spawnPoints.Length];
-                var instance = Instantiate(template, new Vector3(spawnPoint.x, spawnPoint.y, 0f), Quaternion.identity);
+                var spawnPosition = GetSpawnPosition(i);
+                var instance = Instantiate(template, spawnPosition, Quaternion.identity);
                 instance.name = $"Room_{CurrentRoom:00}_{template.name}_{i + 1}";
 
                 var health = instance.GetComponent<Health>();
@@ -185,9 +183,8 @@ namespace ArknightsACT.Gameplay.Rooms
 
             var rangedEnabled = tuning.EnableRangedEarly || CurrentRoom >= rangedUnlockRoom;
             Debug.Log(
-                $"[ArknightsACT/RoomLoop] Room {CurrentRoom} started: node={tuning.Label}, " +
-                $"enemies={_activeEnemies.Count}, healthMultiplier={healthMultiplier:0.00}x, " +
-                $"ranged={(rangedEnabled ? "enabled" : "locked")}.",
+                $"[ArknightsACT/RoomLoop] Room {CurrentRoom} started: mode={(Uses25D ? "25D" : "2D")}, node={tuning.Label}, " +
+                $"enemies={_activeEnemies.Count}, healthMultiplier={healthMultiplier:0.00}x, ranged={(rangedEnabled ? "enabled" : "locked")}.",
                 this);
             RoomStarted?.Invoke(CurrentRoom);
         }
@@ -201,9 +198,7 @@ namespace ArknightsACT.Gameplay.Rooms
                 return enemyTemplates[tuning.ForcedTemplateIndex];
 
             var rangedEnabled = tuning.EnableRangedEarly || CurrentRoom >= rangedUnlockRoom;
-            var availableTemplateCount = rangedEnabled
-                ? Mathf.Min(3, enemyTemplates.Length)
-                : Mathf.Min(2, enemyTemplates.Length);
+            var availableTemplateCount = rangedEnabled ? Mathf.Min(3, enemyTemplates.Length) : Mathf.Min(2, enemyTemplates.Length);
             if (availableTemplateCount <= 0)
                 return null;
 
@@ -220,7 +215,6 @@ namespace ArknightsACT.Gameplay.Rooms
             var health = entity != null ? entity.Health : player.GetComponent<Health>();
             if (health == null || health.IsDead)
                 return;
-
             health.Heal(health.MaxHealth * roomClearHealFraction);
         }
 
@@ -235,7 +229,6 @@ namespace ArknightsACT.Gameplay.Rooms
                     _activeEnemies.RemoveAt(i);
                     continue;
                 }
-
                 var health = entity.Health;
                 if (health != null && !health.IsDead)
                     living++;
@@ -247,7 +240,6 @@ namespace ArknightsACT.Gameplay.Rooms
         {
             if (player == null)
                 return;
-
             _playerAttack = player.GetComponent<PlayerAttackController>();
             _playerSkills = player.GetComponent<PlayerSkillController>();
             _playerDash = player.GetComponent<PlayerDashController>();
@@ -257,7 +249,6 @@ namespace ArknightsACT.Gameplay.Rooms
         {
             if (player == null)
                 return true;
-
             if (_playerAttack == null && _playerSkills == null && _playerDash == null)
                 CachePlayerActionState();
 
@@ -275,6 +266,16 @@ namespace ArknightsACT.Gameplay.Rooms
             if (entity != null && entity.Health != null && entity.Health.IsDead)
                 return;
 
+            var controller = player.GetComponent<CharacterController>();
+            if (controller != null)
+            {
+                controller.enabled = false;
+                player.position = playerRoomStartPosition;
+                controller.enabled = true;
+                player.GetComponent<PlayerMotor25D>()?.ResetMotion();
+                return;
+            }
+
             player.position = playerRoomStartPosition;
             var body = player.GetComponent<Rigidbody2D>();
             if (body != null)
@@ -289,26 +290,60 @@ namespace ArknightsACT.Gameplay.Rooms
             if (first == null || second == null || first == second)
                 return;
 
-            var firstColliders = first.GetComponentsInChildren<Collider2D>(true);
-            var secondColliders = second.GetComponentsInChildren<Collider2D>(true);
-            foreach (var firstCollider in firstColliders)
+            var first2D = first.GetComponentsInChildren<Collider2D>(true);
+            var second2D = second.GetComponentsInChildren<Collider2D>(true);
+            for (var i = 0; i < first2D.Length; i++)
             {
-                if (firstCollider == null || firstCollider.isTrigger)
+                var a = first2D[i];
+                if (a == null || a.isTrigger)
                     continue;
-                foreach (var secondCollider in secondColliders)
+                for (var j = 0; j < second2D.Length; j++)
                 {
-                    if (secondCollider == null || secondCollider.isTrigger)
+                    var b = second2D[j];
+                    if (b == null || b.isTrigger)
                         continue;
-                    Physics2D.IgnoreCollision(firstCollider, secondCollider, true);
+                    Physics2D.IgnoreCollision(a, b, true);
+                }
+            }
+
+            var first3D = first.GetComponentsInChildren<Collider>(true);
+            var second3D = second.GetComponentsInChildren<Collider>(true);
+            for (var i = 0; i < first3D.Length; i++)
+            {
+                var a = first3D[i];
+                if (a == null || a.isTrigger)
+                    continue;
+                for (var j = 0; j < second3D.Length; j++)
+                {
+                    var b = second3D[j];
+                    if (b == null || b.isTrigger)
+                        continue;
+                    Physics.IgnoreCollision(a, b, true);
                 }
             }
         }
 
+        private void CapturePlayerStart()
+        {
+            if (player == null)
+                return;
+            playerRoomStartPosition = player.position;
+            CachePlayerActionState();
+        }
+
+        private int GetSpawnPointCount() => Uses25D ? spawnPoints25D.Length : spawnPoints != null ? spawnPoints.Length : 0;
+
+        private Vector3 GetSpawnPosition(int index)
+        {
+            if (Uses25D)
+                return spawnPoints25D[index % spawnPoints25D.Length];
+            var point = spawnPoints[index % spawnPoints.Length];
+            return new Vector3(point.x, point.y, 0f);
+        }
+
         private bool CanSpawn()
         {
-            return player != null &&
-                   enemyTemplates != null && enemyTemplates.Length > 0 &&
-                   spawnPoints != null && spawnPoints.Length > 0;
+            return player != null && enemyTemplates != null && enemyTemplates.Length > 0 && GetSpawnPointCount() > 0;
         }
     }
 }

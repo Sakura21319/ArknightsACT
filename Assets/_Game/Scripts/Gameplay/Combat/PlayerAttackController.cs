@@ -10,16 +10,18 @@ using UnityEngine;
 
 namespace ArknightsACT.Gameplay.Combat
 {
-    [RequireComponent(typeof(CombatEntity), typeof(PlayerMotor2D))]
+    [RequireComponent(typeof(CombatEntity))]
     public sealed class PlayerAttackController : MonoBehaviour
     {
         [SerializeField] private AttackDefinition[] combo;
         [SerializeField] private float baseAttack = 10f;
         [SerializeField] private float comboResetSeconds = 0.60f;
         [SerializeField, Min(0f)] private float movementUnlockAfterImpactSeconds = 0.04f;
+        [SerializeField, Min(0.1f)] private float max25DHeightDifference = 1.15f;
 
         private CombatEntity _entity;
-        private PlayerMotor2D _motor;
+        private IPlayerLocomotion _motor;
+        private PlayerMotor25D _motor25D;
         private PlayerDashController _dash;
         private IPlayerInputSource _input;
         private PlayerSkillController _skills;
@@ -66,7 +68,8 @@ namespace ArknightsACT.Gameplay.Combat
         private void Awake()
         {
             _entity = GetComponent<CombatEntity>();
-            _motor = GetComponent<PlayerMotor2D>();
+            _motor = FindLocomotion();
+            _motor25D = GetComponent<PlayerMotor25D>();
             _dash = GetComponent<PlayerDashController>();
             _input = GetComponent<IPlayerInputSource>();
             _skills = GetComponent<PlayerSkillController>();
@@ -183,6 +186,14 @@ namespace ArknightsACT.Gameplay.Combat
 
         private void PerformHit(AttackDefinition definition)
         {
+            if (_motor25D != null)
+                PerformHit25D(definition);
+            else
+                PerformHit2D(definition);
+        }
+
+        private void PerformHit2D(AttackDefinition definition)
+        {
             var facing = _motor != null ? _motor.FacingSign : 1;
             var offset = definition.hitboxOffset;
             offset.x *= facing;
@@ -199,33 +210,139 @@ namespace ArknightsACT.Gameplay.Combat
                 if (hit == null)
                     continue;
                 var target = hit.GetComponentInParent<CombatEntity>();
-                if (target == null || target == _entity || target.Team == _entity.Team ||
-                    target.Health == null || target.Health.IsDead || !processed.Add(target))
+                if (!CanHit(target, processed))
                     continue;
 
-                var context = new DamageContext(
-                    _entity,
-                    _entity,
-                    target,
-                    baseAttack * definition.damageMultiplier,
-                    DamageType.Physical,
-                    knockback,
-                    sourceId: definition.name);
-                var result = DamageSystem.Apply(context);
-                if (!result.Applied)
-                    continue;
-
-                hitAny = true;
-                target.GetComponentInChildren<HitFlash2D>()?.Flash();
-                AttackHit?.Invoke(target);
+                if (ApplyHit(target, definition, knockback))
+                    hitAny = true;
             }
 
+            ApplyImpactFeedback(definition, hitAny);
+        }
+
+        private void PerformHit25D(AttackDefinition definition)
+        {
+            var forward = _motor != null ? _motor.PlanarForward : Vector3.forward;
+            forward.y = 0f;
+            if (forward.sqrMagnitude < 0.001f)
+                forward = Vector3.forward;
+            forward.Normalize();
+
+            // AttackDefinition was authored for a side-view XY box where hitboxSize.x is the
+            // sword's forward reach. In XZ that authored X dimension should therefore map to
+            // local Z (forward), not local X (sideways). Keeping that semantic makes Ch'en's
+            // attacks longer and slimmer instead of short and excessively wide.
+            const float forwardCenterScale = 1.10f;
+            const float forwardHalfExtentScale = 0.48f;
+            const float lateralHalfExtentScale = 0.38f;
+
+            var center = transform.position +
+                         forward * Mathf.Max(0.55f, Mathf.Abs(definition.hitboxOffset.x) * forwardCenterScale) +
+                         Vector3.up * 0.78f;
+            var halfExtents = new Vector3(
+                Mathf.Max(0.48f, definition.hitboxSize.y * lateralHalfExtentScale),
+                0.72f,
+                Mathf.Max(0.65f, definition.hitboxSize.x * forwardHalfExtentScale));
+            var rotation = Quaternion.LookRotation(forward, Vector3.up);
+            var hits = Physics.OverlapBox(center, halfExtents, rotation, ~0, QueryTriggerInteraction.Ignore);
+            var processed = new HashSet<CombatEntity>();
+            var hitAny = false;
+
+            foreach (var hit in hits)
+            {
+                if (hit == null)
+                    continue;
+                var target = hit.GetComponentInParent<CombatEntity>();
+                if (!CanHit(target, processed))
+                    continue;
+                if (Mathf.Abs(target.transform.position.y - transform.position.y) > max25DHeightDifference)
+                    continue;
+                if (!HasClear25DHitPath(target))
+                    continue;
+
+                if (ApplyHit(target, definition, Vector2.zero))
+                    hitAny = true;
+            }
+
+            ApplyImpactFeedback(definition, hitAny);
+        }
+
+        private bool CanHit(CombatEntity target, HashSet<CombatEntity> processed)
+        {
+            return target != null &&
+                   target != _entity &&
+                   target.Team != _entity.Team &&
+                   target.Health != null &&
+                   !target.Health.IsDead &&
+                   processed.Add(target);
+        }
+
+        private bool HasClear25DHitPath(CombatEntity target)
+        {
+            var origin = transform.position + Vector3.up * 0.68f;
+            var destination = target.transform.position + Vector3.up * 0.68f;
+            var cast = destination - origin;
+            var distance = cast.magnitude;
+            if (distance < 0.001f)
+                return true;
+
+            var hits = Physics.SphereCastAll(origin, 0.10f, cast / distance, distance, ~0, QueryTriggerInteraction.Ignore);
+            Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            foreach (var hit in hits)
+            {
+                var collider = hit.collider;
+                if (collider == null || collider.transform.IsChildOf(transform))
+                    continue;
+                var entity = collider.GetComponentInParent<CombatEntity>();
+                if (entity != null)
+                {
+                    if (entity == target)
+                        return true;
+                    continue;
+                }
+                return false;
+            }
+            return true;
+        }
+
+        private bool ApplyHit(CombatEntity target, AttackDefinition definition, Vector2 knockback)
+        {
+            var context = new DamageContext(
+                _entity,
+                _entity,
+                target,
+                baseAttack * definition.damageMultiplier,
+                DamageType.Physical,
+                knockback,
+                sourceId: definition.name);
+            var result = DamageSystem.Apply(context);
+            if (!result.Applied)
+                return false;
+
+            target.GetComponentInChildren<HitFlash2D>()?.Flash();
+            AttackHit?.Invoke(target);
+            return true;
+        }
+
+        private static void ApplyImpactFeedback(AttackDefinition definition, bool hitAny)
+        {
             if (!hitAny)
                 return;
             if (definition.hitStopSeconds > 0f)
                 HitStopService.Instance?.Request(definition.hitStopSeconds);
             if (definition.cameraShakeAmplitude > 0f)
                 CameraShake2D.Instance?.Shake(definition.cameraShakeAmplitude, 0.06f);
+        }
+
+        private IPlayerLocomotion FindLocomotion()
+        {
+            var behaviours = GetComponents<MonoBehaviour>();
+            for (var i = 0; i < behaviours.Length; i++)
+            {
+                if (behaviours[i] is IPlayerLocomotion locomotion)
+                    return locomotion;
+            }
+            return null;
         }
     }
 }

@@ -1,5 +1,4 @@
 #if UNITY_EDITOR
-using ArknightsACT.Editor.PRTS;
 using ArknightsACT.Gameplay.Combat;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -13,7 +12,6 @@ namespace ArknightsACT.Editor
         private const string DataDir = "Assets/_Game/Data/Attacks/Chen";
         private const string SceneDir = "Assets/_Game/Scenes";
         private const string ScenePath = SceneDir + "/PrototypeRun.unity";
-        private const float PlayerSpawnY = -0.34f;
 
         [MenuItem("ArknightsACT/Build Prototype Scene")]
         public static void Build()
@@ -22,22 +20,31 @@ namespace ArknightsACT.Editor
             EnsureFolder(DataDir);
             EnsureFolder(SceneDir);
             var attacks = BuildChenAttackDefinitions();
-            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+
+            // Prototype25DSceneBuilder is now the single source of truth for the production map:
+            // ground/roads, one two-floor facility, sparse one-grid cover and navigation graph.
+            Prototype25DSceneBuilder.Build();
+            RemoveDemoActor("Player_Chen_25D");
+            RemoveDemoActor("Enemy_Soldier");
+            RemoveDemoActor("Enemy_Hound");
+            RemoveDemoActor("Enemy_Crossbowman");
+
+            var camera = GameObject.Find("Main Camera")?.GetComponent<Camera>();
+            if (camera == null)
+            {
+                Debug.LogError("[ArknightsACT/25D] Main Camera was not created by the 2.5D world builder.");
+                return;
+            }
 
             PrototypeFactory.CreateServices();
-            PrototypeBackdropFactory.Create();
-            var player = ChenPrototypePlayerFactory.Create(attacks, PlayerSpawnY);
+            var player = ChenPrototypePlayerFactory.Create25D(attacks, camera);
+            Prototype25DProductionFactory.ConfigureCamera(camera, player.transform);
 
-            PrototypeFactory.CreateFloor();
-            PrototypeFactory.CreateWorldBounds();
-            PrototypeFactory.CreatePlatform(new Vector2(5f, 1.5f), new Vector2(4f, 0.35f));
-            PrototypeFactory.CreatePlatform(new Vector2(11f, 2.6f), new Vector2(3f, 0.35f));
-
-            var enemyTemplates = PrototypeFactory.CreateEnemyTemplates(PrtsPrototypeAssetCatalog.PrototypeEnemies);
-            var roomLoop = PrototypeFactory.CreateRoomLoop(player.transform, enemyTemplates);
+            var enemyTemplates = Prototype25DProductionFactory.CreateEnemyTemplates(camera);
+            var roomLoop = Prototype25DProductionFactory.CreateRoomLoop(player.transform, enemyTemplates);
             PrototypeRogueliteFactory.Create(roomLoop, player.transform);
-            PrototypeFactory.CreateCamera(player.transform);
 
+            var scene = SceneManager.GetActiveScene();
             EditorSceneManager.SaveScene(scene, ScenePath);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -45,17 +52,21 @@ namespace ArknightsACT.Editor
             EditorGUIUtility.PingObject(player);
 
             Debug.Log(
-                $"ArknightsACT Chen 2D ACT roguelite R3 prototype generated: {ScenePath}. " +
-                "Controls: A/D move, Space jump, J/LMB three-hit combo, K/Shift dash, L skill1, I/RMB skill2. " +
-                "After combat rewards, choose route nodes with mouse or 1/2/3: Combat, Emergency, Encounter, Safe House, Trader, Boss.");
+                $"ArknightsACT Chen 2.5D ACT roguelite prototype generated: {ScenePath}. " +
+                "Controls: WASD/Stick move on XZ, Space jump, J/LMB combo, K/Shift dash, L skill1, I/RMB skill2. " +
+                "Unified arena: one walkable two-floor facility, sparse one-grid cover, obstacle-aware LOS and navigation. " +
+                "R3 rewards and route nodes remain active.");
+        }
+
+        private static void RemoveDemoActor(string objectName)
+        {
+            var go = GameObject.Find(objectName);
+            if (go != null)
+                Object.DestroyImmediate(go);
         }
 
         private static AttackDefinition[] BuildChenAttackDefinitions()
         {
-            // Presentation mapping:
-            // combo 1 -> Attack first half
-            // combo 2 -> Attack second half
-            // combo 3 -> Skill
             return new[]
             {
                 GetOrCreateAttack(
