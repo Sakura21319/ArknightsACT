@@ -66,12 +66,14 @@ namespace ArknightsACT.Editor
                 enemyTemplates,
                 new[]
                 {
-                    new Vector3(4.5f, 0.03f, 2.8f),
-                    new Vector3(6.2f, 0.03f, -2.3f),
-                    new Vector3(2.7f, 0.03f, -4.1f),
-                    new Vector3(-3.8f, 0.03f, 4.0f),
-                    new Vector3(7.8f, 0.03f, 4.1f),
-                    new Vector3(-5.0f, 0.03f, -3.0f)
+                    // Spawn points share the same unified arena layout: none overlap the single
+                    // facility, its ramp, or the sparse one-grid cover pieces.
+                    new Vector3(4.1f, 0.03f, 2.0f),
+                    new Vector3(6.2f, 0.03f, -3.3f),
+                    new Vector3(2.6f, 0.03f, -4.5f),
+                    new Vector3(-4.4f, 0.03f, 4.2f),
+                    new Vector3(9.0f, 0.03f, -2.4f),
+                    new Vector3(-5.7f, 0.03f, -3.7f)
                 });
             return controller;
         }
@@ -95,9 +97,6 @@ namespace ArknightsACT.Editor
             controller.stepOffset = 0.25f;
             controller.slopeLimit = 45f;
 
-            // Keep the CombatEntity dependency graph explicit for inactive editor-built templates.
-            // This avoids Unity having to inject StatusController through RequireComponent while
-            // the template is inactive, matching the production player composition path.
             var health = go.GetComponent<Health>() ?? go.AddComponent<Health>();
             health.SetMaxHealth(healthOverride ?? ResolveHealth(archetype));
             if (go.GetComponent<StatusController>() == null)
