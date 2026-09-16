@@ -54,17 +54,19 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             var dressing = stage.transform.Find("[Chernobog_SetDressing]");
             var urban = stage.transform.Find("[Chernobog_UrbanArchitecture]");
             var playable = stage.transform.Find("[Chernobog_PlayableArchitecture]");
-            if (dressing == null || urban == null || playable == null)
+            var city = stage.transform.Find("[Chernobog_CityStreets]");
+            if (dressing == null || urban == null || playable == null || city == null)
                 return;
 
-            var architectureColliders = new List<Collider>(128);
+            var architectureColliders = new List<Collider>(192);
             architectureColliders.AddRange(urban.GetComponentsInChildren<Collider>(true));
             architectureColliders.AddRange(playable.GetComponentsInChildren<Collider>(true));
+            architectureColliders.AddRange(city.GetComponentsInChildren<Collider>(true));
 
             var moved = ResolveDressing(dressing, architectureColliders);
             Physics.SyncTransforms();
             _preparedStage = stage;
-            Debug.Log($"[ArknightsACT/CompositionCleanup] Stage {stageMap.StageIndex}: {moved} dressing features repositioned away from architecture.", this);
+            Debug.Log($"[ArknightsACT/CompositionCleanup] Stage {stageMap.StageIndex}: {moved} dressing features repositioned away from urban/playable/city architecture.", this);
         }
 
         private static int ResolveDressing(Transform dressing, List<Collider> architectureColliders)
