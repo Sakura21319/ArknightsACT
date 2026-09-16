@@ -10,7 +10,7 @@ This pass addresses both problems without moving combat, navigation, route, rewa
 
 Current clusters:
 - multi-level maintenance scaffold with poles, grating, rails and diagonal braces;
-- black Originium-like faceted crystal growths;
+- black faceted mineral/Originium-style crystal growths;
 - broken deck slabs and scattered rubble;
 - stacked industrial cargo blocks with structural X braces;
 - darker repair/deck patches and occasional service grates.
@@ -44,6 +44,7 @@ The south/west structures protrude beyond the playable footprint so they remain 
 1. Rebuild the Prototype Scene.
 2. From the normal gameplay camera, confirm the south/west lower half is filled by terraces, support towers, girders and drive housings instead of pure black.
 3. Confirm every block now contains multiple readable dressing types and no longer reads as a uniform steel floor.
-4. Confirm the central cardinal movement lanes remain clear.
-5. Confirm dressing and chassis objects do not introduce gameplay colliders/navigation changes.
-6. Check black crystal silhouettes under the new lighting; they should read as faceted mineral growth rather than smooth plastic spikes.
+4. Confirm floor repair patches / service grates visibly interrupt large uninterrupted steel areas without recreating the old checkerboard look.
+5. Confirm the central cardinal movement lanes remain clear.
+6. Confirm dressing and chassis objects do not introduce gameplay colliders/navigation changes.
+7. Check black crystal silhouettes under the new lighting; they should read as faceted mineral growth rather than smooth plastic spikes.
