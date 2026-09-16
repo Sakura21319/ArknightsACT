@@ -106,7 +106,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
             var oldRig = stage.Find("[ChernobogLightingRig]");
             if (oldRig != null)
-                Destroy(oldRig.gameObject);
+                UnityEngine.Object.Destroy(oldRig.gameObject);
         }
 
         private void BuildStageRig(Transform stage)
