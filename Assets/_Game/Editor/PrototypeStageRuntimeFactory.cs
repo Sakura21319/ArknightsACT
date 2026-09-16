@@ -54,10 +54,10 @@ namespace ArknightsACT.Editor
                 Load("TacticalAccent"),
                 Load("HazardBand"));
 
-            // physical floor/layout -> expanded 18x14 presentation -> hazard policy -> palette ->
-            // modular hard-surface kit -> broad floor composition -> backdrop/art direction -> varied
-            // dressing -> urban shell -> playable rooms/decks -> overlap cleanup -> solid blockers ->
-            // lighting -> chassis/deep base -> distant city horizon -> jump-proof containment -> terrain.
+            // physical floor/layout -> expanded presentation -> hazard policy -> palette -> modular kit ->
+            // floor composition -> industrial shell -> playable rooms/decks -> real street grid/sealed city
+            // facades -> overlap cleanup -> solid blockers -> lighting/chassis -> layered distant city + horizon
+            // wrap -> jump-proof containment -> iconic terrain/Originium -> optional PRTS story backdrop.
             go.AddComponent<RogueliteStageLayoutController>().Configure(stageMap);
             go.AddComponent<RogueliteStageExpansionController>().Configure(stageMap);
             go.AddComponent<RogueliteStageHazardPolicyController>().Configure(stageMap);
@@ -74,12 +74,14 @@ namespace ArknightsACT.Editor
             go.AddComponent<RogueliteStageSetDressingController>().Configure(stageMap, environmentKit);
             go.AddComponent<RogueliteStageUrbanCompositionController>().Configure(stageMap, environmentKit);
             go.AddComponent<RogueliteStagePlayableArchitectureController>().Configure(stageMap, environmentKit);
+            go.AddComponent<RogueliteStageCityStreetsController>().Configure(stageMap, environmentKit);
             go.AddComponent<RogueliteStageCompositionCleanupController>().Configure(stageMap);
             go.AddComponent<RogueliteStageDressingCollisionController>().Configure(stageMap);
             go.AddComponent<RogueliteStageLightingController>().Configure(stageMap);
             go.AddComponent<RogueliteMobileCityChassisController>().Configure(stageMap, environmentKit);
             go.AddComponent<RogueliteMobileCityDeepBaseController>().Configure(stageMap, environmentKit);
             go.AddComponent<RogueliteStageDistantDistrictController>().Configure(stageMap, environmentKit);
+            go.AddComponent<RogueliteStageHorizonCityController>().Configure(stageMap, environmentKit);
             go.AddComponent<RogueliteStageContainmentController>().Configure(stageMap);
             go.AddComponent<RogueliteStageTerrainPresentationController>().Configure(stageMap);
             go.AddComponent<RogueliteActiveOriginiumPresentationController>().Configure(stageMap);
