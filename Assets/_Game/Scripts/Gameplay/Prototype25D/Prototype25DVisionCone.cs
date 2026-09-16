@@ -9,6 +9,8 @@ namespace ArknightsACT.Gameplay.Prototype25D
     {
         [SerializeField, Range(6, 40)] private int segments = 20;
         [SerializeField] private float groundOffset = 0.06f;
+        [SerializeField] private bool showDebugCone;
+        [SerializeField] private bool showOnlyWhenAlerted;
 
         private Prototype25DEnemyBrain _brain;
         private LineRenderer _line;
@@ -24,11 +26,21 @@ namespace ArknightsACT.Gameplay.Prototype25D
             _line.receiveShadows = false;
             _line.numCapVertices = 2;
             _line.material = new Material(FindCompatibleUnlitShader());
+            _line.enabled = showDebugCone;
         }
 
         private void LateUpdate()
         {
             if (_brain == null || _line == null)
+                return;
+
+            // The cone is a development aid, not part of the Arknights-style presentation.
+            // Keep the perception logic on the brain, but do not paint every combat tile with
+            // orange debug arcs during ordinary play.
+            var shouldShow = showDebugCone && (!showOnlyWhenAlerted || _brain.IsAlerted);
+            if (_line.enabled != shouldShow)
+                _line.enabled = shouldShow;
+            if (!shouldShow)
                 return;
 
             var count = Mathf.Max(6, segments);
@@ -62,6 +74,12 @@ namespace ArknightsACT.Gameplay.Prototype25D
                 _line.material.SetColor("_BaseColor", color);
             if (_line.material.HasProperty("_Color"))
                 _line.material.SetColor("_Color", color);
+        }
+
+        private void OnDestroy()
+        {
+            if (_line != null && _line.material != null)
+                Destroy(_line.material);
         }
 
         private static Shader FindCompatibleUnlitShader()
