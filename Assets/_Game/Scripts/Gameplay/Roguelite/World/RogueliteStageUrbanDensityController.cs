@@ -5,9 +5,10 @@ using UnityEngine;
 namespace ArknightsACT.Gameplay.Roguelite.World
 {
     /// <summary>
-    /// Opens the procedural city back up after the urban/street passes have finished.
-    /// Playable rooms are intentionally untouched; this pass only thins sealed/decorative architecture
-    /// so every combat cell keeps readable sightlines and breathing room.
+    /// Thins the older industrial shell layer after district templates have built their authored street
+    /// buildings. District street buildings are no longer deleted here: their density is controlled at
+    /// generation time, which preserves a readable city silhouette and avoids blocks that suddenly have
+    /// no architecture at all.
     /// </summary>
     [DefaultExecutionOrder(24)]
     [DisallowMultipleComponent]
@@ -42,13 +43,13 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             if (urban == null || streets == null)
                 return;
 
-            var disabled = ThinUrbanArchitecture(urban) + ThinStreetBuildings(streets);
+            var disabled = ThinLegacyUrbanArchitecture(urban);
             Physics.SyncTransforms();
             _preparedStage = stage;
-            Debug.Log($"[ArknightsACT/UrbanDensity] Stage {stageMap.StageIndex}: disabled {disabled} decorative building groups to keep combat sightlines open.", this);
+            Debug.Log($"[ArknightsACT/UrbanDensity] Stage {stageMap.StageIndex}: disabled {disabled} redundant legacy shell groups; district street buildings were preserved.", this);
         }
 
-        private int ThinUrbanArchitecture(Transform root)
+        private int ThinLegacyUrbanArchitecture(Transform root)
         {
             var disabled = 0;
             for (var blockIndex = 0; blockIndex < stageMap.Blocks.Count; blockIndex++)
@@ -95,57 +96,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             return disabled;
         }
 
-        private int ThinStreetBuildings(Transform root)
-        {
-            var disabled = 0;
-            for (var blockIndex = 0; blockIndex < stageMap.Blocks.Count; blockIndex++)
-            {
-                var cell = root.Find($"Block_{blockIndex:00}_CityStreet");
-                if (cell == null)
-                    continue;
-
-                var coordinate = stageMap.Blocks[blockIndex].Coordinate;
-                var northEdge = coordinate.y == stageMap.Height - 1;
-                var rightEdge = coordinate.x == stageMap.Width - 1;
-
-                // Interior cells should feel like streets, not narrow canyons: most keep either zero or
-                // one sealed north-side building. The far north edge can keep a denser skyline because
-                // actors cannot be visually trapped behind another row of playable cells there.
-                var northBudget = northEdge ? (PositiveMod(blockIndex, 2) == 0 ? 2 : 1) :
-                    (PositiveMod(blockIndex + stageMap.StageIndex, 2) == 0 ? 1 : 0);
-                var eastBudget = rightEdge && PositiveMod(coordinate.y + stageMap.StageIndex, 2) == 0 ? 1 : 0;
-
-                var northSeen = 0;
-                var eastSeen = 0;
-                for (var i = 0; i < cell.childCount; i++)
-                {
-                    var child = cell.GetChild(i);
-                    if (child == null)
-                        continue;
-
-                    if (IsNorthStreetBuilding(child.name))
-                    {
-                        if (northSeen++ >= northBudget)
-                        {
-                            child.gameObject.SetActive(false);
-                            disabled++;
-                        }
-                        continue;
-                    }
-
-                    if (child.name == "SealedSideBuilding")
-                    {
-                        if (eastSeen++ >= eastBudget)
-                        {
-                            child.gameObject.SetActive(false);
-                            disabled++;
-                        }
-                    }
-                }
-            }
-            return disabled;
-        }
-
         private static bool IsMajorUrbanBuilding(string name)
         {
             return name == "ServiceBuilding" ||
@@ -154,13 +104,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                    name == "UtilityRelayTower" ||
                    name == "MaintenanceKiosk" ||
                    name == "ServiceCanopy";
-        }
-
-        private static bool IsNorthStreetBuilding(string name)
-        {
-            return name == "SealedCityBuilding" ||
-                   name == "SealedUtilityBuilding" ||
-                   name == "ClosedStorefront";
         }
 
         private static int PositiveMod(int value, int divisor)
