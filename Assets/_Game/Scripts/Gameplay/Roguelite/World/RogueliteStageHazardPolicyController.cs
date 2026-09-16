@@ -6,9 +6,8 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 {
     /// <summary>
     /// Current environment policy for the Concept-01 prototype.
-    /// Pit hazards are retired from the run while other terrain hazards remain active.
-    /// This pass intentionally removes only presentation/gameplay objects named Hazard_Hole and does
-    /// not touch the segmented floor system, navigation graph, Active Originium or ballista hazards.
+    /// Generic pit and ballista hazards are retired; Active Originium remains the authored terrain
+    /// hazard. This pass also defensively removes stale hazard objects from older generated scenes.
     /// </summary>
     [DefaultExecutionOrder(8)]
     [DisallowMultipleComponent]
@@ -49,29 +48,44 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             if (stage != _stage)
                 _stage = stage;
 
-            RemovePitHazards(stage.transform);
+            RemoveRetiredHazards(stage.transform);
         }
 
-        private static void RemovePitHazards(Transform stage)
+        private static void RemoveRetiredHazards(Transform stage)
         {
             var transforms = stage.GetComponentsInChildren<Transform>(true);
             for (var i = transforms.Length - 1; i >= 0; i--)
             {
                 var current = transforms[i];
-                if (current == null || !current.name.StartsWith("Hazard_Hole", StringComparison.Ordinal))
+                if (current == null)
+                    continue;
+
+                var isPit = current.name.StartsWith("Hazard_Hole", StringComparison.Ordinal);
+                var isBallista = current.name.StartsWith("Hazard_Ballista", StringComparison.Ordinal);
+                if (!isPit && !isBallista)
                     continue;
 
                 // Rename immediately so later presentation passes in the same frame ignore it even
                 // though Destroy() itself is deferred until the end of the frame.
-                current.name = "[Removed_Hazard_Hole]";
+                current.name = isPit ? "[Removed_Hazard_Hole]" : "[Removed_Hazard_Ballista]";
 
                 var colliders = current.GetComponentsInChildren<Collider>(true);
                 for (var c = 0; c < colliders.Length; c++)
                     colliders[c].enabled = false;
 
-                var pit = current.GetComponent<PitHazard25D>();
-                if (pit != null)
-                    pit.enabled = false;
+                if (isPit)
+                {
+                    var pit = current.GetComponent<PitHazard25D>();
+                    if (pit != null)
+                        pit.enabled = false;
+                }
+
+                if (isBallista)
+                {
+                    var ballista = current.GetComponent<BallistaHazard25D>();
+                    if (ballista != null)
+                        ballista.enabled = false;
+                }
 
                 var body = current.GetComponent<Rigidbody>();
                 if (body != null)
