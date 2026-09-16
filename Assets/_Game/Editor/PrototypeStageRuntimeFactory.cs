@@ -55,8 +55,9 @@ namespace ArknightsACT.Editor
                 Load("HazardBand"));
 
             // physical floor/layout -> expanded 18x14 presentation -> hazard policy -> palette ->
-            // modular hard-surface kit -> broad floor composition -> backdrop/art direction -> material/light ->
-            // visible mobile-city chassis -> iconic terrain -> Originium -> optional PRTS backdrop.
+            // modular hard-surface kit -> broad floor composition -> backdrop/art direction -> varied
+            // scaffold/rubble/crystal dressing -> material/light -> visible mobile-city chassis -> iconic
+            // terrain -> Originium -> optional PRTS backdrop.
             go.AddComponent<RogueliteStageLayoutController>().Configure(stageMap);
             go.AddComponent<RogueliteStageExpansionController>().Configure(stageMap);
             go.AddComponent<RogueliteStageHazardPolicyController>().Configure(stageMap);
@@ -70,6 +71,7 @@ namespace ArknightsACT.Editor
             go.AddComponent<RogueliteStageArtDirectionController>().Configure(stageMap);
             go.AddComponent<RogueliteStageQualityPassController>().Configure(stageMap);
             go.AddComponent<RogueliteStageMaterialVariationController>().Configure(stageMap);
+            go.AddComponent<RogueliteStageSetDressingController>().Configure(stageMap, environmentKit);
             go.AddComponent<RogueliteStageLightingController>().Configure(stageMap);
             go.AddComponent<RogueliteMobileCityChassisController>().Configure(stageMap, environmentKit);
             go.AddComponent<RogueliteStageTerrainPresentationController>().Configure(stageMap);
