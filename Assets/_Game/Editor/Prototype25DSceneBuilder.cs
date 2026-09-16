@@ -214,6 +214,7 @@ namespace ArknightsACT.Editor
                 new Vector3(0f, CoverGridHeight * 0.5f, 0f),
                 new Vector3(footprint.x, CoverGridHeight, footprint.y), m.Cover);
             body.transform.localPosition = new Vector3(0f, CoverGridHeight * 0.5f, 0f);
+            body.transform.localRotation = Quaternion.identity;
 
             CreateVisualBlock(root.transform, "TopTrim",
                 new Vector3(0f, CoverGridHeight + 0.025f, 0f),
@@ -243,20 +244,20 @@ namespace ArknightsACT.Editor
             // alongside the building/cover layout so future map edits have a single source of truth.
             var nodes = new[]
             {
-                new Vector3(0.0f, GroundSurfaceY, 0.0f),    // 0 center
-                new Vector3(4.3f, GroundSurfaceY, -3.2f),   // 1 southeast lane
-                new Vector3(8.4f, GroundSurfaceY, -2.9f),   // 2 east south
-                new Vector3(4.2f, GroundSurfaceY, 2.6f),    // 3 east north approach
-                new Vector3(4.80f, GroundSurfaceY, 3.45f),  // 4 ramp approach
-                new Vector3(7.6f, GroundSurfaceY, 3.65f),   // 5 facility entrance
-                new Vector3(8.4f, GroundSurfaceY, 5.75f),   // 6 ground interior
-                new Vector3(4.95f, GroundSurfaceY, 3.65f),  // 7 ramp bottom
-                new Vector3(4.95f, SecondFloorY, 8.15f),    // 8 ramp top
-                new Vector3(5.75f, SecondFloorY, 7.65f),    // 9 second west
-                new Vector3(8.15f, SecondFloorY, 6.15f),    // 10 second interior
-                new Vector3(-3.8f, GroundSurfaceY, 3.4f),   // 11 west north
-                new Vector3(-4.1f, GroundSurfaceY, -3.5f),  // 12 west south
-                new Vector3(0.2f, GroundSurfaceY, -4.6f)    // 13 south lane
+                new Vector3(0.0f, GroundSurfaceY, 0.0f),
+                new Vector3(4.3f, GroundSurfaceY, -3.2f),
+                new Vector3(8.4f, GroundSurfaceY, -2.9f),
+                new Vector3(4.2f, GroundSurfaceY, 2.6f),
+                new Vector3(4.80f, GroundSurfaceY, 3.45f),
+                new Vector3(7.6f, GroundSurfaceY, 3.65f),
+                new Vector3(8.4f, GroundSurfaceY, 5.75f),
+                new Vector3(4.95f, GroundSurfaceY, 3.65f),
+                new Vector3(4.95f, SecondFloorY, 8.15f),
+                new Vector3(5.75f, SecondFloorY, 7.65f),
+                new Vector3(8.15f, SecondFloorY, 6.15f),
+                new Vector3(-3.8f, GroundSurfaceY, 3.4f),
+                new Vector3(-4.1f, GroundSurfaceY, -3.5f),
+                new Vector3(0.2f, GroundSurfaceY, -4.6f)
             };
 
             graph.Configure(nodes, new[]
