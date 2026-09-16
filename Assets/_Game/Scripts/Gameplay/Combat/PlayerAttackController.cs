@@ -227,13 +227,21 @@ namespace ArknightsACT.Gameplay.Combat
                 forward = Vector3.forward;
             forward.Normalize();
 
+            // AttackDefinition was authored for a side-view XY box where hitboxSize.x is the
+            // sword's forward reach. In XZ that authored X dimension should therefore map to
+            // local Z (forward), not local X (sideways). Keeping that semantic makes Ch'en's
+            // attacks longer and slimmer instead of short and excessively wide.
+            const float forwardCenterScale = 1.10f;
+            const float forwardHalfExtentScale = 0.48f;
+            const float lateralHalfExtentScale = 0.38f;
+
             var center = transform.position +
-                         forward * Mathf.Max(0.45f, Mathf.Abs(definition.hitboxOffset.x)) +
-                         Vector3.up * 0.85f;
+                         forward * Mathf.Max(0.55f, Mathf.Abs(definition.hitboxOffset.x) * forwardCenterScale) +
+                         Vector3.up * 0.78f;
             var halfExtents = new Vector3(
-                Mathf.Max(0.55f, definition.hitboxSize.x * 0.5f),
-                0.9f,
-                Mathf.Max(0.50f, definition.hitboxSize.y * 0.35f));
+                Mathf.Max(0.48f, definition.hitboxSize.y * lateralHalfExtentScale),
+                0.72f,
+                Mathf.Max(0.65f, definition.hitboxSize.x * forwardHalfExtentScale));
             var rotation = Quaternion.LookRotation(forward, Vector3.up);
             var hits = Physics.OverlapBox(center, halfExtents, rotation, ~0, QueryTriggerInteraction.Ignore);
             var processed = new HashSet<CombatEntity>();
