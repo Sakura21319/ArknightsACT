@@ -5,11 +5,14 @@ using UnityEngine;
 namespace ArknightsACT.Gameplay.Roguelite.World
 {
     /// <summary>
-    /// Small runtime hard-surface mesh cache used by the Chernobog environment kit.
+    /// Small hard-surface mesh cache used by the Chernobog environment kit.
     /// The project started from Unity cube primitives; this factory gives visual-only modules
     /// real chamfered silhouettes so directional light can catch edges instead of reading as flat blocks.
+    ///
+    /// It is public so the editor-side modular-kit builder can persist the same geometry as reusable
+    /// Mesh assets instead of rebuilding everything from primitives at runtime.
     /// </summary>
-    internal static class ChernobogBeveledMeshFactory
+    public static class ChernobogBeveledMeshFactory
     {
         private static readonly Dictionary<MeshKey, Mesh> Cache = new();
 
