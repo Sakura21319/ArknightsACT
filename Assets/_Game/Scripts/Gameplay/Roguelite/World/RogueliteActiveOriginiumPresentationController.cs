@@ -121,10 +121,10 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             var trigger = hazard.GetComponent<BoxCollider>();
             if (trigger != null)
             {
-                trigger.center = new Vector3(0f, 0.22f, 0f);
+                trigger.center = new Vector3(0f, 0.20f, 0f);
                 trigger.size = new Vector3(
                     Mathf.Max(1.4f, nearest.Footprint.x * 0.94f),
-                    Mathf.Max(0.46f, trigger.size.y),
+                    Mathf.Max(0.42f, trigger.size.y),
                     Mathf.Max(1.4f, nearest.Footprint.y * 0.94f));
             }
 
@@ -183,10 +183,12 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             var skin = new GameObject("[ActiveOriginiumShardTile]").transform;
             skin.SetParent(root, false);
 
-            CreateBox(skin, "IndustrialFrame", new Vector3(0f, 0.018f, 0f),
-                new Vector3(footprint.x, 0.042f, footprint.y), 0.014f, _frameMaterial, true);
-            CreateBox(skin, "ScorchedBed", new Vector3(0f, 0.047f, 0f),
-                new Vector3(footprint.x * 0.91f, 0.030f, footprint.y * 0.88f), 0.010f, _scorchedMaterial, true);
+            // The surface stays almost flush with the surrounding deck. Mineral fragments should
+            // feel embedded in / breaking through the floor, not placed on top like collectible props.
+            CreateBox(skin, "IndustrialFrame", new Vector3(0f, 0.014f, 0f),
+                new Vector3(footprint.x, 0.034f, footprint.y), 0.012f, _frameMaterial, true);
+            CreateBox(skin, "ScorchedBed", new Vector3(0f, 0.035f, 0f),
+                new Vector3(footprint.x * 0.91f, 0.022f, footprint.y * 0.88f), 0.009f, _scorchedMaterial, true);
 
             BuildBurntOreCrust(skin, footprint);
             BuildAmberVeins(skin, footprint);
@@ -208,9 +210,9 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             {
                 var p = patches[i];
                 var patch = CreateBox(parent, "CarbonizedOrePatch",
-                    new Vector3(p.x * footprint.x, 0.068f + i * 0.0007f, p.y * footprint.y),
-                    new Vector3(p.z * footprint.x, 0.015f, p.w * footprint.y),
-                    0.006f,
+                    new Vector3(p.x * footprint.x, 0.052f + i * 0.0006f, p.y * footprint.y),
+                    new Vector3(p.z * footprint.x, 0.012f, p.w * footprint.y),
+                    0.005f,
                     i % 2 == 0 ? _oreBlackMaterial : _scorchedMaterial,
                     false);
                 patch.transform.localRotation = Quaternion.Euler(0f, -27f + i * 31f, 0f);
@@ -219,15 +221,15 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         private void BuildAmberVeins(Transform parent, Vector2 footprint)
         {
-            CreateVein(parent, new Vector3(-footprint.x * 0.13f, 0.078f, -footprint.y * 0.06f), footprint.x * 0.46f, -19f);
-            CreateVein(parent, new Vector3(footprint.x * 0.17f, 0.079f, footprint.y * 0.15f), footprint.x * 0.31f, 31f);
-            CreateVein(parent, new Vector3(footprint.x * 0.04f, 0.080f, -footprint.y * 0.25f), footprint.x * 0.22f, -67f);
+            CreateVein(parent, new Vector3(-footprint.x * 0.13f, 0.059f, -footprint.y * 0.06f), footprint.x * 0.46f, -19f);
+            CreateVein(parent, new Vector3(footprint.x * 0.17f, 0.060f, footprint.y * 0.15f), footprint.x * 0.31f, 31f);
+            CreateVein(parent, new Vector3(footprint.x * 0.04f, 0.061f, -footprint.y * 0.25f), footprint.x * 0.22f, -67f);
         }
 
         private void CreateVein(Transform parent, Vector3 localPosition, float length, float yaw)
         {
             var vein = CreateBox(parent, "AmberVein", localPosition,
-                new Vector3(length, 0.008f, 0.028f), 0.003f, _oreGlowMaterial, false);
+                new Vector3(length, 0.006f, 0.024f), 0.002f, _oreGlowMaterial, false);
             vein.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
         }
 
@@ -256,8 +258,8 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
                 var width = chip ? Range(rng, 0.13f, 0.23f) : Range(rng, 0.075f, 0.14f);
                 var depth = chip ? Range(rng, 0.10f, 0.20f) : Range(rng, 0.060f, 0.12f);
-                var height = chip ? Range(rng, 0.045f, 0.085f) : Range(rng, 0.12f, 0.30f);
-                var y = 0.073f + (chip ? 0.004f : 0.008f);
+                var height = chip ? Range(rng, 0.035f, 0.070f) : Range(rng, 0.10f, 0.24f);
+                var y = 0.056f + (chip ? 0.002f : 0.006f);
 
                 var materialRoll = rng.NextDouble();
                 var material = materialRoll < 0.47
