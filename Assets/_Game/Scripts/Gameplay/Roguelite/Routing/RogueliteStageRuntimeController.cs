@@ -20,8 +20,10 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
     [DisallowMultipleComponent]
     public sealed class RogueliteStageRuntimeController : MonoBehaviour
     {
-        private const float ChunkWidth = 14f;
-        private const float ChunkDepth = 11f;
+        // Phase-08.1: larger ACT combat spaces. Keep these values in sync with the presentation
+        // expansion pass; physical routing/block ownership is authoritative here.
+        private const float ChunkWidth = 18f;
+        private const float ChunkDepth = 14f;
         private const float CoverHeight = 0.82f;
         private const float SecondFloorY = 2.10f;
 
@@ -198,7 +200,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
             Debug.Log(
                 $"[ArknightsACT/StageRuntime] Physical Stage {stageMap.StageIndex} built: " +
-                $"{stageMap.Width}x{stageMap.Height}, chunks={stageMap.Blocks.Count}.",
+                $"{stageMap.Width}x{stageMap.Height}, chunks={stageMap.Blocks.Count}, chunkSize={ChunkWidth}x{ChunkDepth}.",
                 this);
         }
 
@@ -262,45 +264,45 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
         private void BuildOpenChunk(Transform root)
         {
-            CreateCover(root, new Vector3(-3.0f, 0f, 1.4f), new Vector2(1.65f, 0.72f), 12f);
-            CreateCover(root, new Vector3(3.4f, 0f, -1.9f), new Vector2(1.25f, 0.92f), -12f);
+            CreateCover(root, new Vector3(-4.2f, 0f, 1.9f), new Vector2(1.65f, 0.72f), 12f);
+            CreateCover(root, new Vector3(4.8f, 0f, -2.6f), new Vector2(1.25f, 0.92f), -12f);
         }
 
         private void BuildStreetChunk(Transform root)
         {
-            CreateVisual(root, "RoadStrip", Vector3.zero, new Vector3(ChunkWidth - 0.4f, 0.035f, 5.2f), roadMaterial);
+            CreateVisual(root, "RoadStrip", Vector3.zero, new Vector3(ChunkWidth - 0.4f, 0.035f, 6.4f), roadMaterial);
             CreateVisual(root, "RoadStripe", new Vector3(0f, 0.035f, 0f), new Vector3(ChunkWidth - 1.0f, 0.02f, 0.10f), accentMaterial);
-            CreateCover(root, new Vector3(-3.7f, 0f, 2.6f), new Vector2(1.55f, 0.72f), 0f);
-            CreateCover(root, new Vector3(3.4f, 0f, -2.5f), new Vector2(1.55f, 0.72f), 0f);
+            CreateCover(root, new Vector3(-5.2f, 0f, 3.3f), new Vector2(1.55f, 0.72f), 0f);
+            CreateCover(root, new Vector3(4.8f, 0f, -3.2f), new Vector2(1.55f, 0.72f), 0f);
         }
 
         private void BuildCoverLaneChunk(Transform root)
         {
-            CreateCover(root, new Vector3(-3.3f, 0f, 0f), new Vector2(2.6f, 0.68f), 90f);
-            CreateCover(root, new Vector3(0.2f, 0f, 2.15f), new Vector2(2.4f, 0.68f), 0f);
-            CreateCover(root, new Vector3(3.5f, 0f, -1.7f), new Vector2(2.2f, 0.68f), 90f);
+            CreateCover(root, new Vector3(-4.8f, 0f, 0.7f), new Vector2(2.6f, 0.68f), 90f);
+            CreateCover(root, new Vector3(0.3f, 0f, 3.0f), new Vector2(2.4f, 0.68f), 0f);
+            CreateCover(root, new Vector3(5.1f, 0f, -2.4f), new Vector2(2.2f, 0.68f), 90f);
         }
 
         private void BuildSafePlazaChunk(Transform root, bool shop)
         {
-            CreateVisual(root, "PlazaPad", Vector3.zero, new Vector3(7.8f, 0.035f, 6.6f), sidewalkMaterial);
+            CreateVisual(root, "PlazaPad", Vector3.zero, new Vector3(10.2f, 0.035f, 8.2f), sidewalkMaterial);
             if (!shop)
                 return;
 
-            CreateBlock(root, "ShopCounter", new Vector3(1.8f, CoverHeight * 0.5f, 1.5f), new Vector3(3.2f, CoverHeight, 0.72f), coverMaterial, true);
-            CreateVisual(root, "ShopAccent", new Vector3(1.8f, CoverHeight + 0.08f, 1.5f), new Vector3(2.9f, 0.08f, 0.56f), accentMaterial);
+            CreateBlock(root, "ShopCounter", new Vector3(2.4f, CoverHeight * 0.5f, 1.9f), new Vector3(3.2f, CoverHeight, 0.72f), coverMaterial, true);
+            CreateVisual(root, "ShopAccent", new Vector3(2.4f, CoverHeight + 0.08f, 1.9f), new Vector3(2.9f, 0.08f, 0.56f), accentMaterial);
         }
 
         private void BuildBossArenaChunk(Transform root)
         {
-            CreateVisual(root, "ArenaPad", Vector3.zero, new Vector3(11.4f, 0.035f, 8.6f), roadMaterial);
-            CreateCover(root, new Vector3(-4.3f, 0f, 2.8f), new Vector2(1.25f, 0.72f), 0f);
-            CreateCover(root, new Vector3(4.3f, 0f, -2.8f), new Vector2(1.25f, 0.72f), 0f);
+            CreateVisual(root, "ArenaPad", Vector3.zero, new Vector3(15.0f, 0.035f, 11.2f), roadMaterial);
+            CreateCover(root, new Vector3(-5.8f, 0f, 3.6f), new Vector2(1.25f, 0.72f), 0f);
+            CreateCover(root, new Vector3(5.8f, 0f, -3.6f), new Vector2(1.25f, 0.72f), 0f);
 
             _exitMarker = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             _exitMarker.name = "NextStageEntrance";
             _exitMarker.transform.SetParent(root, false);
-            _exitMarker.transform.localPosition = new Vector3(4.7f, 0.06f, 3.2f);
+            _exitMarker.transform.localPosition = new Vector3(6.4f, 0.06f, 4.1f);
             _exitMarker.transform.localScale = new Vector3(1.15f, 0.06f, 1.15f);
             var collider = _exitMarker.GetComponent<Collider>();
             if (collider != null)
@@ -381,10 +383,10 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                 var nav = new NavCell
                 {
                     Center = AddNavNode(nodes, center),
-                    West = AddNavNode(nodes, center + new Vector3(-5.0f, 0f, 0f)),
-                    East = AddNavNode(nodes, center + new Vector3(5.0f, 0f, 0f)),
-                    South = AddNavNode(nodes, center + new Vector3(0f, 0f, -3.8f)),
-                    North = AddNavNode(nodes, center + new Vector3(0f, 0f, 3.8f))
+                    West = AddNavNode(nodes, center + new Vector3(-7.0f, 0f, 0f)),
+                    East = AddNavNode(nodes, center + new Vector3(7.0f, 0f, 0f)),
+                    South = AddNavNode(nodes, center + new Vector3(0f, 0f, -5.2f)),
+                    North = AddNavNode(nodes, center + new Vector3(0f, 0f, 5.2f))
                 };
                 cells[i] = nav;
                 AddEdge(edges, nav.Center, nav.West);
@@ -457,11 +459,11 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
         private void SpawnTreasure(BlockRuntime runtime)
         {
             if (runtime.Data.HasNormalChest)
-                SpawnTreasureTemplate(0, runtime, new Vector3(-4.2f, 0.03f, 3.0f), "Normal");
+                SpawnTreasureTemplate(0, runtime, new Vector3(-5.7f, 0.03f, 3.9f), "Normal");
             if (runtime.Data.HasSpikeChest)
-                SpawnTreasureTemplate(1, runtime, new Vector3(4.0f, 0.03f, 2.8f), "Spike");
+                SpawnTreasureTemplate(1, runtime, new Vector3(5.5f, 0.03f, 3.7f), "Spike");
             if (runtime.Data.HasMonsterChest)
-                SpawnTreasureTemplate(2, runtime, new Vector3(4.0f, 0.03f, 2.8f), "Monster");
+                SpawnTreasureTemplate(2, runtime, new Vector3(5.5f, 0.03f, 3.7f), "Monster");
         }
 
         private void SpawnTreasureTemplate(int templateIndex, BlockRuntime runtime, Vector3 localOffset, string label)
@@ -489,9 +491,9 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             var center = GetChunkCenter(runtime.Data.Coordinate);
             if (type == RogueliteBlockType.Boss)
             {
-                SpawnEnemy(runtime, 3, center + new Vector3(0f, 0.03f, 1.0f), ResolveBossHealthMultiplier(), 2.0f, 0);
+                SpawnEnemy(runtime, 3, center + new Vector3(0f, 0.03f, 1.4f), ResolveBossHealthMultiplier(), 2.0f, 0);
                 if (stageMap.StageIndex >= 2)
-                    SpawnEnemy(runtime, stageMap.StageIndex == 2 ? 1 : 2, center + new Vector3(-3.0f, 0.03f, -2.1f), 1f + 0.18f * (stageMap.StageIndex - 1), 1.25f, 1);
+                    SpawnEnemy(runtime, stageMap.StageIndex == 2 ? 1 : 2, center + new Vector3(-4.1f, 0.03f, -2.8f), 1f + 0.18f * (stageMap.StageIndex - 1), 1.25f, 1);
                 return;
             }
 
@@ -559,23 +561,23 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             {
                 return new[]
                 {
-                    new Vector3(-4.2f, 0.03f, -3.0f),
-                    new Vector3(-2.4f, 0.03f, -2.4f),
-                    new Vector3(-4.4f, 0.03f, 0.8f),
-                    new Vector3(0.0f, 0.03f, -3.2f),
-                    new Vector3(4.7f, 0.03f, -3.0f),
-                    new Vector3(-4.8f, 0.03f, 3.0f)
+                    new Vector3(-5.8f, 0.03f, -3.9f),
+                    new Vector3(-3.2f, 0.03f, -3.1f),
+                    new Vector3(-6.0f, 0.03f, 1.1f),
+                    new Vector3(0.0f, 0.03f, -4.2f),
+                    new Vector3(6.2f, 0.03f, -3.9f),
+                    new Vector3(-6.3f, 0.03f, 3.9f)
                 };
             }
 
             return new[]
             {
-                new Vector3(-4.2f, 0.03f, -2.8f),
-                new Vector3(4.2f, 0.03f, 2.8f),
-                new Vector3(-3.8f, 0.03f, 2.7f),
-                new Vector3(3.8f, 0.03f, -2.7f),
-                new Vector3(0f, 0.03f, 3.4f),
-                new Vector3(0f, 0.03f, -3.4f)
+                new Vector3(-5.8f, 0.03f, -3.8f),
+                new Vector3(5.8f, 0.03f, 3.8f),
+                new Vector3(-5.2f, 0.03f, 3.7f),
+                new Vector3(5.2f, 0.03f, -3.7f),
+                new Vector3(0f, 0.03f, 4.7f),
+                new Vector3(0f, 0.03f, -4.7f)
             };
         }
 
