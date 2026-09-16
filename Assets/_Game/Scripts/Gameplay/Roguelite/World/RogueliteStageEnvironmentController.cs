@@ -15,8 +15,11 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
     /// <summary>
     /// Independent environment layer for generated mobile-city blocks. It decorates each freshly
-    /// built StageRuntime with industrial silhouettes and tactical terrain without coupling those
-    /// rules to block traversal / reward code.
+    /// built StageRuntime with industrial silhouettes and recognizable Arknights terrain without
+    /// coupling those rules to block traversal / reward code.
+    ///
+    /// Pit and ballista hazards are intentionally retired from the current prototype direction.
+    /// Active Originium is the only authored terrain hazard created by this layer for now.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class RogueliteStageEnvironmentController : MonoBehaviour
@@ -34,7 +37,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         private Material _buildingAccentMaterial;
         private Material _originiumMaterial;
         private Material _hazardMaterial;
-        private Material _boltMaterial;
 
         public RogueliteCatastropheKind CurrentCatastrophe { get; private set; }
 
@@ -90,7 +92,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
             Debug.Log(
                 $"[ArknightsACT/Environment] Stage {stageMap.StageIndex} decorated. " +
-                $"Catastrophe={CurrentCatastrophe}, pits=disabled.",
+                $"Catastrophe={CurrentCatastrophe}, pits=disabled, ballista=disabled.",
                 this);
         }
 
@@ -102,8 +104,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
             if (boss)
             {
-                if (stageMap.StageIndex >= 2)
-                    CreateBallista(block, new Vector3(-5.2f, 0f, -1.4f), Vector3.right);
                 if (stageMap.StageIndex >= 3)
                     CreateOriginium(block, new Vector3(1.2f, 0f, 1.9f), new Vector2(3.0f, 1.7f));
                 return;
@@ -115,17 +115,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 var x = rng.NextDouble() < 0.5 ? -2.7f : 2.7f;
                 var z = (float)(rng.NextDouble() * 3.2 - 1.6);
                 CreateOriginium(block, new Vector3(x, 0f, z), new Vector2(2.7f, 1.55f));
-            }
-
-            // Pit hazards were retired from the prototype. Keep the field traversable and spend the
-            // environment budget on recognizable Arknights terrain such as Active Originium instead.
-            if (emergency ? rng.NextDouble() < 0.70 : rng.NextDouble() < 0.20)
-            {
-                var fromWest = rng.NextDouble() < 0.5;
-                CreateBallista(
-                    block,
-                    new Vector3(fromWest ? -5.6f : 5.6f, 0f, (float)(rng.NextDouble() * 3.0 - 1.5)),
-                    fromWest ? Vector3.right : Vector3.left);
             }
         }
 
@@ -152,25 +141,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 new Vector3(0f, 0.028f, 0f),
                 new Vector3(footprint.x, 0.055f, footprint.y),
                 _originiumMaterial);
-        }
-
-        private void CreateBallista(Transform parent, Vector3 localPosition, Vector3 direction)
-        {
-            var root = new GameObject("Hazard_Ballista");
-            root.transform.SetParent(parent, false);
-            root.transform.localPosition = localPosition;
-            root.transform.localRotation = Quaternion.LookRotation(direction, Vector3.up);
-
-            CreateVisual(root.transform, "Base", new Vector3(0f, 0.28f, 0f), new Vector3(0.70f, 0.56f, 0.78f), _buildingMaterial);
-            CreateVisual(root.transform, "Bow", new Vector3(0f, 0.62f, 0.18f), new Vector3(1.25f, 0.10f, 0.12f), _hazardMaterial);
-            CreateVisual(root.transform, "Rail", new Vector3(0f, 0.64f, 0.42f), new Vector3(0.12f, 0.10f, 0.86f), _buildingAccentMaterial);
-            CreateVisual(root.transform, "FireLane", new Vector3(0f, 0.026f, 5.2f), new Vector3(0.15f, 0.040f, 9.2f), _hazardMaterial);
-
-            root.AddComponent<BallistaHazard25D>().Configure(
-                root.transform.forward,
-                _boltMaterial,
-                2.45f,
-                16f + stageMap.StageIndex * 2f);
         }
 
         private void BuildIndustrialBackdrop(Transform parent)
@@ -240,7 +210,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 accent ?? _hazardMaterial ?? fallback,
                 new Color(0.31f, 0.18f, 0.035f),
                 "Runtime_OriginiumAmberPlaceholder");
-            _boltMaterial = CloneTint(accent ?? _hazardMaterial ?? fallback, new Color(0.96f, 0.62f, 0.14f), "Runtime_BallistaBolt");
         }
 
         private static Material FindMaterial(Renderer[] renderers, string materialName)
@@ -337,7 +306,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             }
             _ownedMaterials.Clear();
             _originiumMaterial = null;
-            _boltMaterial = null;
         }
     }
 }
