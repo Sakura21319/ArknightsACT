@@ -19,10 +19,20 @@ namespace ArknightsACT.Editor
         private const string UpgradeDir = DataRoot + "/LevelUpgrades";
         private const string SkillUpgradeDir = DataRoot + "/SkillUpgrades/Chen";
 
-        public static void Create(PrototypeRoomLoopController roomLoop, Transform player)
+        public static GameObject CreateExploration(Transform player)
         {
-            if (roomLoop == null || player == null)
-                return;
+            return CreateInternal(null, player, false);
+        }
+
+        public static GameObject Create(PrototypeRoomLoopController roomLoop, Transform player)
+        {
+            return CreateInternal(roomLoop, player, true);
+        }
+
+        private static GameObject CreateInternal(PrototypeRoomLoopController roomLoop, Transform player, bool createLegacyRoute)
+        {
+            if (player == null || (createLegacyRoute && roomLoop == null))
+                return null;
 
             EnsureFolder(CollectibleDir);
             EnsureFolder(UpgradeDir);
@@ -40,10 +50,11 @@ namespace ArknightsACT.Editor
                 Debug.LogError(
                     "[ArknightsACT/Roguelite] Player is missing progression inventory/profile components.",
                     player);
-                return;
+                return null;
             }
 
-            roomLoop.SetExternalContinueGate(true);
+            if (roomLoop != null)
+                roomLoop.SetExternalContinueGate(true);
 
             var root = new GameObject("[Roguelite]");
             root.SetActive(false);
@@ -65,10 +76,14 @@ namespace ArknightsACT.Editor
             var hud = root.AddComponent<RogueliteProgressHUD>();
             hud.Configure(runState);
 
-            var routes = root.AddComponent<RogueliteRouteController>();
-            routes.Configure(roomLoop, rewards, runState, player);
+            if (createLegacyRoute && roomLoop != null)
+            {
+                var routes = root.AddComponent<RogueliteRouteController>();
+                routes.Configure(roomLoop, rewards, runState, player);
+            }
 
             root.SetActive(true);
+            return root;
         }
 
         private static CollectibleDefinition[] BuildCollectiblePool()
