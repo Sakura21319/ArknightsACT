@@ -133,15 +133,12 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                             ApplyDamage(entity);
                             return true;
                         }
-
-                        // Enemy actors do not absorb this prototype city-defense projectile.
                         continue;
                     }
 
                     if (collider.isTrigger)
                         continue;
 
-                    // A real wall / cover blocks the bolt before any fallback player test.
                     return true;
                 }
             }
