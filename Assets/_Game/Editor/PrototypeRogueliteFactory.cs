@@ -48,6 +48,7 @@ namespace ArknightsACT.Editor
             var root = new GameObject("[Roguelite]");
             root.SetActive(false);
 
+            root.AddComponent<RewardSelectionCoordinator>();
             var runState = root.AddComponent<RogueliteRunState>();
 
             var rewards = root.AddComponent<RogueliteRewardController>();
