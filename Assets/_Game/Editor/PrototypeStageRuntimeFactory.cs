@@ -55,12 +55,13 @@ namespace ArknightsACT.Editor
                 Load("TacticalAccent"),
                 Load("HazardBand"));
 
-            // Local-only PRTS audio. Missing clips are allowed so the scene can still build before the
-            // downloader is run; the runtime controller emits one actionable warning instead of failing.
+            // Local-only PRTS audio. 反常光谱 is used as one continuously looping gameplay track;
+            // Ch'en battle voice clips are the Japanese voice set. Missing clips are tolerated so
+            // the scene can still build before the local-only downloader has been run.
             go.AddComponent<RoguelitePrototypeAudioController>().Configure(
                 player,
-                LoadAudio(PrtsGameplayAudioCatalog.ChernobogIntro.LocalPath),
-                LoadAudio(PrtsGameplayAudioCatalog.ChernobogLoop.LocalPath),
+                null,
+                LoadAudio(PrtsGameplayAudioCatalog.AbnormalSpectrum.LocalPath),
                 LoadAudio(PrtsGameplayAudioCatalog.ChenSkill1Sfx.LocalPath),
                 LoadAudio(PrtsGameplayAudioCatalog.ChenSkill2Sfx.LocalPath),
                 new[]
