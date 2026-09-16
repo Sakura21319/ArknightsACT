@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using ArknightsACT.Editor.PRTS;
+using ArknightsACT.Gameplay.Audio;
 using ArknightsACT.Gameplay.Roguelite.Rewards;
 using ArknightsACT.Gameplay.Roguelite.Routing;
 using ArknightsACT.Gameplay.Roguelite.World;
@@ -54,6 +55,25 @@ namespace ArknightsACT.Editor
                 Load("TacticalAccent"),
                 Load("HazardBand"));
 
+            // Local-only PRTS audio. Missing clips are allowed so the scene can still build before the
+            // downloader is run; the runtime controller emits one actionable warning instead of failing.
+            go.AddComponent<RoguelitePrototypeAudioController>().Configure(
+                player,
+                LoadAudio(PrtsGameplayAudioCatalog.ChernobogIntro.LocalPath),
+                LoadAudio(PrtsGameplayAudioCatalog.ChernobogLoop.LocalPath),
+                LoadAudio(PrtsGameplayAudioCatalog.ChenSkill1Sfx.LocalPath),
+                LoadAudio(PrtsGameplayAudioCatalog.ChenSkill2Sfx.LocalPath),
+                new[]
+                {
+                    LoadAudio(PrtsGameplayAudioCatalog.ChenVoice025.LocalPath),
+                    LoadAudio(PrtsGameplayAudioCatalog.ChenVoice026.LocalPath)
+                },
+                new[]
+                {
+                    LoadAudio(PrtsGameplayAudioCatalog.ChenVoice027.LocalPath),
+                    LoadAudio(PrtsGameplayAudioCatalog.ChenVoice028.LocalPath)
+                });
+
             // physical floor/layout -> district assignment -> modular presentation -> industrial shell ->
             // playable rooms/decks -> district-specific streets/facades -> legacy density cleanup -> dressing
             // collision -> lighting/chassis/deep base -> distant city/horizon -> containment -> x-ray visibility.
@@ -98,6 +118,13 @@ namespace ArknightsACT.Editor
             for (var i = 0; i < references.Length; i++)
                 textures[i] = AssetDatabase.LoadAssetAtPath<Texture2D>(references[i].LocalPath);
             return textures;
+        }
+
+        private static AudioClip LoadAudio(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return null;
+            return AssetDatabase.LoadAssetAtPath<AudioClip>(path);
         }
 
         private static Material Load(string name)
