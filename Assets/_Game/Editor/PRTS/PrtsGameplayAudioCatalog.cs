@@ -49,19 +49,14 @@ namespace ArknightsACT.Editor.PRTS
         private const string ChenVoicePage = "https://prts.wiki/w/%E9%99%88/%E8%AF%AD%E9%9F%B3%E8%AE%B0%E5%BD%95";
         private const string AudioDataPage = "https://prts.wiki/w/%E5%BE%AE%E4%BB%B6:Data_Audio";
 
-        public static readonly PrtsGameplayAudioAsset ChernobogIntro = new(
-            "BGM · 切尔诺伯格 Intro",
-            Root + "/BGM_Chernobog_Intro.mp3",
+        // Chapter 16 main-menu track "反常光谱". The original client asset path is
+        // Sound_Beta_2/Music/act16main/m_sys_act16main, which maps to the PRTS media path below.
+        public static readonly PrtsGameplayAudioAsset AbnormalSpectrum = new(
+            "BGM · 反常光谱",
+            Root + "/BGM_AbnormalSpectrum.mp3",
             MusicPage,
             PrtsGameplayAudioKind.Music,
-            AudioBase + "music/act9d2d0/m_bat_chernobog_intro.mp3");
-
-        public static readonly PrtsGameplayAudioAsset ChernobogLoop = new(
-            "BGM · 切尔诺伯格 Loop",
-            Root + "/BGM_Chernobog_Loop.mp3",
-            MusicPage,
-            PrtsGameplayAudioKind.Music,
-            AudioBase + "music/act9d2d0/m_bat_chernobog_loop.mp3");
+            AudioBase + "music/act16main/m_sys_act16main.mp3");
 
         // PRTS does not expose the previously guessed p_skill_* media paths. These two verified
         // Chixiao/story SFX are used as prototype presentation for the two ACT skill slots; they are
@@ -99,15 +94,14 @@ namespace ArknightsACT.Editor.PRTS
         public static readonly PrtsGameplayAudioAsset EnemyDeath = Combat(
             "敌人死亡", "Enemy_Death.mp3", "AVG/d_avg_bodyfalldown3");
 
-        public static readonly PrtsGameplayAudioAsset ChenVoice025 = Voice("CN_025", "战斗语音 1");
-        public static readonly PrtsGameplayAudioAsset ChenVoice026 = Voice("CN_026", "战斗语音 2");
-        public static readonly PrtsGameplayAudioAsset ChenVoice027 = Voice("CN_027", "战斗语音 3");
-        public static readonly PrtsGameplayAudioAsset ChenVoice028 = Voice("CN_028", "战斗语音 4");
+        public static readonly PrtsGameplayAudioAsset ChenVoice025 = Voice("CN_025", "作战中 1");
+        public static readonly PrtsGameplayAudioAsset ChenVoice026 = Voice("CN_026", "作战中 2");
+        public static readonly PrtsGameplayAudioAsset ChenVoice027 = Voice("CN_027", "作战中 3");
+        public static readonly PrtsGameplayAudioAsset ChenVoice028 = Voice("CN_028", "作战中 4");
 
         public static readonly PrtsGameplayAudioAsset[] All =
         {
-            ChernobogIntro,
-            ChernobogLoop,
+            AbnormalSpectrum,
             ChenSkill1Sfx,
             ChenSkill2Sfx,
             ChenAttackSwing1,
@@ -127,8 +121,7 @@ namespace ArknightsACT.Editor.PRTS
 
         public static readonly PrtsGameplayAudioAsset[] Bgm =
         {
-            ChernobogIntro,
-            ChernobogLoop
+            AbnormalSpectrum
         };
 
         public static readonly PrtsGameplayAudioAsset[] CombatAndSkills =
@@ -188,12 +181,12 @@ namespace ArknightsACT.Editor.PRTS
         {
             var fileId = id.ToLowerInvariant();
             return new PrtsGameplayAudioAsset(
-                $"陈 · {label} ({id})",
-                $"{Root}/Chen_Voice_{id}.mp3",
+                $"陈 · 日语{label} ({id})",
+                $"{Root}/Chen_Voice_JP_{id}.mp3",
                 ChenVoicePage,
                 PrtsGameplayAudioKind.Voice,
-                AudioBase + $"voice_cn/char_010_chen/{fileId}.mp3",
-                AudioBase + $"voice_cn/char_010_chen/{id}.mp3");
+                AudioBase + $"voice/char_010_chen/{fileId}.mp3",
+                AudioBase + $"voice/char_010_chen/{id}.mp3");
         }
 
         private static string NormalizeDataAudioPath(string path)
