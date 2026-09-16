@@ -144,22 +144,14 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             body.useGravity = false;
             root.AddComponent<ActiveOriginiumZone25D>().Configure(0.025f, 0.30f);
 
-            // A temporary red base is created here so the hazard never flashes purple while the late
-            // production presentation pass snaps it to a floor socket and replaces it with the full tile.
-            CreateVisual(root.transform, "OriginiumTile", new Vector3(0f, 0.028f, 0f), new Vector3(footprint.x, 0.055f, footprint.y), _originiumMaterial);
-            for (var i = 0; i < 5; i++)
-            {
-                var crystal = CreateVisual(
-                    root.transform,
-                    "OriginiumCrystal",
-                    new Vector3(
-                        -footprint.x * 0.35f + i * footprint.x * 0.17f,
-                        0.13f + (i % 2) * 0.05f,
-                        -footprint.y * 0.28f + (i % 3) * footprint.y * 0.22f),
-                    new Vector3(0.10f, 0.28f + (i % 2) * 0.12f, 0.10f),
-                    _originiumMaterial);
-                crystal.transform.localRotation = Quaternion.Euler(8f + i * 5f, i * 29f, 11f);
-            }
+            // Keep the early-frame placeholder subdued. The late presentation pass replaces it with
+            // the full amber-black shard bed, so do not create the old red plate / spike cluster here.
+            CreateVisual(
+                root.transform,
+                "OriginiumTile",
+                new Vector3(0f, 0.028f, 0f),
+                new Vector3(footprint.x, 0.055f, footprint.y),
+                _originiumMaterial);
         }
 
         private void CreateBallista(Transform parent, Vector3 localPosition, Vector3 direction)
@@ -244,7 +236,10 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             _buildingAccentMaterial = floor ?? sidewalk ?? cover ?? fallback;
             _hazardMaterial = hazard ?? accent ?? _buildingAccentMaterial ?? fallback;
 
-            _originiumMaterial = CloneTint(accent ?? _hazardMaterial ?? fallback, new Color(0.62f, 0.045f, 0.025f), "Runtime_OriginiumRed");
+            _originiumMaterial = CloneTint(
+                accent ?? _hazardMaterial ?? fallback,
+                new Color(0.31f, 0.18f, 0.035f),
+                "Runtime_OriginiumAmberPlaceholder");
             _boltMaterial = CloneTint(accent ?? _hazardMaterial ?? fallback, new Color(0.96f, 0.62f, 0.14f), "Runtime_BallistaBolt");
         }
 
