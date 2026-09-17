@@ -1,6 +1,8 @@
 using System;
 using System.Linq;
 using ArknightsACT.Gameplay.Abilities;
+using ArknightsACT.Gameplay.Characters;
+using ArknightsACT.Gameplay.Combat;
 using UnityEngine;
 
 namespace ArknightsACT.Gameplay.Characters.Chen
@@ -9,13 +11,17 @@ namespace ArknightsACT.Gameplay.Characters.Chen
     /// Playback bridge for Ch'en's real client battle-effect prefabs.
     ///
     /// This component deliberately does not draw replacement slash lines or generate textures.
-    /// It only instantiates original extracted GameObjects such as chen_skill_02_hit and
-    /// chen_skill_03_hit_01..10 when the matching gameplay event occurs.
+    /// It only instantiates original extracted GameObjects such as chen_attack_01_*, chen_skill_02_*
+    /// and chen_skill_03_hit_01..10 when the matching gameplay event occurs.
     /// </summary>
     [DisallowMultipleComponent]
-    [RequireComponent(typeof(PlayerSkillController), typeof(ChenSkill1), typeof(ChenSkill2))]
+    [RequireComponent(typeof(PlayerAttackController), typeof(PlayerSkillController), typeof(ChenSkill1), typeof(ChenSkill2))]
     public sealed class ChenOriginalSkillFxController : MonoBehaviour
     {
+        [Header("普通攻击 / original client FX")]
+        [SerializeField] private GameObject attackStartFx;
+        [SerializeField] private GameObject attackHitFx;
+
         [Header("赤霄·拔刀 / original client FX")]
         [SerializeField] private GameObject drawStartFx;
         [SerializeField] private GameObject drawHitFx;
@@ -31,6 +37,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         [SerializeField] private Vector3 hitWorldOffset = new(0f, 0.72f, 0f);
         [SerializeField, Min(0.25f)] private float fallbackLifetimeSeconds = 4f;
 
+        private PlayerAttackController _attacks;
         private PlayerSkillController _skills;
         private ChenSkill1 _draw;
         private ChenSkill2 _jueying;
@@ -38,6 +45,8 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         private bool _warnedMissing;
 
         public void Configure(
+            GameObject attackStart,
+            GameObject attackHit,
             GameObject drawStart,
             GameObject drawHit,
             GameObject drawBuff,
@@ -45,6 +54,8 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             GameObject jueyingStart02,
             GameObject[] jueyingHits)
         {
+            attackStartFx = attackStart;
+            attackHitFx = attackHit;
             drawStartFx = drawStart;
             drawHitFx = drawHit;
             drawBuffFx = drawBuff;
@@ -55,6 +66,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
 
         private void Awake()
         {
+            _attacks = GetComponent<PlayerAttackController>();
             _skills = GetComponent<PlayerSkillController>();
             _draw = GetComponent<ChenSkill1>();
             _jueying = GetComponent<ChenSkill2>();
@@ -62,6 +74,11 @@ namespace ArknightsACT.Gameplay.Characters.Chen
 
         private void OnEnable()
         {
+            if (_attacks != null)
+            {
+                _attacks.AttackStarted += OnAttackStarted;
+                _attacks.AttackHit += OnAttackHit;
+            }
             if (_skills != null)
                 _skills.SkillCastSucceeded += OnSkillCastSucceeded;
             if (_draw != null)
@@ -77,12 +94,27 @@ namespace ArknightsACT.Gameplay.Characters.Chen
 
         private void OnDisable()
         {
+            if (_attacks != null)
+            {
+                _attacks.AttackStarted -= OnAttackStarted;
+                _attacks.AttackHit -= OnAttackHit;
+            }
             if (_skills != null)
                 _skills.SkillCastSucceeded -= OnSkillCastSucceeded;
             if (_draw != null)
                 _draw.HitResolved -= OnDrawHitResolved;
             if (_jueying != null)
                 _jueying.StrikeResolved -= OnJueyingStrikeResolved;
+        }
+
+        private void OnAttackStarted(int comboIndex)
+        {
+            SpawnOnActor(attackStartFx, "chen_attack_01_start");
+        }
+
+        private void OnAttackHit(CombatEntity target)
+        {
+            SpawnAtTarget(attackHitFx, target != null ? target.transform : null, "chen_attack_01_hit");
         }
 
         private void OnSkillCastSucceeded(int slot)
@@ -183,20 +215,21 @@ namespace ArknightsACT.Gameplay.Characters.Chen
 
             var availableJueying = jueyingHitFx?.Count(item => item != null) ?? 0;
             var available =
+                (attackStartFx != null ? 1 : 0) +
+                (attackHitFx != null ? 1 : 0) +
                 (drawStartFx != null ? 1 : 0) +
                 (drawHitFx != null ? 1 : 0) +
                 (drawBuffFx != null ? 1 : 0) +
                 (jueyingStartFx != null ? 1 : 0) +
                 (jueyingStart02Fx != null ? 1 : 0) +
                 availableJueying;
-            if (available >= 15)
+            if (available >= 17)
                 return;
 
             _warnedMissing = true;
             Debug.LogWarning(
-                $"[ArknightsACT/ChenSkillFX] Original client skill FX are incomplete ({available}/15). " +
-                "No synthetic fallback will be drawn. Extract Ch'en battle FX from the game's " +
-                "battle/prefabs/effects AssetBundles and place the exported GameObject prefabs under " +
+                $"[ArknightsACT/ChenSkillFX] Original client combat FX are incomplete ({available}/17). " +
+                "No synthetic fallback will be drawn. Import Ch'en battle FX from an OHMS structured export into " +
                 "Assets/_Game/Art/FX/OriginalClient/Chen, then rebuild Prototype Scene.",
                 this);
         }
