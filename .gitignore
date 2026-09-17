@@ -26,6 +26,9 @@ Recordings/
 # Local prototype assets downloaded from PRTS. Do not redistribute through this repository.
 Assets/_Game/Art/**/PRTS/
 
+# Original game-client battle FX extracted locally from AssetBundles. Keep them out of source control.
+Assets/_Game/Art/FX/OriginalClient/
+
 # Generated prefabs reference local PRTS skeleton/atlas assets and therefore stay local as well.
 Assets/_Game/Generated/PRTS/
 
