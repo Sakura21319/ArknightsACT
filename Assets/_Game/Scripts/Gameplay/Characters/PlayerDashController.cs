@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using ArknightsACT.Combat;
 using ArknightsACT.Gameplay.Abilities;
@@ -25,6 +26,9 @@ namespace ArknightsACT.Gameplay.Characters
 
         public bool IsDashing { get; private set; }
         public bool IsInvulnerable => IsDashing;
+
+        public event Action DashStarted;
+        public event Action DashEnded;
 
         private bool IsDead => _entity != null && _entity.Health != null && _entity.Health.IsDead;
         private bool Uses25D => _controller3D != null && _body2D == null;
@@ -67,6 +71,7 @@ namespace ArknightsACT.Gameplay.Characters
         {
             IsDashing = true;
             _cooldownUntil = Time.time + dashCooldown;
+            DashStarted?.Invoke();
 
             if (Uses25D)
                 yield return Dash25D();
@@ -74,6 +79,7 @@ namespace ArknightsACT.Gameplay.Characters
                 yield return Dash2D();
 
             IsDashing = false;
+            DashEnded?.Invoke();
         }
 
         private IEnumerator Dash2D()
