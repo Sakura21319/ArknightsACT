@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using ArknightsACT.Combat;
@@ -32,6 +33,12 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         public string DisplayName => "赤霄·拔刀";
         public float CooldownRemaining => Mathf.Max(0f, _readyAt - Time.time);
         public bool IsCasting { get; private set; }
+
+        /// <summary>
+        /// Fired once for every enemy that actually receives damage from 赤霄·拔刀.
+        /// Original client skill-hit FX can bind to the struck target without guessing timing.
+        /// </summary>
+        public event Action<Transform> HitResolved;
 
         private void Awake()
         {
@@ -111,7 +118,10 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                     continue;
 
                 if (ApplyDamagePair(target, new Vector2(4.2f * facing, 0.9f)))
+                {
                     hitAny = true;
+                    HitResolved?.Invoke(target.transform);
+                }
             }
 
             ApplyFeedback(hitAny);
@@ -150,7 +160,10 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                     continue;
 
                 if (ApplyDamagePair(target, Vector2.zero))
+                {
                     hitAny = true;
+                    HitResolved?.Invoke(target.transform);
+                }
             }
 
             ApplyFeedback(hitAny);
