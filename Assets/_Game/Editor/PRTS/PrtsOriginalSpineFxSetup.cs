@@ -9,13 +9,12 @@ using UnityEngine;
 namespace ArknightsACT.Editor.PRTS
 {
     /// <summary>
-    /// Keeps the downloaded PRTS Spine data authoritative for Ch'en's combat effects.
+    /// Preserves the downloaded Ch'en character Spine render path.
     ///
-    /// Ch'en's default battle-front atlas contains the original BG/BG1..BG6 combat-effect regions.
-    /// The installed Spine runtime is designed to render additive slots in the normal PMA batch when
-    /// SkeletonRenderer.pmaVertexColors is enabled. Do not force a separate Additive material here:
-    /// doing so changes the extracted Arknights asset's render path and can make the authored effect
-    /// attachments disappear even though the animation and setup log still succeed.
+    /// The BG/BG1..BG6 regions in the character battle Spine are character-level presentation
+    /// attachments, not the independent chen_skill_02_* / chen_skill_03_* battle-effect prefabs.
+    /// They are currently reserved for dash presentation. The actual skill slash FX are loaded
+    /// separately from original client battle/prefabs/effects assets.
     /// </summary>
     internal static class PrtsOriginalSpineFxSetup
     {
@@ -40,15 +39,15 @@ namespace ArknightsACT.Editor.PRTS
 
                 var atlasFx = DescribeAtlasEffectRegions(descriptor);
                 Debug.Log(
-                    "[ArknightsACT/PRTS] Ch'en original Spine FX prepared with native PMA additive slots " +
-                    "(no synthetic VFX, no forced Additive replacement material). " + atlasFx,
+                    "[ArknightsACT/PRTS] Ch'en character-level Spine FX prepared with native PMA additive slots. " +
+                    "These are not the independent skill slash FX. " + atlasFx,
                     skeletonDataAsset);
                 return true;
             }
             catch (Exception exception)
             {
                 Debug.LogWarning(
-                    "[ArknightsACT/PRTS] Could not prepare Ch'en original Spine FX: " +
+                    "[ArknightsACT/PRTS] Could not prepare Ch'en character-level Spine FX: " +
                     exception.GetBaseException().Message,
                     skeletonDataAsset);
                 return false;
@@ -89,8 +88,6 @@ namespace ArknightsACT.Editor.PRTS
             if (applyAdditive == null)
                 throw new MissingFieldException("SkeletonDataAsset.blendModeMaterials.applyAdditiveMaterial");
 
-            // Spine's normal PMA shader + pmaVertexColors handles additive slots in one batch.
-            // The previous explicit-material experiment is intentionally reverted here.
             if (applyAdditive.boolValue)
             {
                 applyAdditive.boolValue = false;
@@ -127,7 +124,7 @@ namespace ArknightsACT.Editor.PRTS
         {
             var atlasPath = Path.Combine(descriptor.TargetDirectory, descriptor.BaseName + ".atlas.txt");
             if (!File.Exists(atlasPath))
-                return "Atlas effect-region check: atlas text missing.";
+                return "Atlas character-FX check: atlas text missing.";
 
             var lines = File.ReadAllLines(atlasPath);
             var regions = lines
@@ -139,8 +136,8 @@ namespace ArknightsACT.Editor.PRTS
                 .ToArray();
 
             return regions.Length > 0
-                ? "Original atlas FX regions: " + string.Join(", ", regions) + "."
-                : "Atlas effect-region check: no BG-family regions found.";
+                ? "Character atlas BG regions: " + string.Join(", ", regions) + "."
+                : "Atlas character-FX check: no BG-family regions found.";
         }
     }
 }
