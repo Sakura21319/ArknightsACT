@@ -47,6 +47,12 @@ namespace ArknightsACT.Editor
             PrtsGameplayAudioDownloader.VerifyLocalAudio();
         }
 
+        [UnityEditor.MenuItem("ArknightsACT/Assets/OHMS Effect Importer", false, 130)]
+        private static void OpenOhmsEffectImporter()
+        {
+            OHMS.OhmsStructuredFxImporterWindow.Open();
+        }
+
         private static void InvokeHidden(Type type, string methodName)
         {
             var method = type.GetMethod(methodName, BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
