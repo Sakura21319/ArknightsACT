@@ -14,6 +14,7 @@ namespace ArknightsACT.Editor.OHMS
         private string _include = string.Empty;
         private string _exclude = string.Empty;
         private bool _preserveLayers;
+        private bool _replaceExistingPackage = true;
         private Vector2 _scroll;
         private OhmsStructuredFxImporter.ScanResult _scan;
         private string _status = "Choose an OHMS structured export folder (assets.json + things/).";
@@ -21,7 +22,7 @@ namespace ArknightsACT.Editor.OHMS
         internal static void Open()
         {
             var window = GetWindow<OhmsStructuredFxImporterWindow>("OHMS FX Importer");
-            window.minSize = new Vector2(620f, 520f);
+            window.minSize = new Vector2(620f, 540f);
             window.Show();
         }
 
@@ -40,6 +41,9 @@ namespace ArknightsACT.Editor.OHMS
             _include = EditorGUILayout.TextField("Include tokens", _include);
             _exclude = EditorGUILayout.TextField("Exclude tokens", _exclude);
             _preserveLayers = EditorGUILayout.ToggleLeft("Preserve original Unity layers (normally leave OFF)", _preserveLayers);
+            _replaceExistingPackage = EditorGUILayout.ToggleLeft(
+                "Replace existing imported package before rebuild (recommended)",
+                _replaceExistingPackage);
 
             using (new EditorGUILayout.HorizontalScope())
             {
@@ -113,6 +117,18 @@ namespace ArknightsACT.Editor.OHMS
         {
             try
             {
+                if (_replaceExistingPackage)
+                {
+                    var root = (_outputRoot ?? string.Empty).Replace('\\', '/').TrimEnd('/');
+                    var package = (_packageName ?? string.Empty).Trim();
+                    var packagePath = string.IsNullOrWhiteSpace(package) ? string.Empty : $"{root}/{package}";
+                    if (!string.IsNullOrWhiteSpace(packagePath) && AssetDatabase.IsValidFolder(packagePath))
+                    {
+                        AssetDatabase.DeleteAsset(packagePath);
+                        AssetDatabase.Refresh();
+                    }
+                }
+
                 var report = OhmsStructuredFxImporter.Import(new OhmsStructuredFxImporter.ImportOptions
                 {
                     SourceRoot = _sourceFolder,
