@@ -15,7 +15,8 @@ namespace ArknightsACT.Gameplay.Characters.Chen
     /// and chen_skill_03_hit_01..10 when the matching gameplay event occurs.
     /// </summary>
     [DisallowMultipleComponent]
-    [RequireComponent(typeof(PlayerAttackController), typeof(PlayerSkillController), typeof(ChenSkill1), typeof(ChenSkill2))]
+    [RequireComponent(typeof(PlayerAttackController), typeof(PlayerSkillController), typeof(ChenSkill1))]
+    [RequireComponent(typeof(ChenSkill2))]
     public sealed class ChenOriginalSkillFxController : MonoBehaviour
     {
         [Header("普通攻击 / original client FX")]
