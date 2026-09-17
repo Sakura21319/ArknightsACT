@@ -12,13 +12,15 @@ namespace ArknightsACT.Editor.PRTS
     /// <summary>
     /// Local-only catalog for Ch'en's independent battle effect prefabs.
     /// These are NOT character Spine attachments. The client gamedata references them by the
-    /// chen_skill_02_* and chen_skill_03_* keys and the source bundles live under
+    /// chen_attack_01_*, chen_skill_02_* and chen_skill_03_* keys and the source bundles live under
     /// battle/prefabs/effects in the original game client.
     /// </summary>
     internal static class ChenOriginalSkillFxCatalog
     {
         public const string Root = "Assets/_Game/Art/FX/OriginalClient/Chen";
 
+        public const string AttackStart = "chen_attack_01_start";
+        public const string AttackHit = "chen_attack_01_hit";
         public const string DrawStart = "chen_skill_02_start";
         public const string DrawHit = "chen_skill_02_hit";
         public const string DrawBuff = "chen_skill_02_buff";
@@ -31,6 +33,8 @@ namespace ArknightsACT.Editor.PRTS
 
         public static readonly string[] ExpectedKeys = new[]
             {
+                AttackStart,
+                AttackHit,
                 DrawStart,
                 DrawHit,
                 DrawBuff,
@@ -48,6 +52,8 @@ namespace ArknightsACT.Editor.PRTS
             var controller = owner.GetComponent<ChenOriginalSkillFxController>() ??
                              owner.AddComponent<ChenOriginalSkillFxController>();
             controller.Configure(
+                ResolveGameObject(AttackStart),
+                ResolveGameObject(AttackHit),
                 ResolveGameObject(DrawStart),
                 ResolveGameObject(DrawHit),
                 ResolveGameObject(DrawBuff),
@@ -59,14 +65,14 @@ namespace ArknightsACT.Editor.PRTS
             if (available == ExpectedKeys.Length)
             {
                 Debug.Log(
-                    $"[ArknightsACT/ChenSkillFX] Loaded all {available}/{ExpectedKeys.Length} original client skill FX from {Root}.",
+                    $"[ArknightsACT/ChenSkillFX] Loaded all {available}/{ExpectedKeys.Length} original client combat FX from {Root}.",
                     owner);
             }
             else
             {
                 var missing = ExpectedKeys.Where(key => ResolveGameObject(key) == null).ToArray();
                 Debug.LogWarning(
-                    $"[ArknightsACT/ChenSkillFX] Original client skill FX available: {available}/{ExpectedKeys.Length}. " +
+                    $"[ArknightsACT/ChenSkillFX] Original client combat FX available: {available}/{ExpectedKeys.Length}. " +
                     $"Missing: {string.Join(", ", missing)}.\n" +
                     "Source category: game client battle/prefabs/effects. No generated slash fallback is used.",
                     owner);
@@ -88,7 +94,7 @@ namespace ArknightsACT.Editor.PRTS
             if (!AssetDatabase.IsValidFolder(Root))
                 return null;
 
-            // AssetRipper/ArkStudio output can preserve a nested source-bundle directory. Search
+            // OHMS/AssetRipper/ArkStudio output can preserve nested source-bundle directories. Search
             // recursively by the authoritative client key so the user does not need to flatten it.
             var guids = AssetDatabase.FindAssets(key, new[] { Root });
             for (var i = 0; i < guids.Length; i++)
