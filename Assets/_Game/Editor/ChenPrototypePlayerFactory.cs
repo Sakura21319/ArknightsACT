@@ -61,7 +61,7 @@ namespace ArknightsACT.Editor
             AddSharedGameplay(go, attacks);
             go.AddComponent<PlayerMotor2D>();
             go.AddComponent<ChenPresentationDriver2D>();
-            go.AddComponent<ChenOriginalSpineFxVisibilityController>();
+            AttachOriginalFx(go);
             go.AddComponent<DamageTintFlash2D>();
             go.AddComponent<WorldHealthBar2D>();
             go.AddComponent<DamageNumberEmitter2D>();
@@ -112,12 +112,26 @@ namespace ArknightsACT.Editor
             }
 
             go.AddComponent<ChenPresentationDriver25D>();
-            go.AddComponent<ChenOriginalSpineFxVisibilityController>();
+            AttachOriginalFx(go);
             go.AddComponent<DamageTintFlash2D>();
             go.AddComponent<WorldHealthBar2D>();
             go.AddComponent<DamageNumberEmitter2D>();
             go.SetActive(true);
             return go;
+        }
+
+        private static void AttachOriginalFx(GameObject go)
+        {
+            // Character-level Spine BG effects are not the skill slash effects. Keep that visual
+            // family reserved for dash only, as a light character after-image/accent.
+            var characterFx = go.AddComponent<ChenOriginalSpineFxVisibilityController>();
+            characterFx.enabled = false;
+            go.AddComponent<ChenDashSpineFxGateController>().Configure(characterFx);
+
+            // Actual skill slashes come from independent game-client battle/prefabs/effects assets.
+            // The local catalog wires them when extracted prefabs are present; there is no synthetic
+            // LineRenderer or generated slash fallback.
+            ChenOriginalSkillFxCatalog.Configure(go);
         }
 
         private static void AttachMotionRetarget(GameObject owner, Transform presentationParent, GameObject combatPresentation)
