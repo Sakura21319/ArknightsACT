@@ -1,7 +1,7 @@
 {
   "name": "Game.Editor",
   "rootNamespace": "ArknightsACT.Editor",
-  "references": ["Game.Core", "Game.Combat", "Game.Gameplay"],
+  "references": ["Game.Core", "Game.Combat", "Game.Gameplay", "UnityEngine.ParticleSystemModule"],
   "includePlatforms": ["Editor"],
   "autoReferenced": true
 }

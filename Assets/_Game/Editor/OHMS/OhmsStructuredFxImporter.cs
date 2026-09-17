@@ -118,6 +118,75 @@ namespace ArknightsACT.Editor.OHMS
         }
 
         [Serializable]
+        private sealed class ParticleSystemDump
+        {
+            public float lengthInSec;
+            public float simulationSpeed;
+            public bool looping;
+            public bool prewarm;
+            public bool playOnAwake;
+            public bool useUnscaledTime;
+            public ScalarCurveDump startDelay;
+            public InitialModuleDump InitialModule;
+            public EmissionModuleDump EmissionModule;
+        }
+
+        // OHMS writes the values exposed by ParticleSystem.main below the
+        // "InitialModule" object.  Keeping this nesting is important: reading
+        // startLifetime/startSpeed from the root silently leaves Unity's default
+        // 0.0001s lifetime, which makes every imported effect invisible.
+        [Serializable]
+        private sealed class InitialModuleDump
+        {
+            public ScalarCurveDump startLifetime;
+            public ScalarCurveDump startSpeed;
+            public ScalarCurveDump startSize;
+            public ScalarCurveDump startRotation;
+            public ScalarCurveDump gravityModifier;
+            public int maxNumParticles;
+            public ParticleColorDump startColor;
+        }
+
+        [Serializable]
+        private sealed class EmissionModuleDump
+        {
+            public bool enabled;
+            public ScalarCurveDump rateOverTime;
+            public ScalarCurveDump rateOverDistance;
+            public int m_BurstCount;
+            public BurstDump[] m_Bursts;
+        }
+
+        [Serializable]
+        private sealed class BurstDump
+        {
+            public float time;
+            public ScalarCurveDump countCurve;
+            public int cycleCount;
+            public float repeatInterval;
+            public float probability;
+        }
+
+        [Serializable]
+        private sealed class ScalarCurveDump
+        {
+            public float scalar;
+
+            // Some exports use one of these fields for a two-constant curve.
+            // The scalar field remains the authoritative value for constant and
+            // curve modes, but retaining the fields makes the payload forward
+            // compatible and lets us recover a useful value when scalar is zero.
+            public int minMaxState;
+            public float minScalar;
+        }
+
+        [Serializable]
+        private sealed class ParticleColorDump
+        {
+            public SerializedColor minColor;
+        }
+
+        [Serializable]
         private sealed class MeshFilterDump
         {
             public PPtr m_Mesh;
@@ -184,6 +253,8 @@ namespace ArknightsACT.Editor.OHMS
         {
             public string SourceRoot;
             public string PackageName;
+            public int StagedJsonPayloads;
+            public int NormalizedPointers;
             public List<AssetRecord> RootGameObjects = new();
             public Dictionary<string, int> TypeCounts = new(StringComparer.OrdinalIgnoreCase);
         }
@@ -208,6 +279,8 @@ namespace ArknightsACT.Editor.OHMS
             public int MeshesCreated;
             public int UnknownMonoBehaviours;
             public int MissingAnimatorPayloads;
+            public int StagedJsonPayloads;
+            public int NormalizedPointers;
             public readonly List<string> UnresolvedReferences = new();
             public readonly List<string> Warnings = new();
 
@@ -217,6 +290,7 @@ namespace ArknightsACT.Editor.OHMS
                     $"Prefabs={PrefabsCreated}, GameObjects={GameObjectsCreated}, ParticleSystems={ParticleSystemsCreated}, " +
                     $"Materials={MaterialsCreated}, Textures={TexturesCreated}, Meshes={MeshesCreated}, " +
                     $"UnknownMonoBehaviours={UnknownMonoBehaviours}, MissingAnimatorPayloads={MissingAnimatorPayloads}, " +
+                    $"StagedJson={StagedJsonPayloads}, NormalizedPointers={NormalizedPointers}, " +
                     $"UnresolvedRefs={UnresolvedReferences.Count}";
             }
         }
@@ -236,6 +310,8 @@ namespace ArknightsACT.Editor.OHMS
             public readonly Dictionary<long, Material> Materials = new();
             public readonly Dictionary<long, Texture2D> Textures = new();
             public readonly Dictionary<long, Mesh> Meshes = new();
+            public Material MissingMaterialFallback;
+            public Texture2D MissingTextureFallback;
             public ImportReport Report = new();
         }
 
@@ -247,20 +323,25 @@ namespace ArknightsACT.Editor.OHMS
             if (!TryResolveSourceRoot(selectedPath, out var sourceRoot, out error))
                 return false;
 
-            if (!TryReadIndex(sourceRoot, out var records, out error))
+            if (!TryPrepareSource(sourceRoot, out var staged, out error))
+                return false;
+
+            if (!TryReadIndex(staged.StagingRoot, out var records, out error))
                 return false;
 
             var context = new ImportContext
             {
-                SourceRoot = sourceRoot,
-                ThingsRoot = Path.Combine(sourceRoot, "things")
+                SourceRoot = staged.StagingRoot,
+                ThingsRoot = Path.Combine(staged.StagingRoot, "things")
             };
             IndexRecords(context, records);
 
             scan = new ScanResult
             {
                 SourceRoot = sourceRoot,
-                PackageName = ToPackageName(new DirectoryInfo(sourceRoot).Name)
+                PackageName = ToPackageName(new DirectoryInfo(sourceRoot).Name),
+                StagedJsonPayloads = staged.JsonPayloads,
+                NormalizedPointers = staged.RewrittenPointers
             };
 
             foreach (var group in records.GroupBy(record => record.Type?.name ?? "Unknown"))
@@ -288,7 +369,9 @@ namespace ArknightsACT.Editor.OHMS
                 throw new ArgumentNullException(nameof(options));
             if (!TryResolveSourceRoot(options.SourceRoot, out var sourceRoot, out var error))
                 throw new InvalidOperationException(error);
-            if (!TryReadIndex(sourceRoot, out var records, out error))
+            if (!TryPrepareSource(sourceRoot, out var staged, out error))
+                throw new InvalidOperationException(error);
+            if (!TryReadIndex(staged.StagingRoot, out var records, out error))
                 throw new InvalidOperationException(error);
 
             var packageName = string.IsNullOrWhiteSpace(options.PackageName)
@@ -313,14 +396,16 @@ namespace ArknightsACT.Editor.OHMS
             var context = new ImportContext
             {
                 Options = options,
-                SourceRoot = sourceRoot,
-                ThingsRoot = Path.Combine(sourceRoot, "things"),
+                SourceRoot = staged.StagingRoot,
+                ThingsRoot = Path.Combine(staged.StagingRoot, "things"),
                 PackageRoot = packageRoot,
                 PrefabRoot = prefabRoot,
                 MaterialRoot = materialRoot,
                 TextureRoot = textureRoot,
                 MeshRoot = meshRoot
             };
+            context.Report.StagedJsonPayloads = staged.JsonPayloads;
+            context.Report.NormalizedPointers = staged.RewrittenPointers;
             IndexRecords(context, records);
 
             var candidates = records
@@ -334,6 +419,7 @@ namespace ArknightsACT.Editor.OHMS
             if (candidates.Length == 0)
             {
                 context.Report.Warnings.Add("No root GameObjects matched the current include/exclude filters.");
+                WriteReport(context);
                 return context.Report;
             }
 
@@ -348,7 +434,17 @@ namespace ArknightsACT.Editor.OHMS
                         "OHMS Effect Importer",
                         $"Rebuilding {record.Name} ({i + 1}/{candidates.Length})",
                         candidates.Length <= 1 ? 1f : (float)i / candidates.Length);
-                    ImportRootPrefab(context, record);
+                    try
+                    {
+                        ImportRootPrefab(context, record);
+                    }
+                    catch (Exception exception)
+                    {
+                        context.Report.Warnings.Add(
+                            $"Failed to rebuild root GameObject '{record.Name}' (PathID {record.PathID}): " +
+                            exception.Message);
+                        Debug.LogException(exception);
+                    }
                 }
             }
             finally
@@ -461,9 +557,15 @@ namespace ArknightsACT.Editor.OHMS
 
             foreach (var record in components.Where(record => IsType(record, "ParticleSystem")))
             {
-                var component = go.GetComponent<ParticleSystem>() ?? go.AddComponent<ParticleSystem>();
-                ApplyEditorJson(context, record, component);
-                context.Report.ParticleSystemsCreated++;
+                var component = GetOrAddComponent<ParticleSystem>(go);
+                if (component == null)
+                {
+                    context.Report.Warnings.Add($"Could not attach ParticleSystem to '{go.name}'.");
+                    continue;
+                }
+
+                if (ApplyParticleSystemSettings(context, record, component))
+                    context.Report.ParticleSystemsCreated++;
             }
 
             foreach (var record in components.Where(record => IsType(record, "ParticleSystemRenderer")))
@@ -471,39 +573,64 @@ namespace ArknightsACT.Editor.OHMS
                 var renderer = go.GetComponent<ParticleSystemRenderer>();
                 if (renderer == null)
                 {
-                    var system = go.GetComponent<ParticleSystem>() ?? go.AddComponent<ParticleSystem>();
-                    renderer = system.GetComponent<ParticleSystemRenderer>();
+                    var system = GetOrAddComponent<ParticleSystem>(go);
+                    if (system == null)
+                    {
+                        context.Report.Warnings.Add(
+                            $"Could not attach ParticleSystem required by renderer on '{go.name}'.");
+                        continue;
+                    }
+
+                    renderer = go.GetComponent<ParticleSystemRenderer>();
+                    if (renderer == null)
+                    {
+                        context.Report.Warnings.Add(
+                            $"ParticleSystemRenderer was not created with ParticleSystem on '{go.name}'.");
+                        continue;
+                    }
                 }
-                ApplyEditorJson(context, record, renderer);
+                renderer.enabled = true;
                 ApplyRendererMaterials(context, record, renderer, go.name);
             }
 
             foreach (var record in components.Where(record => IsType(record, "MeshFilter")))
             {
-                var filter = go.GetComponent<MeshFilter>() ?? go.AddComponent<MeshFilter>();
-                ApplyEditorJson(context, record, filter);
+                var filter = GetOrAddComponent<MeshFilter>(go);
+                if (filter == null)
+                {
+                    context.Report.Warnings.Add($"Could not attach MeshFilter to '{go.name}'.");
+                    continue;
+                }
+
+                // MeshFilter only carries m_GameObject and m_Mesh in OHMS. Applying its raw JSON would
+                // reapply source-object PPtrs to a newly created component, so bind the rebuilt Mesh only.
                 if (TryReadJson<MeshFilterDump>(context, record, out var filterDump, out _) && filterDump.m_Mesh != null)
                     filter.sharedMesh = ResolveMesh(context, filterDump.m_Mesh, go.name);
             }
 
             foreach (var record in components.Where(record => IsType(record, "MeshRenderer")))
             {
-                var renderer = go.GetComponent<MeshRenderer>() ?? go.AddComponent<MeshRenderer>();
-                ApplyEditorJson(context, record, renderer);
+                var renderer = GetOrAddComponent<MeshRenderer>(go);
+                if (renderer == null)
+                    continue;
+                renderer.enabled = true;
                 ApplyRendererMaterials(context, record, renderer, go.name);
             }
 
             foreach (var record in components.Where(record => IsType(record, "TrailRenderer")))
             {
-                var renderer = go.GetComponent<TrailRenderer>() ?? go.AddComponent<TrailRenderer>();
-                ApplyEditorJson(context, record, renderer);
+                var renderer = GetOrAddComponent<TrailRenderer>(go);
+                if (renderer == null)
+                    continue;
+                renderer.enabled = true;
                 ApplyRendererMaterials(context, record, renderer, go.name);
             }
 
             foreach (var record in components.Where(record => IsType(record, "Animation")))
             {
-                var animation = go.GetComponent<Animation>() ?? go.AddComponent<Animation>();
-                ApplyEditorJson(context, record, animation);
+                var animation = GetOrAddComponent<Animation>(go);
+                if (animation != null)
+                    animation.enabled = true;
                 context.Report.Warnings.Add(
                     $"Legacy Animation component on '{go.name}' was rebuilt, but OHMS does not export AnimationClip payloads in this package; clips may be missing.");
             }
@@ -534,13 +661,201 @@ namespace ArknightsACT.Editor.OHMS
             Renderer renderer,
             string ownerName)
         {
-            if (renderer == null || !TryReadJson<RendererDump>(context, record, out var dump, out _) || dump.m_Materials == null)
+            if (renderer == null || !TryReadJson<RendererDump>(context, record, out var dump, out _))
                 return;
+
+            if (dump.m_Materials == null || dump.m_Materials.Length == 0)
+            {
+                renderer.sharedMaterials = new[] { GetMissingMaterialFallback(context) };
+                return;
+            }
 
             var materials = new Material[dump.m_Materials.Length];
             for (var i = 0; i < materials.Length; i++)
-                materials[i] = ResolveMaterial(context, dump.m_Materials[i], ownerName);
+            {
+                var pointer = dump.m_Materials[i];
+                materials[i] = ResolveMaterial(context, pointer, ownerName);
+                // Null material slots fall back to Unity's built-in particle material. That shader is
+                // incompatible with URP and renders magenta, so make every unresolved/empty slot explicit.
+                if (materials[i] == null)
+                    materials[i] = GetMissingMaterialFallback(context);
+            }
             renderer.sharedMaterials = materials;
+        }
+
+        private static Material GetMissingMaterialFallback(ImportContext context)
+        {
+            if (context.MissingMaterialFallback != null)
+                return context.MissingMaterialFallback;
+
+            var shader = Shader.Find(ShaderName) ??
+                         Shader.Find("Universal Render Pipeline/Unlit") ??
+                         Shader.Find("Unlit/Color") ??
+                         Shader.Find("Sprites/Default");
+            if (shader == null)
+                return null;
+
+            var material = new Material(shader)
+            {
+                name = "OHMS_MissingExternalMaterial",
+                renderQueue = (int)RenderQueue.Transparent
+            };
+            var fallbackTexture = GetMissingTextureFallback(context);
+            if (material.HasProperty("_MainTex"))
+                material.SetTexture("_MainTex", fallbackTexture);
+            if (material.HasProperty("_Color"))
+                material.SetColor("_Color", new Color(1f, 0.22f, 0.025f, 0.92f));
+            if (material.HasProperty("_TintColor"))
+                material.SetColor("_TintColor", Color.white);
+            if (material.HasProperty("_SrcBlend"))
+                material.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
+            if (material.HasProperty("_DstBlend"))
+                material.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
+            if (material.HasProperty("_ZWrite"))
+                material.SetFloat("_ZWrite", 0f);
+
+            var assetPath = $"{context.MaterialRoot}/OHMS_MissingExternalMaterial.mat";
+            var existing = AssetDatabase.LoadAssetAtPath<Material>(assetPath);
+            if (existing != null)
+            {
+                UnityEngine.Object.DestroyImmediate(material);
+                if (existing.HasProperty("_MainTex"))
+                    existing.SetTexture("_MainTex", fallbackTexture);
+                if (existing.HasProperty("_Color"))
+                    existing.SetColor("_Color", new Color(1f, 0.22f, 0.025f, 0.92f));
+                context.MissingMaterialFallback = existing;
+                return existing;
+            }
+
+            AssetDatabase.CreateAsset(material, assetPath);
+            context.MissingMaterialFallback = material;
+            context.Report.MaterialsCreated++;
+            context.Report.Warnings.Add(
+                "One or more external materials were absent from the structured export; " +
+                "affected renderer slots use a visible URP fallback instead of Unity's magenta default material.");
+            return material;
+        }
+
+        private static Texture2D GetMissingTextureFallback(ImportContext context)
+        {
+            if (context.MissingTextureFallback != null)
+                return context.MissingTextureFallback;
+
+            const int size = 64;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false, true)
+            {
+                name = "OHMS_MissingExternalTexture",
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear
+            };
+            var pixels = new Color[size * size];
+            for (var y = 0; y < size; y++)
+            {
+                for (var x = 0; x < size; x++)
+                {
+                    var dx = (x + 0.5f) / size * 2f - 1f;
+                    var dy = (y + 0.5f) / size * 2f - 1f;
+                    var radius = Mathf.Sqrt(dx * dx + dy * dy);
+                    var alpha = Mathf.Clamp01((1f - radius) * 2.2f);
+                    pixels[y * size + x] = new Color(1f, 1f, 1f, alpha);
+                }
+            }
+            texture.SetPixels(pixels);
+            texture.Apply(false, true);
+
+            var assetPath = $"{context.TextureRoot}/OHMS_MissingExternalTexture.asset";
+            var existing = AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
+            if (existing != null)
+            {
+                UnityEngine.Object.DestroyImmediate(texture);
+                context.MissingTextureFallback = existing;
+                return existing;
+            }
+
+            AssetDatabase.CreateAsset(texture, assetPath);
+            context.MissingTextureFallback = texture;
+            return texture;
+        }
+
+        private static bool ApplyParticleSystemSettings(
+            ImportContext context,
+            AssetRecord record,
+            ParticleSystem system)
+        {
+            if (system == null || !TryReadJson<ParticleSystemDump>(context, record, out var dump, out _))
+                return false;
+
+            var main = system.main;
+            if (dump.lengthInSec > 0f)
+                main.duration = dump.lengthInSec;
+            if (dump.simulationSpeed > 0f)
+                main.simulationSpeed = dump.simulationSpeed;
+            main.loop = dump.looping;
+            main.prewarm = dump.prewarm;
+            main.playOnAwake = dump.playOnAwake;
+            main.useUnscaledTime = dump.useUnscaledTime;
+            if (dump.startDelay != null)
+                main.startDelay = Mathf.Max(0f, dump.startDelay.scalar);
+
+            // OHMS stores the main-module fields under InitialModule.  These
+            // assignments deliberately use the exported scalar values instead
+            // of Unity's newly-created component defaults.
+            var initial = dump.InitialModule;
+            if (initial != null)
+            {
+                if (initial.startLifetime != null)
+                    main.startLifetime = Mathf.Max(0.0001f, initial.startLifetime.scalar);
+                if (initial.startSpeed != null)
+                    main.startSpeed = initial.startSpeed.scalar;
+                if (initial.startSize != null)
+                    main.startSize = Mathf.Max(0f, initial.startSize.scalar);
+                if (initial.startRotation != null)
+                    main.startRotation = initial.startRotation.scalar;
+                if (initial.gravityModifier != null)
+                    main.gravityModifier = initial.gravityModifier.scalar;
+                if (initial.maxNumParticles > 0)
+                    main.maxParticles = initial.maxNumParticles;
+                if (initial.startColor?.minColor != null)
+                    main.startColor = initial.startColor.minColor.ToColor();
+            }
+
+            // Rebuild the basic emission contract as well.  Without this, a
+            // newly-created ParticleSystem has Unity's defaults rather than the
+            // exported burst/rate, and burst-only effects never emit anything.
+            var emissionDump = dump.EmissionModule;
+            if (emissionDump != null)
+            {
+                var emission = system.emission;
+                emission.enabled = emissionDump.enabled;
+                if (emissionDump.rateOverTime != null)
+                    emission.rateOverTime = Mathf.Max(0f, emissionDump.rateOverTime.scalar);
+                if (emissionDump.rateOverDistance != null)
+                    emission.rateOverDistance = Mathf.Max(0f, emissionDump.rateOverDistance.scalar);
+
+                if (emissionDump.m_BurstCount > 0 && emissionDump.m_Bursts != null)
+                {
+                    var bursts = emissionDump.m_Bursts
+                        .Take(emissionDump.m_BurstCount)
+                        .Select(CreateBurst)
+                        .ToArray();
+                    if (bursts.Length > 0)
+                        emission.SetBursts(bursts);
+                }
+            }
+            return true;
+        }
+
+        private static ParticleSystem.Burst CreateBurst(BurstDump dump)
+        {
+            var count = (short)Mathf.Clamp(
+                Mathf.RoundToInt(dump?.countCurve?.scalar ?? 1f),
+                1,
+                short.MaxValue);
+            var burst = new ParticleSystem.Burst(Mathf.Max(0f, dump?.time ?? 0f), count);
+            burst.cycleCount = dump == null || dump.cycleCount <= 0 ? 1 : dump.cycleCount;
+            burst.repeatInterval = Mathf.Max(0.01f, dump?.repeatInterval ?? 0.01f);
+            burst.probability = Mathf.Clamp01(dump == null || dump.probability <= 0f ? 1f : dump.probability);
+            return burst;
         }
 
         private static Material ResolveMaterial(ImportContext context, PPtr pointer, string ownerName)
@@ -599,6 +914,8 @@ namespace ArknightsACT.Editor.OHMS
                         continue;
 
                     var texture = ResolveTexture(context, entry.Value.m_Texture, material.name + "." + entry.Key);
+                    if (texture == null && entry.Value.m_Texture != null && entry.Value.m_Texture.m_PathID != 0)
+                        texture = GetMissingTextureFallback(context);
                     if (texture != null)
                         material.SetTexture(entry.Key, texture);
                     if (entry.Value.m_Scale != null)
@@ -793,20 +1110,14 @@ namespace ArknightsACT.Editor.OHMS
             return values;
         }
 
-        private static void ApplyEditorJson(ImportContext context, AssetRecord record, UnityEngine.Object target)
+        private static T GetOrAddComponent<T>(GameObject go) where T : Component
         {
-            if (target == null || !TryReadTextPayload(context, record, out var raw))
-                return;
-
-            try
-            {
-                EditorJsonUtility.FromJsonOverwrite(raw, target);
-            }
-            catch (Exception exception)
-            {
-                context.Report.Warnings.Add(
-                    $"EditorJsonUtility could not fully apply {record.Type?.name}:{record.Name} (ID {record.ID}): {exception.Message}");
-            }
+            if (go == null)
+                return null;
+            var component = go.GetComponent<T>();
+            if (component == null)
+                component = go.AddComponent<T>();
+            return component;
         }
 
         private static AssetRecord ResolveComponent(ImportContext context, GameObjectDump dump, string type)
@@ -902,6 +1213,25 @@ namespace ArknightsACT.Editor.OHMS
             catch (Exception exception)
             {
                 error = $"Could not parse assets.json: {exception.Message}";
+                return false;
+            }
+        }
+
+        private static bool TryPrepareSource(
+            string sourceRoot,
+            out OhmsStructuredExportStager.StageResult staged,
+            out string error)
+        {
+            staged = null;
+            error = null;
+            try
+            {
+                staged = OhmsStructuredExportStager.Prepare(sourceRoot);
+                return true;
+            }
+            catch (Exception exception)
+            {
+                error = $"Could not prepare OHMS structured export: {exception.Message}";
                 return false;
             }
         }

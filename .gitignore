@@ -23,6 +23,18 @@ Recordings/
 *.VC.db
 .DS_Store
 
+# Unity cache
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]serSettings/
+
+# Unity crash/test cache
+Library.*
+
 # Local prototype assets downloaded from PRTS. Do not redistribute through this repository.
 Assets/_Game/Art/**/PRTS/
 

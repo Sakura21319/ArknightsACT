@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c078b3f34cb6d794b8e4a7a2f8bb5943, type: 3}
+  m_Name: tactical_calibration
+  m_EditorClassIdentifier: 
+  id: tactical_calibration
+  displayName: "\u6218\u672F\u6821\u51C6\u82AF\u7247"
+  description: "\u6240\u6709\u9020\u6210\u7684\u4F24\u5BB3 +8%\u3002"
+  rarity: 0
+  requiredFeatures: 0
+  effectType: 0
+  value: 0.08
+  maxStacks: 3

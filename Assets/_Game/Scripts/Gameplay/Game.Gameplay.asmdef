@@ -1,6 +1,6 @@
 {
   "name": "Game.Gameplay",
   "rootNamespace": "ArknightsACT.Gameplay",
-  "references": ["Game.Core", "Game.Combat", "Unity.InputSystem"],
+  "references": ["Game.Core", "Game.Combat", "Unity.InputSystem", "UnityEngine.ParticleSystemModule"],
   "autoReferenced": true
 }

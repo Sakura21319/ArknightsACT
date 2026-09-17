@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using ArknightsACT.Combat;
 using ArknightsACT.Gameplay.Abilities;
 using ArknightsACT.Gameplay.Characters;
 using ArknightsACT.Gameplay.Combat;
@@ -44,6 +46,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         private ChenSkill2 _jueying;
         private bool _jueyingStart02Played;
         private bool _warnedMissing;
+        private readonly HashSet<string> _warnedMissingKeys = new(StringComparer.OrdinalIgnoreCase);
 
         public void Configure(
             GameObject attackStart,
@@ -91,6 +94,11 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         private void Start()
         {
             WarnIfOriginalAssetsMissing();
+            Debug.Log(
+                $"[ArknightsACT/ChenSkillFX] Runtime bridge ready on '{name}': " +
+                $"attack={_attacks != null}, skills={_skills != null}, draw={_draw != null}, jueying={_jueying != null}, " +
+                $"fx={CountConfiguredFx()}/17.",
+                this);
         }
 
         private void OnDisable()
@@ -161,19 +169,28 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         private void SpawnOnActor(GameObject prefab, string key)
         {
             if (prefab == null)
+            {
+                WarnMissingKey(key);
                 return;
+            }
 
             var instance = Instantiate(prefab, transform);
             instance.name = key + "_Runtime";
             instance.transform.localPosition = actorLocalOffset;
             instance.transform.localRotation = Quaternion.identity;
             instance.transform.localScale = Vector3.one;
+            Debug.Log($"[ArknightsACT/ChenSkillFX] SpawnOnActor '{key}' from '{prefab.name}'.", this);
             ArmOriginalFx(instance);
         }
 
         private void SpawnAtTarget(GameObject prefab, Transform target, string key)
         {
-            if (prefab == null || target == null)
+            if (prefab == null)
+            {
+                WarnMissingKey(key);
+                return;
+            }
+            if (target == null)
                 return;
 
             var instance = Instantiate(
@@ -181,6 +198,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                 target.position + hitWorldOffset,
                 Quaternion.identity);
             instance.name = key + "_Runtime";
+            Debug.Log($"[ArknightsACT/ChenSkillFX] SpawnAtTarget '{key}' from '{prefab.name}'.", this);
             ArmOriginalFx(instance);
         }
 
@@ -189,14 +207,34 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             if (instance == null)
                 return;
 
+            // Original client MonoBehaviours/animation clips toggle many FX children and renderers.
+            // OHMS does not export those behaviours, so make the reconstructed presentation hierarchy
+            // visible before starting its standard Unity components.
+            var renderers = instance.GetComponentsInChildren<Renderer>(true);
+            for (var i = 0; i < renderers.Length; i++)
+            {
+                var renderer = renderers[i];
+                if (renderer == null)
+                    continue;
+                ActivateAncestorChain(renderer.transform, instance.transform);
+                renderer.enabled = true;
+            }
+
             var particleSystems = instance.GetComponentsInChildren<ParticleSystem>(true);
             for (var i = 0; i < particleSystems.Length; i++)
             {
                 var system = particleSystems[i];
                 if (system == null)
                     continue;
-                system.gameObject.SetActive(true);
+                ActivateAncestorChain(system.transform, instance.transform);
                 system.Play(true);
+            }
+
+            if (renderers.Length == 0 && particleSystems.Length == 0)
+            {
+                Debug.LogWarning(
+                    $"[ArknightsACT/ChenSkillFX] '{instance.name}' contains no Renderer or ParticleSystem after instantiation.",
+                    instance);
             }
 
             var animators = instance.GetComponentsInChildren<Animator>(true);
@@ -207,6 +245,42 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             }
 
             Destroy(instance, fallbackLifetimeSeconds);
+        }
+
+        private int CountConfiguredFx()
+        {
+            var count = 0;
+            count += attackStartFx != null ? 1 : 0;
+            count += attackHitFx != null ? 1 : 0;
+            count += drawStartFx != null ? 1 : 0;
+            count += drawHitFx != null ? 1 : 0;
+            count += drawBuffFx != null ? 1 : 0;
+            count += jueyingStartFx != null ? 1 : 0;
+            count += jueyingStart02Fx != null ? 1 : 0;
+            if (jueyingHitFx != null)
+                count += jueyingHitFx.Count(item => item != null);
+            return count;
+        }
+
+        private void WarnMissingKey(string key)
+        {
+            if (!_warnedMissingKeys.Add(key))
+                return;
+            Debug.LogWarning(
+                $"[ArknightsACT/ChenSkillFX] FX prefab '{key}' is not configured on '{name}'. " +
+                "Rebuild the Prototype scene after importing the Chen package.",
+                this);
+        }
+
+        private static void ActivateAncestorChain(Transform current, Transform root)
+        {
+            while (current != null)
+            {
+                current.gameObject.SetActive(true);
+                if (current == root)
+                    break;
+                current = current.parent;
+            }
         }
 
         private void WarnIfOriginalAssetsMissing()

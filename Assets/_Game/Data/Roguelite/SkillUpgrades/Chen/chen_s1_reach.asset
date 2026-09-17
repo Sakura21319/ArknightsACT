@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2ab08898f2ba3946a72aed7d70fa56c, type: 3}
+  m_Name: chen_s1_reach
+  m_EditorClassIdentifier: 
+  id: chen_s1_reach
+  characterId: Chen
+  effectId: chen_skill1_range
+  displayName: "\u62D4\u5200\xB7\u5EF6\u5C55"
+  description: "\u8D64\u9704\xB7\u62D4\u5200\u653B\u51FB\u8DDD\u79BB +25%\u3002"
+  value: 0.25
+  maxStacks: 2
+  rewardWeight: 1

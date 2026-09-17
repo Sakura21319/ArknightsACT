@@ -110,7 +110,9 @@ namespace ArknightsACT.Editor.OHMS
             _sourceFolder = _scan.SourceRoot;
             if (string.IsNullOrWhiteSpace(_packageName) || string.Equals(_packageName, "Imported", StringComparison.OrdinalIgnoreCase))
                 _packageName = _scan.PackageName;
-            _status = $"Loaded {_scan.RootGameObjects.Count} root GameObjects from {_scan.SourceRoot}.";
+            _status =
+                $"Loaded {_scan.RootGameObjects.Count} root GameObjects from {_scan.SourceRoot}.\n" +
+                $"Staged {_scan.StagedJsonPayloads} JSON payloads and normalized {_scan.NormalizedPointers} resolvable cross-bundle references.";
         }
 
         private void Import()
