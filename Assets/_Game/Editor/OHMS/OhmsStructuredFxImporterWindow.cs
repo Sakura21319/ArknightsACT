@@ -49,7 +49,7 @@ namespace ArknightsACT.Editor.OHMS
                 {
                     _packageName = "Chen";
                     _include = "chen_skill_02_,chen_skill_03_,chen_attack_01_";
-                    _exclude = "_sale#10,_nian#2";
+                    _exclude = "_sale#10,_nian#2,chen_skill_03_start_03";
                     Repaint();
                 }
                 GUI.enabled = _scan != null;
