@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using ArknightsACT.Combat;
 using ArknightsACT.Gameplay.Abilities;
@@ -32,6 +33,12 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         public float CooldownRemaining => Mathf.Max(0f, _readyAt - Time.time);
         public bool IsCasting { get; private set; }
         public bool IsInvulnerable => IsCasting;
+
+        /// <summary>
+        /// Fired after a Jueying strike really applies damage. strikeIndex is zero-based and is
+        /// intentionally exposed so the original chen_skill_03_hit_01..10 assets stay in order.
+        /// </summary>
+        public event Action<int, Transform, bool> StrikeResolved;
 
         private void Awake()
         {
@@ -100,6 +107,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                         target.GetComponentInChildren<HitFlash2D>()?.Flash();
                         HitStopService.Instance?.Request(isFinal ? 0.040f : 0.012f);
                         CameraShake2D.Instance?.Shake(isFinal ? 0.10f : 0.025f, 0.04f);
+                        StrikeResolved?.Invoke(i, target.transform, isFinal);
                     }
                 }
 
