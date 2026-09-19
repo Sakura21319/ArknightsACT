@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ArknightsACT.Gameplay.Roguelite.World;
 using UnityEngine;
 
 namespace ArknightsACT.Gameplay.Roguelite.Routing
@@ -13,19 +14,30 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
     [DisallowMultipleComponent]
     public sealed class RogueliteStageLayoutController : MonoBehaviour
     {
-        private const float ChunkWidth = 14f;
-        private const float ChunkDepth = 11f;
+        // The generated block floor is authoritative at the shared Chernobog footprint. Socket
+        // modules must cover that same footprint after the original monolithic floor is hidden.
+        private const float ChunkWidth = RogueliteStageWorldMetrics.ChunkWidth;
+        private const float ChunkDepth = RogueliteStageWorldMetrics.ChunkDepth;
         private const int FloorColumns = 6;
         private const int FloorRows = 5;
 
         [SerializeField] private RogueliteStageMapController stageMap;
 
+        private RogueliteStageRuntimeContext _context;
         private GameObject _preparedStage;
         private float _nextResolveAt;
 
         public void Configure(RogueliteStageMapController map)
         {
+            _context ??= GetComponent<RogueliteStageRuntimeContext>();
             stageMap = map;
+        }
+
+        private void Awake()
+        {
+            _context = GetComponent<RogueliteStageRuntimeContext>();
+            if (stageMap == null && _context != null)
+                stageMap = _context.StageMap;
         }
 
         private void Update()
@@ -34,11 +46,14 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                 return;
             _nextResolveAt = Time.unscaledTime + 0.10f;
 
-            stageMap ??= FindFirstObjectByType<RogueliteStageMapController>();
+            if (_context != null)
+                stageMap ??= _context.StageMap;
             if (stageMap == null)
                 return;
 
-            var stage = GameObject.Find($"[Stage_{stageMap.StageIndex:00}_Runtime]");
+            var stage = _context != null && _context.StageRoot != null
+                ? _context.StageRoot.gameObject
+                : null;
             if (stage == null || stage == _preparedStage)
                 return;
 
@@ -212,16 +227,16 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             if (variant == 1)
             {
                 road.localRotation = Quaternion.Euler(0f, 90f, 0f);
-                road.localScale = new Vector3(ChunkDepth - 0.4f, 0.035f, 5.2f);
+                road.localScale = new Vector3(RogueliteStageWorldMetrics.ChunkDepth - 0.4f, 0.035f, 5.2f);
                 stripe.localRotation = Quaternion.Euler(0f, 90f, 0f);
-                stripe.localScale = new Vector3(ChunkDepth - 1.0f, 0.02f, 0.10f);
+                stripe.localScale = new Vector3(RogueliteStageWorldMetrics.ChunkDepth - 1.0f, 0.02f, 0.10f);
             }
             else
             {
                 road.localRotation = Quaternion.identity;
-                road.localScale = new Vector3(ChunkWidth - 0.4f, 0.035f, 5.2f);
+                road.localScale = new Vector3(RogueliteStageWorldMetrics.ChunkWidth - 0.4f, 0.035f, 5.2f);
                 stripe.localRotation = Quaternion.identity;
-                stripe.localScale = new Vector3(ChunkWidth - 1.0f, 0.02f, 0.10f);
+                stripe.localScale = new Vector3(RogueliteStageWorldMetrics.ChunkWidth - 1.0f, 0.02f, 0.10f);
                 stripe.localPosition = variant == 2 ? new Vector3(0f, 0.035f, -0.85f) : new Vector3(0f, 0.035f, 0f);
             }
         }
@@ -229,6 +244,16 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
         private void BuildLowRiseShells(Transform block, RogueliteBlockState data, int variant)
         {
             if (data.Theme == RogueliteChunkTheme.Facility || data.Theme == RogueliteChunkTheme.BossArena)
+                return;
+
+            // Scheme 1 has one authored frontage per quadrant. Do not add the former corner shells
+            // to those same lots: on the larger footprint they read as duplicate, floating houses and
+            // can overlap the market row or residential tenement.
+            var district = RogueliteStageDistrictTemplateController.ResolveDistrict(data, data.Index, stageMap.StageIndex);
+            if (district == ChernobogDistrictType.Residential ||
+                district == ChernobogDistrictType.Commercial ||
+                district == ChernobogDistrictType.Industrial ||
+                district == ChernobogDistrictType.Checkpoint)
                 return;
 
             var renderers = block.GetComponentsInChildren<Renderer>(true);
@@ -241,10 +266,10 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
             var corners = new[]
             {
-                new Vector3(-5.25f, 0f, 3.82f),
-                new Vector3(5.18f, 0f, 3.78f),
-                new Vector3(5.20f, 0f, -3.82f),
-                new Vector3(-5.18f, 0f, -3.78f)
+                new Vector3(-11.0f, 0f, 8.15f),
+                new Vector3(10.85f, 0f, 8.05f),
+                new Vector3(10.90f, 0f, -8.10f),
+                new Vector3(-10.85f, 0f, -8.00f)
             };
 
             var shellCount = data.Theme == RogueliteChunkTheme.SafePlaza

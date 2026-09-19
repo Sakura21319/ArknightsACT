@@ -22,6 +22,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         [SerializeField] private RogueliteStageMapController stageMap;
 
+        private RogueliteStageRuntimeContext _context;
         private readonly List<CombatEntity> _actors = new(24);
         private readonly Dictionary<Transform, OcclusionState> _states = new();
         private float _nextActorRefreshAt;
@@ -43,12 +44,20 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         public void Configure(RogueliteStageMapController map)
         {
+            _context ??= GetComponent<RogueliteStageRuntimeContext>();
             stageMap = map;
+        }
+
+        private void Awake()
+        {
+            _context = GetComponent<RogueliteStageRuntimeContext>();
+            if (_context != null)
+                stageMap ??= _context.StageMap;
         }
 
         private void LateUpdate()
         {
-            stageMap ??= FindFirstObjectByType<RogueliteStageMapController>();
+            stageMap ??= _context != null ? _context.StageMap : null;
             var camera = Camera.main;
             if (stageMap == null || camera == null)
             {

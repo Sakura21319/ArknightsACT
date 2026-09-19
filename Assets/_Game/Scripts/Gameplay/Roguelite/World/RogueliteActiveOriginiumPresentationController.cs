@@ -19,6 +19,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
     {
         [SerializeField] private RogueliteStageMapController stageMap;
 
+        private RogueliteStageRuntimeContext _context;
         private static readonly Mesh[] ShardMeshes = new Mesh[3];
 
         private readonly HashSet<int> _skinned = new();
@@ -35,7 +36,15 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         public void Configure(RogueliteStageMapController map)
         {
+            _context ??= GetComponent<RogueliteStageRuntimeContext>();
             stageMap = map;
+        }
+
+        private void Awake()
+        {
+            _context = GetComponent<RogueliteStageRuntimeContext>();
+            if (_context != null)
+                stageMap ??= _context.StageMap;
         }
 
         private void Update()
@@ -44,11 +53,13 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 return;
             _nextResolveAt = Time.unscaledTime + 0.10f;
 
-            stageMap ??= FindFirstObjectByType<RogueliteStageMapController>();
+            if (_context == null)
+                return;
+            stageMap ??= _context.StageMap;
             if (stageMap == null)
                 return;
 
-            var stage = GameObject.Find($"[Stage_{stageMap.StageIndex:00}_Runtime]");
+            var stage = _context.StageRoot != null ? _context.StageRoot.gameObject : null;
             if (stage == null)
                 return;
 
@@ -78,7 +89,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
                 HideLegacyPresentation(root);
 
-                var id = root.gameObject.GetInstanceID();
+                var id = root.gameObject.GetHashCode();
                 if (_skinned.Contains(id))
                     continue;
 

@@ -14,16 +14,30 @@ namespace ArknightsACT.Gameplay.Roguelite.World
     [DisallowMultipleComponent]
     public sealed class RogueliteStagePlayableArchitectureController : MonoBehaviour
     {
+        private const float SecondFloorY = 2.10f;
+
         [SerializeField] private RogueliteStageMapController stageMap;
         [SerializeField] private ChernobogEnvironmentKit kit;
 
+        private RogueliteStageRuntimeContext _context;
         private GameObject _preparedStage;
         private float _nextResolveAt;
 
         public void Configure(RogueliteStageMapController map, ChernobogEnvironmentKit environmentKit)
         {
+            _context ??= GetComponent<RogueliteStageRuntimeContext>();
             stageMap = map;
             kit = environmentKit;
+        }
+
+        private void Awake()
+        {
+            _context = GetComponent<RogueliteStageRuntimeContext>();
+            if (_context == null)
+                return;
+
+            stageMap ??= _context.StageMap;
+            kit ??= _context.EnvironmentKit;
         }
 
         private void Update()
@@ -32,11 +46,14 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 return;
             _nextResolveAt = Time.unscaledTime + 0.12f;
 
-            stageMap ??= FindFirstObjectByType<RogueliteStageMapController>();
+            if (_context == null)
+                return;
+            stageMap ??= _context.StageMap;
+            kit ??= _context.EnvironmentKit;
             if (stageMap == null || kit == null || !kit.IsUsable)
                 return;
 
-            var stage = GameObject.Find($"[Stage_{stageMap.StageIndex:00}_Runtime]");
+            var stage = _context.StageRoot != null ? _context.StageRoot.gameObject : null;
             if (stage == null || stage == _preparedStage)
                 return;
             if (stage.transform.Find("[Chernobog_UrbanArchitecture]") == null)
@@ -68,31 +85,209 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 cell.SetParent(root, false);
                 cell.position = block.position;
 
-                var flip = PositiveMod(stageMap.StageIndex * 5 + i * 3 + (int)data.Theme, 2) == 1;
-                var xSide = flip ? 1f : -1f;
+                var marker = block.GetComponent<RogueliteDistrictTemplate25D>();
+                var district = marker != null
+                    ? marker.DistrictType
+                    : RogueliteStageDistrictTemplateController.ResolveDistrict(data, i, stageMap.StageIndex);
 
-                switch (data.Theme)
+                switch (district)
                 {
-                    case RogueliteChunkTheme.Street:
-                        BuildWalkInServiceRoom(cell, new Vector3(xSide * 4.55f, 0f, -4.85f), xSide, i);
+                    case ChernobogDistrictType.Residential:
+                        // Bottom-left is the residential quadrant in Scheme 1. Keep the footprint
+                        // compact, but give it a real ground entrance, exterior ramp and visible
+                        // second floor so it reads as a place rather than a cover cube.
+                        BuildStreetTenement(cell, new Vector3(-7.40f, 0f, -5.80f), 1f, i);
                         break;
-                    case RogueliteChunkTheme.CoverLane:
-                        BuildRaisedLoadingDeck(cell, new Vector3(xSide * 4.25f, 0f, -4.80f), -xSide, i);
+                    case ChernobogDistrictType.Commercial:
+                        // The market row is the street-facing landmark. This smaller open unit is
+                        // set back in the same lot and supplies an actual walk-in combat room.
+                        BuildWalkInCommercialUnit(cell, new Vector3(7.00f, 0f, 0.90f), i);
                         break;
-                    case RogueliteChunkTheme.Facility:
-                        BuildWalkInServiceRoom(cell, new Vector3(-5.00f, 0f, -4.75f), -1f, i + 31);
+                    case ChernobogDistrictType.Industrial:
+                        // TwoFloorFacility from StageRuntime is the authoritative facility interior.
                         break;
-                    case RogueliteChunkTheme.SafePlaza:
-                        BuildCoveredCheckpoint(cell, new Vector3(xSide * 4.70f, 0f, -4.75f), xSide, i);
-                        break;
-                    case RogueliteChunkTheme.BossArena:
-                        BuildRaisedLoadingDeck(cell, new Vector3(-4.35f, 0f, -4.75f), 1f, i + 61);
-                        BuildCoveredCheckpoint(cell, new Vector3(4.75f, 0f, -4.70f), -1f, i + 79);
+                    case ChernobogDistrictType.Checkpoint:
+                        // The gatehouse is a visual landmark; the canopy is an open, traversable
+                        // inspection shelter that gives the boss quadrant a second readable layer.
+                        BuildCoveredCheckpoint(cell, new Vector3(5.90f, 0f, 2.70f), -1f, i + 79);
                         break;
                     default:
-                        BuildWalkInServiceRoom(cell, new Vector3(xSide * 4.50f, 0f, -4.90f), xSide, i);
+                        // Preserve the older theme-driven placements for non-production maps.
+                        var xSide = ResolveBuildingSide(i, data);
+                        switch (data.Theme)
+                        {
+                            case RogueliteChunkTheme.Street:
+                                if (ShouldBuildInteractiveStreetBuilding(data, i))
+                                    BuildStreetTenement(cell, new Vector3(xSide * 4.55f, 0f, -4.85f), xSide, i);
+                                break;
+                            case RogueliteChunkTheme.CoverLane:
+                                if (ShouldBuildInteractiveDeck(data, i))
+                                    BuildRaisedLoadingDeck(cell, new Vector3(xSide * 4.25f, 0f, -4.80f), -xSide, i);
+                                break;
+                            case RogueliteChunkTheme.Facility:
+                                break;
+                            case RogueliteChunkTheme.SafePlaza:
+                                if (data.Type == RogueliteBlockType.Shop)
+                                    BuildCoveredCheckpoint(cell, new Vector3(xSide * 4.70f, 0f, -4.75f), xSide, i);
+                                break;
+                            case RogueliteChunkTheme.BossArena:
+                                BuildCoveredCheckpoint(cell, new Vector3(4.75f, 0f, -4.70f), -1f, i + 79);
+                                break;
+                            default:
+                                if (ShouldBuildInteractiveStreetBuilding(data, i))
+                                    BuildWalkInServiceRoom(cell, new Vector3(xSide * 4.50f, 0f, -4.90f), xSide, i);
+                                break;
+                        }
                         break;
                 }
+            }
+        }
+
+        private bool ShouldBuildInteractiveStreetBuilding(RogueliteBlockState data, int blockIndex)
+        {
+            if (data == null || data.Theme != RogueliteChunkTheme.Street)
+                return false;
+
+            // Only a few street blocks become enterable tenements. The rest remain readable open road,
+            // which keeps the town legible and leaves the encounter space available for combat.
+            return PositiveMod(stageMap.StageIndex * 11 + blockIndex * 7 + (int)data.Theme, 3) == 0;
+        }
+
+        private bool ShouldBuildInteractiveDeck(RogueliteBlockState data, int blockIndex)
+        {
+            if (data == null || data.Theme != RogueliteChunkTheme.CoverLane)
+                return false;
+            return PositiveMod(stageMap.StageIndex * 13 + blockIndex * 5 + (int)data.Theme, 2) == 0;
+        }
+
+        private float ResolveBuildingSide(int blockIndex, RogueliteBlockState data)
+        {
+            return PositiveMod(stageMap.StageIndex * 5 + blockIndex * 3 + (int)data.Theme, 2) == 1 ? 1f : -1f;
+        }
+
+        private void BuildWalkInCommercialUnit(Transform parent, Vector3 anchor, int seed)
+        {
+            var root = new GameObject("WalkInCommercialUnit").transform;
+            root.SetParent(parent, false);
+            root.localPosition = anchor;
+
+            var wall = kit.wallMaterial != null ? kit.wallMaterial : kit.deckHeavyMaterial;
+            var inset = kit.insetMaterial != null ? kit.insetMaterial : wall;
+            var steel = kit.steelMaterial != null ? kit.steelMaterial : wall;
+            var grate = kit.grateMaterial != null ? kit.grateMaterial : inset;
+
+            const float width = 4.80f;
+            const float depth = 3.85f;
+            const float height = 2.85f;
+            const float thickness = 0.22f;
+            var frontZ = depth * 0.5f;
+
+            // Three walls plus a split front header leave a central doorway wide enough for the
+            // player and enemies. The low counter makes the room useful cover during a fight.
+            CreateSolidBox(root, "ShopRoomBack", new Vector3(0f, height * 0.5f, -depth * 0.5f),
+                new Vector3(width, height, thickness), 0.045f, wall);
+            CreateSolidBox(root, "ShopRoomWall_W", new Vector3(-width * 0.5f, height * 0.5f, 0f),
+                new Vector3(thickness, height, depth), 0.045f, wall);
+            CreateSolidBox(root, "ShopRoomWall_E", new Vector3(width * 0.5f, height * 0.5f, 0f),
+                new Vector3(thickness, height, depth), 0.045f, wall);
+            CreateSolidBox(root, "ShopDoorJamb_W", new Vector3(-1.62f, 1.08f, frontZ),
+                new Vector3(0.58f, 2.16f, thickness), 0.035f, steel);
+            CreateSolidBox(root, "ShopDoorJamb_E", new Vector3(1.62f, 1.08f, frontZ),
+                new Vector3(0.58f, 2.16f, thickness), 0.035f, steel);
+            CreateSolidBox(root, "ShopDoorHeader", new Vector3(0f, 2.48f, frontZ),
+                new Vector3(width, 0.28f, thickness), 0.035f, steel);
+            CreateVisualBox(root, "ShopWindow_W", new Vector3(-0.78f, 1.35f, frontZ + 0.018f),
+                new Vector3(1.05f, 0.72f, 0.035f), 0.006f, inset);
+            CreateVisualBox(root, "ShopWindow_E", new Vector3(0.78f, 1.35f, frontZ + 0.018f),
+                new Vector3(1.05f, 0.72f, 0.035f), 0.006f, inset);
+            CreateSolidBox(root, "ShopCounter", new Vector3(0f, 0.48f, -0.55f),
+                new Vector3(2.35f, 0.96f, 0.60f), 0.055f, grate);
+            CreateSolidBox(root, "ShopAwning", new Vector3(0f, height + 0.14f, frontZ + 0.36f),
+                new Vector3(width + 0.18f, 0.14f, 0.78f), 0.025f, steel);
+            CreateVisualBox(root, "ShopRoofRear", new Vector3(0f, height + 0.16f, -0.52f),
+                new Vector3(width + 0.16f, 0.18f, depth * 0.54f), 0.035f, steel);
+
+            if (kit.hvacSmall != null && PositiveMod(seed, 2) == 0)
+            {
+                var hvac = Instantiate(kit.hvacSmall, root);
+                hvac.name = "ShopRoofHVAC";
+                hvac.transform.localPosition = new Vector3(1.25f, height + 0.35f, -0.55f);
+                hvac.transform.localScale = Vector3.one * 0.48f;
+                DisablePrefabColliders(hvac);
+            }
+        }
+
+        private void BuildStreetTenement(Transform parent, Vector3 anchor, float side, int seed)
+        {
+            var root = new GameObject("WalkInStreetTenement").transform;
+            root.SetParent(parent, false);
+            root.localPosition = anchor;
+
+            var wall = kit.wallMaterial != null ? kit.wallMaterial : kit.deckHeavyMaterial;
+            var inset = kit.insetMaterial != null ? kit.insetMaterial : wall;
+            var steel = kit.steelMaterial != null ? kit.steelMaterial : wall;
+            var grate = kit.grateMaterial != null ? kit.grateMaterial : inset;
+
+            const float width = 4.05f;
+            const float depth = 3.15f;
+            const float floorHeight = 2.10f;
+            const float thickness = 0.22f;
+            var frontZ = depth * 0.5f;
+            var backZ = -depth * 0.5f;
+
+            // Ground floor: three walls and a wide central doorway. The room is real cover/space,
+            // rather than a solid decorative mass that the player can only look at.
+            CreateSolidBox(root, "TenementGroundBack", new Vector3(0f, floorHeight * 0.5f, backZ),
+                new Vector3(width, floorHeight, thickness), 0.045f, wall);
+            CreateSolidBox(root, "TenementGroundWall_W", new Vector3(-width * 0.5f, floorHeight * 0.5f, 0f),
+                new Vector3(thickness, floorHeight, depth), 0.045f, wall);
+            CreateSolidBox(root, "TenementGroundWall_E", new Vector3(width * 0.5f, floorHeight * 0.5f, 0f),
+                new Vector3(thickness, floorHeight, depth), 0.045f, wall);
+            CreateSolidBox(root, "TenementDoorJamb_W", new Vector3(-1.42f, 1.00f, frontZ),
+                new Vector3(0.64f, 2.00f, thickness), 0.035f, steel);
+            CreateSolidBox(root, "TenementDoorJamb_E", new Vector3(1.42f, 1.00f, frontZ),
+                new Vector3(0.64f, 2.00f, thickness), 0.035f, steel);
+            CreateSolidBox(root, "TenementDoorHeader", new Vector3(0f, 1.98f, frontZ),
+                new Vector3(width, 0.24f, thickness), 0.035f, steel);
+
+            // A partial second floor leaves the ramp landing open at the front and makes the upper
+            // level visible from the camera instead of hiding the whole building behind a roof.
+            CreateSolidBox(root, "TenementSecondFloor", new Vector3(0f, SecondFloorY - 0.08f, -0.22f),
+                new Vector3(width + 0.16f, 0.16f, depth * 0.72f), 0.035f, grate);
+            CreateSolidBox(root, "TenementUpperBack", new Vector3(0f, SecondFloorY + 0.86f, backZ),
+                new Vector3(width, 1.72f, thickness), 0.045f, wall);
+            CreateSolidBox(root, "TenementUpperWall_W", new Vector3(-width * 0.5f, SecondFloorY + 0.86f, -0.22f),
+                new Vector3(thickness, 1.72f, depth * 0.72f), 0.045f, wall);
+            CreateSolidBox(root, "TenementUpperWall_E", new Vector3(width * 0.5f, SecondFloorY + 0.86f, -0.22f),
+                new Vector3(thickness, 1.72f, depth * 0.72f), 0.045f, wall);
+            CreateSolidBox(root, "TenementUpperRail_W", new Vector3(-1.42f, SecondFloorY + 0.43f, 0.92f),
+                new Vector3(1.05f, 0.66f, 0.12f), 0.025f, steel);
+            CreateSolidBox(root, "TenementUpperRail_E", new Vector3(1.42f, SecondFloorY + 0.43f, 0.92f),
+                new Vector3(1.05f, 0.66f, 0.12f), 0.025f, steel);
+
+            // Exterior ramp approaches from the central street and ends on the second-floor slab.
+            // Its shallow slope is climbable by the same CharacterController used by the player/enemies.
+            CreateRamp(root, "TenementUpperRamp",
+                new Vector3(0f, 0.10f, 3.05f),
+                new Vector3(0f, SecondFloorY + 0.01f, 0.78f),
+                1.05f,
+                0.16f,
+                steel);
+
+            CreateVisualBox(root, "TenementDoorInset", new Vector3(0f, 1.02f, frontZ + 0.015f),
+                new Vector3(1.80f, 1.55f, 0.035f), 0.006f, inset);
+            CreateVisualBox(root, "TenementUpperFloorBand", new Vector3(-side * (width * 0.5f + 0.035f), SecondFloorY + 0.12f, -0.22f),
+                new Vector3(0.06f, 0.14f, depth * 0.68f), 0.008f, steel);
+            CreateVisualBox(root, "TenementRoofRear", new Vector3(0f, SecondFloorY + 1.82f, -0.58f),
+                new Vector3(width + 0.14f, 0.18f, depth * 0.48f), 0.035f, steel);
+
+            if (kit.hvacSmall != null && PositiveMod(seed, 2) == 0)
+            {
+                var hvac = Instantiate(kit.hvacSmall, root);
+                hvac.name = "TenementRoofHVAC";
+                hvac.transform.localPosition = new Vector3(side * 1.15f, SecondFloorY + 2.05f, -0.58f);
+                hvac.transform.localScale = Vector3.one * 0.48f;
+                DisablePrefabColliders(hvac);
             }
         }
 
@@ -201,14 +396,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         private static Transform FindBlockTransform(Transform stage, int index)
         {
-            var prefix = $"Block_{index:00}_";
-            for (var i = 0; i < stage.childCount; i++)
-            {
-                var child = stage.GetChild(i);
-                if (child != null && child.name.StartsWith(prefix, StringComparison.Ordinal))
-                    return child;
-            }
-            return null;
+            return RogueliteStageBlockUtility.FindBlockTransform(stage, index);
         }
 
         private static GameObject CreateSolidBox(
@@ -279,10 +467,21 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             return go;
         }
 
+        private static void DisablePrefabColliders(GameObject root)
+        {
+            if (root == null)
+                return;
+            var colliders = root.GetComponentsInChildren<Collider>(true);
+            for (var i = 0; i < colliders.Length; i++)
+            {
+                if (colliders[i] != null)
+                    colliders[i].enabled = false;
+            }
+        }
+
         private static int PositiveMod(int value, int divisor)
         {
-            var result = value % divisor;
-            return result < 0 ? result + divisor : result;
+            return RogueliteStageMath.PositiveMod(value, divisor);
         }
     }
 }

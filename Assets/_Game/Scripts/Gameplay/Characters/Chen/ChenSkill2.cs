@@ -11,7 +11,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
     [RequireComponent(typeof(CombatEntity))]
     public sealed class ChenSkill2 : MonoBehaviour, IPlayerSkill, IPlayerInvulnerabilitySource
     {
-        [SerializeField, Min(0.1f)] private float cooldownSeconds = 14f;
+        [SerializeField, Min(0.1f)] private float cooldownSeconds = 1f;
         [SerializeField, Min(0f)] private float startupSeconds = 0.28f;
         [SerializeField, Min(1)] private int strikeCount = 10;
         [SerializeField, Min(0.02f)] private float strikeInterval = 0.12f;
@@ -35,8 +35,15 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         public bool IsInvulnerable => IsCasting;
 
         /// <summary>
-        /// Fired after a Jueying strike really applies damage. strikeIndex is zero-based and is
-        /// intentionally exposed so the original chen_skill_03_hit_01..10 assets stay in order.
+        /// Raised when the gameplay portion of Jueying has released its cast lock. Presentation
+        /// effects may still be finishing after this event; UI systems use their own presentation
+        /// gate for that separate lifetime.
+        /// </summary>
+        public event Action CastEnded;
+
+        /// <summary>
+        /// Fired after a Jueying strike resolves a valid target. strikeIndex is zero-based and
+        /// is intentionally exposed so the original chen_skill_03_hit_01..10 assets stay in order.
         /// </summary>
         public event Action<int, Transform, bool> StrikeResolved;
 
@@ -49,6 +56,8 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         public bool TryCast()
         {
             if (IsCasting || Time.time < _readyAt || _entity?.Health == null || _entity.Health.IsDead)
+                return false;
+            if (FindNearestTarget() == null)
                 return false;
 
             _readyAt = Time.time + cooldownSeconds;
@@ -83,42 +92,64 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             for (var i = 0; i < totalStrikes && _entity?.Health != null && !_entity.Health.IsDead; i++)
             {
                 var target = FindNearestTarget();
-                if (target != null)
-                {
-                    var isFinal = i == totalStrikes - 1;
-                    var damage = isFinal ? finalDamage * _runtimeFinalDamageMultiplier : strikeDamage;
-                    var knockback = Vector2.zero;
-                    if (_motor25D == null)
-                    {
-                        var direction = ((Vector2)target.transform.position - (Vector2)transform.position).normalized;
-                        knockback = isFinal ? direction * 3.5f : Vector2.zero;
-                    }
+                // Jueying is a target-driven skill. Do not keep the cast lock or spawn empty
+                // strike timings after the room has been cleared or the target leaves range/LOS.
+                if (target == null)
+                    break;
 
-                    var context = new DamageContext(
-                        _entity,
-                        _entity,
-                        target,
-                        damage,
-                        DamageType.Physical,
-                        knockback,
-                        sourceId: isFinal ? "Chen_Skill2_Final" : "Chen_Skill2_Strike");
-                    if (DamageSystem.Apply(context).Applied)
-                    {
-                        target.GetComponentInChildren<HitFlash2D>()?.Flash();
-                        HitStopService.Instance?.Request(isFinal ? 0.040f : 0.012f);
-                        CameraShake2D.Instance?.Shake(isFinal ? 0.10f : 0.025f, 0.04f);
-                        StrikeResolved?.Invoke(i, target.transform, isFinal);
-                    }
+                var isFinal = i == totalStrikes - 1;
+                var damage = isFinal ? finalDamage * _runtimeFinalDamageMultiplier : strikeDamage;
+                var knockback = Vector2.zero;
+                if (_motor25D == null)
+                {
+                    var direction = ((Vector2)target.transform.position - (Vector2)transform.position).normalized;
+                    knockback = isFinal ? direction * 3.5f : Vector2.zero;
                 }
 
+                var context = new DamageContext(
+                    _entity,
+                    _entity,
+                    target,
+                    damage,
+                    DamageType.Physical,
+                    knockback,
+                    sourceId: isFinal ? "Chen_Skill2_Final" : "Chen_Skill2_Strike");
+                if (DamageSystem.Apply(context).Applied)
+                {
+                    target.GetComponentInChildren<HitFlash2D>()?.Flash();
+                    HitStopService.Instance?.Request(isFinal ? 0.040f : 0.012f);
+                    CameraShake2D.Instance?.Shake(isFinal ? 0.10f : 0.025f, 0.04f);
+                }
+
+                // The strike presentation is target-driven, but it must not disappear just
+                // because combat rules rejected the damage application.
+                StrikeResolved?.Invoke(i, target.transform, isFinal);
+
                 if (i < totalStrikes - 1)
+                {
+                    // Do not spend another strike interval in an already-cleared room. The last
+                    // hit can kill the final target, so check before yielding instead of waiting
+                    // once more and only discovering the empty target set on the next iteration.
+                    if (FindNearestTarget() == null)
+                        break;
                     yield return new WaitForSeconds(strikeInterval);
+                }
             }
 
+            var targetWasLost = FindNearestTarget() == null;
             var remaining = castLockSeconds - (Time.time - startedAt);
-            if (remaining > 0f)
+            if (!targetWasLost && remaining > 0f)
                 yield return new WaitForSeconds(remaining);
+            EndCast();
+        }
+
+        private void EndCast()
+        {
+            if (!IsCasting)
+                return;
+
             IsCasting = false;
+            CastEnded?.Invoke();
         }
 
         private CombatEntity FindNearestTarget()

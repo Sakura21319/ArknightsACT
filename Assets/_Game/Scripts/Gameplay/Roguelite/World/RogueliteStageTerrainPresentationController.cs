@@ -17,6 +17,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
     {
         [SerializeField] private RogueliteStageMapController stageMap;
 
+        private RogueliteStageRuntimeContext _context;
         private readonly HashSet<int> _skinnedObjects = new();
         private readonly List<Material> _ownedMaterials = new();
         private GameObject _stage;
@@ -32,7 +33,15 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         public void Configure(RogueliteStageMapController map)
         {
+            _context ??= GetComponent<RogueliteStageRuntimeContext>();
             stageMap = map;
+        }
+
+        private void Awake()
+        {
+            _context = GetComponent<RogueliteStageRuntimeContext>();
+            if (_context != null)
+                stageMap ??= _context.StageMap;
         }
 
         private void Update()
@@ -41,11 +50,13 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 return;
             _nextResolveAt = Time.unscaledTime + 0.25f;
 
-            stageMap ??= FindFirstObjectByType<RogueliteStageMapController>();
+            if (_context == null)
+                return;
+            stageMap ??= _context.StageMap;
             if (stageMap == null)
                 return;
 
-            var stage = GameObject.Find($"[Stage_{stageMap.StageIndex:00}_Runtime]");
+            var stage = _context.StageRoot != null ? _context.StageRoot.gameObject : null;
             if (stage == null)
                 return;
 
@@ -116,7 +127,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         private void TrySkin(Transform target, Action<Transform> skinAction)
         {
-            var id = target.gameObject.GetInstanceID();
+            var id = target.gameObject.GetHashCode();
             if (_skinnedObjects.Contains(id))
                 return;
 
@@ -329,14 +340,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         private static Transform FindBlockTransform(Transform stage, int index)
         {
-            var prefix = $"Block_{index:00}_";
-            for (var i = 0; i < stage.childCount; i++)
-            {
-                var child = stage.GetChild(i);
-                if (child != null && child.name.StartsWith(prefix, StringComparison.Ordinal))
-                    return child;
-            }
-            return null;
+            return RogueliteStageBlockUtility.FindBlockTransform(stage, index);
         }
     }
 }

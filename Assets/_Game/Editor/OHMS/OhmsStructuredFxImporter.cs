@@ -114,7 +114,27 @@ namespace ArknightsACT.Editor.OHMS
         [Serializable]
         private sealed class RendererDump
         {
+            public bool m_Enabled;
             public PPtr[] m_Materials;
+            public int m_SortingLayerID;
+            public int m_SortingOrder;
+            public int m_RenderMode;
+            public int m_SortMode;
+            public float m_MinParticleSize;
+            public float m_MaxParticleSize;
+            public float m_CameraVelocityScale;
+            public float m_VelocityScale;
+            public float m_LengthScale;
+            public float m_SortingFudge;
+            public float m_NormalDirection;
+            public int m_RenderAlignment;
+            public SerializedVector3 m_Pivot;
+            public SerializedVector3 m_Flip;
+            public bool m_EnableGPUInstancing;
+            public PPtr m_Mesh;
+            public PPtr m_Mesh1;
+            public PPtr m_Mesh2;
+            public PPtr m_Mesh3;
         }
 
         [Serializable]
@@ -122,13 +142,21 @@ namespace ArknightsACT.Editor.OHMS
         {
             public float lengthInSec;
             public float simulationSpeed;
+            public int cullingMode;
             public bool looping;
             public bool prewarm;
             public bool playOnAwake;
             public bool useUnscaledTime;
             public ScalarCurveDump startDelay;
+            public int moveWithTransform;
+            public int scalingMode;
             public InitialModuleDump InitialModule;
             public EmissionModuleDump EmissionModule;
+            public ShapeModuleDump ShapeModule;
+            public SizeModuleDump SizeModule;
+            public RotationModuleDump RotationModule;
+            public ColorModuleDump ColorModule;
+            public UvModuleDump UVModule;
         }
 
         // OHMS writes the values exposed by ParticleSystem.main below the
@@ -141,10 +169,87 @@ namespace ArknightsACT.Editor.OHMS
             public ScalarCurveDump startLifetime;
             public ScalarCurveDump startSpeed;
             public ScalarCurveDump startSize;
+            public ScalarCurveDump startSizeY;
+            public ScalarCurveDump startSizeZ;
+            public bool size3D;
+            public ScalarCurveDump startRotationX;
+            public ScalarCurveDump startRotationY;
             public ScalarCurveDump startRotation;
+            public bool rotation3D;
+            public float randomizeRotationDirection;
             public ScalarCurveDump gravityModifier;
             public int maxNumParticles;
             public ParticleColorDump startColor;
+        }
+
+        [Serializable]
+        private sealed class ShapeModuleDump
+        {
+            public bool enabled;
+            public int type;
+            public float angle;
+            public float length;
+            public SerializedVector3 boxThickness;
+            public float radiusThickness;
+            public float donutRadius;
+            public SerializedVector3 m_Position;
+            public SerializedVector3 m_Rotation;
+            public SerializedVector3 m_Scale;
+            public bool alignToDirection;
+            public ShapeValueDump radius;
+            public ShapeValueDump arc;
+        }
+
+        [Serializable]
+        private sealed class ShapeValueDump
+        {
+            public float value;
+        }
+
+        [Serializable]
+        private sealed class SizeModuleDump
+        {
+            public bool enabled;
+            public ScalarCurveDump curve;
+            public ScalarCurveDump y;
+            public ScalarCurveDump z;
+            public bool separateAxes;
+        }
+
+        [Serializable]
+        private sealed class RotationModuleDump
+        {
+            public bool enabled;
+            public ScalarCurveDump x;
+            public ScalarCurveDump y;
+            public ScalarCurveDump curve;
+            public bool separateAxes;
+        }
+
+        [Serializable]
+        private sealed class ColorModuleDump
+        {
+            public bool enabled;
+            public ParticleColorDump gradient;
+        }
+
+        [Serializable]
+        private sealed class UvModuleDump
+        {
+            public bool enabled;
+            public int mode;
+            public int timeMode;
+            public float fps;
+            public ScalarCurveDump frameOverTime;
+            public ScalarCurveDump startFrame;
+            public int tilesX;
+            public int tilesY;
+            public int animationType;
+            public int rowIndex;
+            public float cycles;
+            public int rowMode;
+            public float flipU;
+            public float flipV;
         }
 
         [Serializable]
@@ -172,18 +277,73 @@ namespace ArknightsACT.Editor.OHMS
         {
             public float scalar;
 
-            // Some exports use one of these fields for a two-constant curve.
-            // The scalar field remains the authoritative value for constant and
-            // curve modes, but retaining the fields makes the payload forward
-            // compatible and lets us recover a useful value when scalar is zero.
+            // Unity serializes MinMaxCurve mode as minMaxState.  OHMS keeps both
+            // curve payloads even when a constant mode is selected, so retaining
+            // all fields lets us faithfully rebuild animated size/rotation/UV data.
             public int minMaxState;
             public float minScalar;
+            public CurveDump maxCurve;
+            public CurveDump minCurve;
+        }
+
+        [Serializable]
+        private sealed class CurveDump
+        {
+            public CurveKeyDump[] m_Curve;
+        }
+
+        [Serializable]
+        private sealed class CurveKeyDump
+        {
+            public float time;
+            public float value;
+            public float inSlope;
+            public float outSlope;
+            public int weightedMode;
+            public float inWeight;
+            public float outWeight;
         }
 
         [Serializable]
         private sealed class ParticleColorDump
         {
+            public int minMaxState;
             public SerializedColor minColor;
+            public SerializedColor maxColor;
+            public SerializedGradientDump minGradient;
+            public SerializedGradientDump maxGradient;
+        }
+
+        [Serializable]
+        private sealed class SerializedGradientDump
+        {
+            public SerializedColor key0;
+            public SerializedColor key1;
+            public SerializedColor key2;
+            public SerializedColor key3;
+            public SerializedColor key4;
+            public SerializedColor key5;
+            public SerializedColor key6;
+            public SerializedColor key7;
+            public int ctime0;
+            public int ctime1;
+            public int ctime2;
+            public int ctime3;
+            public int ctime4;
+            public int ctime5;
+            public int ctime6;
+            public int ctime7;
+            public int atime0;
+            public int atime1;
+            public int atime2;
+            public int atime3;
+            public int atime4;
+            public int atime5;
+            public int atime6;
+            public int atime7;
+            public int m_Mode;
+            public int m_NumColorKeys;
+            public int m_NumAlphaKeys;
         }
 
         [Serializable]
@@ -262,6 +422,7 @@ namespace ArknightsACT.Editor.OHMS
         internal sealed class ImportOptions
         {
             public string SourceRoot;
+            public string ExternalSourceRoot;
             public string OutputRoot = DefaultOutputRoot;
             public string PackageName = "Imported";
             public string IncludeTokens = string.Empty;
@@ -310,6 +471,10 @@ namespace ArknightsACT.Editor.OHMS
             public readonly Dictionary<long, Material> Materials = new();
             public readonly Dictionary<long, Texture2D> Textures = new();
             public readonly Dictionary<long, Mesh> Meshes = new();
+            public readonly Dictionary<long, AssetRecord> ExternalByPathId = new();
+            public readonly Dictionary<AssetRecord, string> ExternalRecordRoots = new();
+            public readonly Dictionary<long, Material> ExternalMaterials = new();
+            public readonly Dictionary<long, Texture2D> ExternalTextures = new();
             public Material MissingMaterialFallback;
             public Texture2D MissingTextureFallback;
             public ImportReport Report = new();
@@ -407,6 +572,7 @@ namespace ArknightsACT.Editor.OHMS
             context.Report.StagedJsonPayloads = staged.JsonPayloads;
             context.Report.NormalizedPointers = staged.RewrittenPointers;
             IndexRecords(context, records);
+            LoadExternalRecords(context, options.ExternalSourceRoot);
 
             var candidates = records
                 .Where(record => IsType(record, "GameObject") && IsRootGameObject(context, record))
@@ -483,8 +649,10 @@ namespace ArknightsACT.Editor.OHMS
 
             try
             {
-                var path = AssetDatabase.GenerateUniqueAssetPath(
-                    $"{context.PrefabRoot}/{SanitizeFileName(rootRecord.Name)}.prefab");
+                // Use a stable path so an importer refresh updates the existing prefab in place and
+                // keeps its .meta GUID.  The old GenerateUniqueAssetPath behavior forced the batch
+                // command to delete the whole package, invalidating serialized gameplay references.
+                var path = $"{context.PrefabRoot}/{SanitizeFileName(rootRecord.Name)}.prefab";
                 PrefabUtility.SaveAsPrefabAsset(root, path);
                 context.Report.PrefabsCreated++;
             }
@@ -589,8 +757,7 @@ namespace ArknightsACT.Editor.OHMS
                         continue;
                     }
                 }
-                renderer.enabled = true;
-                ApplyRendererMaterials(context, record, renderer, go.name);
+                ApplyParticleRendererSettings(context, record, renderer, go.name);
             }
 
             foreach (var record in components.Where(record => IsType(record, "MeshFilter")))
@@ -645,14 +812,99 @@ namespace ArknightsACT.Editor.OHMS
             foreach (var record in components.Where(record => IsType(record, "MonoBehaviour")))
             {
                 context.Report.UnknownMonoBehaviours++;
+                // Keep serialized controller payloads. The prefab contains visual pieces, while
+                // MonoBehaviour data contains the missing FX assembly/timing references.
+                ExportMonoBehaviourTimelineProbe(context, go, record);
+
                 if (TryReadTextPayload(context, record, out var raw))
                 {
                     var scriptId = ExtractLong(raw, "m_PathID", 0L);
                     context.Report.Warnings.Add(
                         $"Skipped original MonoBehaviour on '{go.name}' (asset ID {record.ID}, script/path hint {scriptId}). " +
-                        "Standard Unity FX components are imported; game runtime scripts are intentionally not fabricated.");
+                        "Serialized FX controller data exported for timeline reconstruction.");
                 }
             }
+        }
+
+        private static void ExportMonoBehaviourTimelineProbe(
+            ImportContext context,
+            GameObject owner,
+            AssetRecord record)
+        {
+            if (record == null || owner == null || !TryReadTextPayload(context, record, out var raw))
+                return;
+
+            // Preserve serialized data from original client components. These are not executed;
+            // they are the missing FX assembly information (references, delays and curves).
+            var folder = "Assets/_Game/Art/FX/OriginalClient/Chen/TimelineDump";
+            if (!AssetDatabase.IsValidFolder(folder) && AssetDatabase.IsValidFolder("Assets/_Game/Art/FX/OriginalClient/Chen"))
+                AssetDatabase.CreateFolder("Assets/_Game/Art/FX/OriginalClient/Chen", "TimelineDump");
+
+            var path = folder + "/" + SanitizeFileName(owner.name) + "_" + SafePathId(record.PathID) + ".json";
+            File.WriteAllText(ToAbsoluteAssetPath(path), raw);
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
+        }
+
+        private static void ApplyParticleRendererSettings(
+            ImportContext context,
+            AssetRecord record,
+            ParticleSystemRenderer renderer,
+            string ownerName)
+        {
+            if (renderer == null || !TryReadJson<RendererDump>(context, record, out var dump, out _))
+                return;
+
+            ApplyRendererMaterials(context, record, renderer, ownerName);
+
+            renderer.enabled = dump.m_Enabled;
+            renderer.sortingOrder = dump.m_SortingOrder;
+            renderer.minParticleSize = Mathf.Max(0f, dump.m_MinParticleSize);
+            renderer.maxParticleSize = Mathf.Max(renderer.minParticleSize, dump.m_MaxParticleSize);
+            renderer.cameraVelocityScale = dump.m_CameraVelocityScale;
+            renderer.velocityScale = dump.m_VelocityScale;
+            renderer.lengthScale = dump.m_LengthScale;
+            renderer.sortingFudge = dump.m_SortingFudge;
+            renderer.normalDirection = dump.m_NormalDirection;
+            if (dump.m_Pivot != null)
+                renderer.pivot = dump.m_Pivot.ToVector3();
+            if (dump.m_Flip != null)
+                renderer.flip = dump.m_Flip.ToVector3();
+
+            if (Enum.IsDefined(typeof(ParticleSystemRenderMode), dump.m_RenderMode))
+                renderer.renderMode = (ParticleSystemRenderMode)dump.m_RenderMode;
+            if (Enum.IsDefined(typeof(ParticleSystemRenderSpace), dump.m_RenderAlignment))
+                renderer.alignment = (ParticleSystemRenderSpace)dump.m_RenderAlignment;
+            if (Enum.IsDefined(typeof(ParticleSystemSortMode), dump.m_SortMode))
+                renderer.sortMode = (ParticleSystemSortMode)dump.m_SortMode;
+
+            // The fallback shader deliberately has no instancing variant.  Preserve the source
+            // preference only when the reconstructed material actually supports instancing.
+            renderer.enableGPUInstancing = dump.m_EnableGPUInstancing &&
+                                            renderer.sharedMaterial != null &&
+                                            renderer.sharedMaterial.enableInstancing;
+
+            if (renderer.renderMode == ParticleSystemRenderMode.Mesh)
+            {
+                var meshPointer = FirstNonEmptyPointer(dump.m_Mesh, dump.m_Mesh1, dump.m_Mesh2, dump.m_Mesh3);
+                if (meshPointer != null)
+                {
+                    var mesh = ResolveMesh(context, meshPointer, ownerName + ".ParticleRenderer");
+                    if (mesh != null)
+                        renderer.mesh = mesh;
+                }
+            }
+        }
+
+        private static PPtr FirstNonEmptyPointer(params PPtr[] pointers)
+        {
+            if (pointers == null)
+                return null;
+            for (var i = 0; i < pointers.Length; i++)
+            {
+                if (pointers[i] != null && pointers[i].m_PathID != 0)
+                    return pointers[i];
+            }
+            return null;
         }
 
         private static void ApplyRendererMaterials(
@@ -791,88 +1043,386 @@ namespace ArknightsACT.Editor.OHMS
             if (dump.simulationSpeed > 0f)
                 main.simulationSpeed = dump.simulationSpeed;
             main.loop = dump.looping;
-            main.prewarm = dump.prewarm;
+            main.prewarm = dump.prewarm && dump.looping;
             main.playOnAwake = dump.playOnAwake;
             main.useUnscaledTime = dump.useUnscaledTime;
+            // moveWithTransform is Unity's serialized ParticleSystemSimulationSpace value:
+            // Local=0, World=1, Custom=2.  Custom needs a reconstructed Transform reference, which
+            // the structured payload currently does not expose here, so only apply values we can
+            // reproduce safely.
+            if (dump.moveWithTransform == (int)ParticleSystemSimulationSpace.Local ||
+                dump.moveWithTransform == (int)ParticleSystemSimulationSpace.World)
+            {
+                main.simulationSpace = (ParticleSystemSimulationSpace)dump.moveWithTransform;
+            }
+            if (Enum.IsDefined(typeof(ParticleSystemScalingMode), dump.scalingMode))
+                main.scalingMode = (ParticleSystemScalingMode)dump.scalingMode;
+            if (Enum.IsDefined(typeof(ParticleSystemCullingMode), dump.cullingMode))
+                main.cullingMode = (ParticleSystemCullingMode)dump.cullingMode;
             if (dump.startDelay != null)
-                main.startDelay = Mathf.Max(0f, dump.startDelay.scalar);
+                main.startDelay = ToMinMaxCurve(dump.startDelay);
 
-            // OHMS stores the main-module fields under InitialModule.  These
-            // assignments deliberately use the exported scalar values instead
-            // of Unity's newly-created component defaults.
+            // Preserve the full MinMaxCurve/MinMaxGradient contracts.  The previous importer kept
+            // only each module's maximum scalar, which turned Ch'en's short, shaped slash particles
+            // into dense generic dots and made randomized ranges deterministic.
             var initial = dump.InitialModule;
             if (initial != null)
             {
                 if (initial.startLifetime != null)
-                    main.startLifetime = Mathf.Max(0.0001f, initial.startLifetime.scalar);
+                    main.startLifetime = ToMinMaxCurve(initial.startLifetime);
                 if (initial.startSpeed != null)
-                    main.startSpeed = initial.startSpeed.scalar;
+                    main.startSpeed = ToMinMaxCurve(initial.startSpeed);
+
+                main.startSize3D = initial.size3D;
                 if (initial.startSize != null)
-                    main.startSize = Mathf.Max(0f, initial.startSize.scalar);
-                if (initial.startRotation != null)
-                    main.startRotation = initial.startRotation.scalar;
+                    main.startSizeX = ToMinMaxCurve(initial.startSize);
+                if (initial.size3D && initial.startSizeY != null)
+                    main.startSizeY = ToMinMaxCurve(initial.startSizeY);
+                if (initial.size3D && initial.startSizeZ != null)
+                    main.startSizeZ = ToMinMaxCurve(initial.startSizeZ);
+                if (!initial.size3D && initial.startSize != null)
+                    main.startSize = ToMinMaxCurve(initial.startSize);
+
+                main.startRotation3D = initial.rotation3D;
+                if (initial.rotation3D)
+                {
+                    if (initial.startRotationX != null)
+                        main.startRotationX = ToMinMaxCurve(initial.startRotationX);
+                    if (initial.startRotationY != null)
+                        main.startRotationY = ToMinMaxCurve(initial.startRotationY);
+                    if (initial.startRotation != null)
+                        main.startRotationZ = ToMinMaxCurve(initial.startRotation);
+                }
+                else if (initial.startRotation != null)
+                {
+                    main.startRotation = ToMinMaxCurve(initial.startRotation);
+                }
+                main.flipRotation = Mathf.Clamp01(initial.randomizeRotationDirection);
+
                 if (initial.gravityModifier != null)
-                    main.gravityModifier = initial.gravityModifier.scalar;
+                    main.gravityModifier = ToMinMaxCurve(initial.gravityModifier);
                 if (initial.maxNumParticles > 0)
                     main.maxParticles = initial.maxNumParticles;
-                if (initial.startColor?.minColor != null)
-                    main.startColor = initial.startColor.minColor.ToColor();
+                if (initial.startColor != null)
+                    main.startColor = ToMinMaxGradient(initial.startColor);
             }
 
-            // Rebuild the basic emission contract as well.  Without this, a
-            // newly-created ParticleSystem has Unity's defaults rather than the
-            // exported burst/rate, and burst-only effects never emit anything.
             var emissionDump = dump.EmissionModule;
             if (emissionDump != null)
             {
                 var emission = system.emission;
                 emission.enabled = emissionDump.enabled;
                 if (emissionDump.rateOverTime != null)
-                    emission.rateOverTime = Mathf.Max(0f, emissionDump.rateOverTime.scalar);
+                    emission.rateOverTime = ToMinMaxCurve(emissionDump.rateOverTime);
                 if (emissionDump.rateOverDistance != null)
-                    emission.rateOverDistance = Mathf.Max(0f, emissionDump.rateOverDistance.scalar);
+                    emission.rateOverDistance = ToMinMaxCurve(emissionDump.rateOverDistance);
 
                 if (emissionDump.m_BurstCount > 0 && emissionDump.m_Bursts != null)
                 {
                     var bursts = emissionDump.m_Bursts
                         .Take(emissionDump.m_BurstCount)
+                        .Where(item => item != null)
                         .Select(CreateBurst)
                         .ToArray();
-                    if (bursts.Length > 0)
-                        emission.SetBursts(bursts);
+                    emission.SetBursts(bursts);
+                }
+                else
+                {
+                    emission.SetBursts(Array.Empty<ParticleSystem.Burst>());
                 }
             }
+
+            ApplyShapeModule(system, dump.ShapeModule);
+            ApplySizeModule(system, dump.SizeModule);
+            ApplyRotationModule(system, dump.RotationModule);
+            ApplyColorModule(system, dump.ColorModule);
+            ApplyUvModule(system, dump.UVModule);
             return true;
         }
 
         private static ParticleSystem.Burst CreateBurst(BurstDump dump)
         {
+            // A serialized burst slot with count=0 is legal and is used by the client as an
+            // inactive placeholder.  Forcing it to one produced a visible extra dot on every play.
             var count = (short)Mathf.Clamp(
-                Mathf.RoundToInt(dump?.countCurve?.scalar ?? 1f),
-                1,
+                Mathf.RoundToInt(dump?.countCurve?.scalar ?? 0f),
+                0,
                 short.MaxValue);
             var burst = new ParticleSystem.Burst(Mathf.Max(0f, dump?.time ?? 0f), count);
             burst.cycleCount = dump == null || dump.cycleCount <= 0 ? 1 : dump.cycleCount;
             burst.repeatInterval = Mathf.Max(0.01f, dump?.repeatInterval ?? 0.01f);
-            burst.probability = Mathf.Clamp01(dump == null || dump.probability <= 0f ? 1f : dump.probability);
+            burst.probability = Mathf.Clamp01(dump == null ? 1f : dump.probability);
             return burst;
+        }
+
+        private static void ApplyShapeModule(ParticleSystem system, ShapeModuleDump dump)
+        {
+            if (dump == null)
+                return;
+
+            var shape = system.shape;
+            shape.enabled = dump.enabled;
+            if (!dump.enabled)
+                return;
+
+            if (Enum.IsDefined(typeof(ParticleSystemShapeType), dump.type))
+                shape.shapeType = (ParticleSystemShapeType)dump.type;
+            shape.angle = dump.angle;
+            shape.length = dump.length;
+            shape.radiusThickness = Mathf.Clamp01(dump.radiusThickness);
+            shape.donutRadius = Mathf.Max(0f, dump.donutRadius);
+            shape.alignToDirection = dump.alignToDirection;
+            if (dump.m_Position != null)
+                shape.position = dump.m_Position.ToVector3();
+            if (dump.m_Rotation != null)
+                shape.rotation = dump.m_Rotation.ToVector3();
+            if (dump.m_Scale != null)
+                shape.scale = dump.m_Scale.ToVector3();
+            if (dump.boxThickness != null)
+                shape.boxThickness = dump.boxThickness.ToVector3();
+            if (dump.radius != null)
+                shape.radius = Mathf.Max(0f, dump.radius.value);
+            if (dump.arc != null)
+                shape.arc = dump.arc.value;
+        }
+
+        private static void ApplySizeModule(ParticleSystem system, SizeModuleDump dump)
+        {
+            if (dump == null)
+                return;
+
+            var module = system.sizeOverLifetime;
+            module.enabled = dump.enabled;
+            if (!dump.enabled)
+                return;
+
+            module.separateAxes = dump.separateAxes;
+            if (dump.curve != null)
+                module.x = ToMinMaxCurve(dump.curve);
+            if (dump.separateAxes && dump.y != null)
+                module.y = ToMinMaxCurve(dump.y);
+            if (dump.separateAxes && dump.z != null)
+                module.z = ToMinMaxCurve(dump.z);
+            if (!dump.separateAxes && dump.curve != null)
+                module.size = ToMinMaxCurve(dump.curve);
+        }
+
+        private static void ApplyRotationModule(ParticleSystem system, RotationModuleDump dump)
+        {
+            if (dump == null)
+                return;
+
+            var module = system.rotationOverLifetime;
+            module.enabled = dump.enabled;
+            if (!dump.enabled)
+                return;
+
+            module.separateAxes = dump.separateAxes;
+            if (dump.separateAxes)
+            {
+                if (dump.x != null)
+                    module.x = ToMinMaxCurve(dump.x);
+                if (dump.y != null)
+                    module.y = ToMinMaxCurve(dump.y);
+            }
+            if (dump.curve != null)
+                module.z = ToMinMaxCurve(dump.curve);
+        }
+
+        private static void ApplyColorModule(ParticleSystem system, ColorModuleDump dump)
+        {
+            if (dump == null)
+                return;
+
+            var module = system.colorOverLifetime;
+            module.enabled = dump.enabled;
+            if (dump.enabled && dump.gradient != null)
+                module.color = ToMinMaxGradient(dump.gradient);
+        }
+
+        private static void ApplyUvModule(ParticleSystem system, UvModuleDump dump)
+        {
+            if (dump == null)
+                return;
+
+            var module = system.textureSheetAnimation;
+            module.enabled = dump.enabled;
+            if (!dump.enabled)
+                return;
+
+            if (Enum.IsDefined(typeof(ParticleSystemAnimationMode), dump.mode))
+                module.mode = (ParticleSystemAnimationMode)dump.mode;
+            if (Enum.IsDefined(typeof(ParticleSystemAnimationTimeMode), dump.timeMode))
+                module.timeMode = (ParticleSystemAnimationTimeMode)dump.timeMode;
+            module.fps = Mathf.Max(0f, dump.fps);
+            module.numTilesX = Mathf.Max(1, dump.tilesX);
+            module.numTilesY = Mathf.Max(1, dump.tilesY);
+            if (Enum.IsDefined(typeof(ParticleSystemAnimationType), dump.animationType))
+                module.animation = (ParticleSystemAnimationType)dump.animationType;
+            if (Enum.IsDefined(typeof(ParticleSystemAnimationRowMode), dump.rowMode))
+                module.rowMode = (ParticleSystemAnimationRowMode)dump.rowMode;
+            module.rowIndex = Mathf.Max(0, dump.rowIndex);
+            module.cycleCount = Mathf.Max(1, Mathf.RoundToInt(dump.cycles));
+            if (dump.frameOverTime != null)
+                module.frameOverTime = ToMinMaxCurve(dump.frameOverTime);
+            if (dump.startFrame != null)
+                module.startFrame = ToMinMaxCurve(dump.startFrame);
+        }
+
+        private static ParticleSystem.MinMaxCurve ToMinMaxCurve(ScalarCurveDump dump)
+        {
+            if (dump == null)
+                return new ParticleSystem.MinMaxCurve(0f);
+
+            return dump.minMaxState switch
+            {
+                1 => new ParticleSystem.MinMaxCurve(dump.scalar, ToAnimationCurve(dump.maxCurve)),
+                2 => new ParticleSystem.MinMaxCurve(dump.scalar, ToAnimationCurve(dump.minCurve), ToAnimationCurve(dump.maxCurve)),
+                3 => new ParticleSystem.MinMaxCurve(dump.minScalar, dump.scalar),
+                _ => new ParticleSystem.MinMaxCurve(dump.scalar)
+            };
+        }
+
+        private static AnimationCurve ToAnimationCurve(CurveDump dump)
+        {
+            if (dump?.m_Curve == null || dump.m_Curve.Length == 0)
+                return AnimationCurve.Linear(0f, 1f, 1f, 1f);
+
+            var keys = new Keyframe[dump.m_Curve.Length];
+            for (var i = 0; i < keys.Length; i++)
+            {
+                var source = dump.m_Curve[i];
+                keys[i] = source == null
+                    ? new Keyframe(0f, 0f)
+                    : new Keyframe(source.time, source.value, source.inSlope, source.outSlope);
+            }
+            return new AnimationCurve(keys);
+        }
+
+        private static ParticleSystem.MinMaxGradient ToMinMaxGradient(ParticleColorDump dump)
+        {
+            if (dump == null)
+                return new ParticleSystem.MinMaxGradient(Color.white);
+
+            var minColor = dump.minColor?.ToColor() ?? Color.white;
+            var maxColor = dump.maxColor?.ToColor() ?? minColor;
+            return dump.minMaxState switch
+            {
+                1 => new ParticleSystem.MinMaxGradient(ToGradient(dump.maxGradient, maxColor)),
+                2 => new ParticleSystem.MinMaxGradient(minColor, maxColor),
+                3 => new ParticleSystem.MinMaxGradient(
+                    ToGradient(dump.minGradient, minColor),
+                    ToGradient(dump.maxGradient, maxColor)),
+                4 => new ParticleSystem.MinMaxGradient(ToGradient(dump.maxGradient, maxColor)),
+                _ => new ParticleSystem.MinMaxGradient(maxColor)
+            };
+        }
+
+        private static Gradient ToGradient(SerializedGradientDump dump, Color fallback)
+        {
+            var gradient = new Gradient();
+            if (dump == null)
+            {
+                gradient.SetKeys(
+                    new[] { new GradientColorKey(fallback, 0f), new GradientColorKey(fallback, 1f) },
+                    new[] { new GradientAlphaKey(fallback.a, 0f), new GradientAlphaKey(fallback.a, 1f) });
+                return gradient;
+            }
+
+            var colorCount = Mathf.Clamp(dump.m_NumColorKeys, 1, 8);
+            var alphaCount = Mathf.Clamp(dump.m_NumAlphaKeys, 1, 8);
+            var colorKeys = new GradientColorKey[colorCount];
+            var alphaKeys = new GradientAlphaKey[alphaCount];
+            for (var i = 0; i < colorCount; i++)
+            {
+                var color = GetGradientColor(dump, i)?.ToColor() ?? fallback;
+                colorKeys[i] = new GradientColorKey(color, GetGradientTime(dump, i, false));
+            }
+            for (var i = 0; i < alphaCount; i++)
+            {
+                var color = GetGradientColor(dump, i)?.ToColor() ?? fallback;
+                alphaKeys[i] = new GradientAlphaKey(color.a, GetGradientTime(dump, i, true));
+            }
+            gradient.SetKeys(colorKeys, alphaKeys);
+            if (Enum.IsDefined(typeof(GradientMode), dump.m_Mode))
+                gradient.mode = (GradientMode)dump.m_Mode;
+            return gradient;
+        }
+
+        private static SerializedColor GetGradientColor(SerializedGradientDump dump, int index)
+        {
+            return index switch
+            {
+                0 => dump.key0,
+                1 => dump.key1,
+                2 => dump.key2,
+                3 => dump.key3,
+                4 => dump.key4,
+                5 => dump.key5,
+                6 => dump.key6,
+                7 => dump.key7,
+                _ => null
+            };
+        }
+
+        private static float GetGradientTime(SerializedGradientDump dump, int index, bool alpha)
+        {
+            var raw = alpha
+                ? index switch
+                {
+                    0 => dump.atime0,
+                    1 => dump.atime1,
+                    2 => dump.atime2,
+                    3 => dump.atime3,
+                    4 => dump.atime4,
+                    5 => dump.atime5,
+                    6 => dump.atime6,
+                    7 => dump.atime7,
+                    _ => 0
+                }
+                : index switch
+                {
+                    0 => dump.ctime0,
+                    1 => dump.ctime1,
+                    2 => dump.ctime2,
+                    3 => dump.ctime3,
+                    4 => dump.ctime4,
+                    5 => dump.ctime5,
+                    6 => dump.ctime6,
+                    7 => dump.ctime7,
+                    _ => 0
+                };
+            return Mathf.Clamp01(raw / 65535f);
         }
 
         private static Material ResolveMaterial(ImportContext context, PPtr pointer, string ownerName)
         {
             if (pointer == null || pointer.m_PathID == 0)
                 return null;
+
+            Dictionary<long, Material> cache;
+            AssetRecord record;
             if (pointer.m_FileID != 0)
             {
-                ReportExternal(context, pointer, ownerName, "Material");
-                return null;
+                cache = context.ExternalMaterials;
+                if (cache.TryGetValue(pointer.m_PathID, out var externalCached))
+                    return externalCached;
+                if (!context.ExternalByPathId.TryGetValue(pointer.m_PathID, out record) ||
+                    !IsType(record, "Material"))
+                {
+                    ReportExternal(context, pointer, ownerName, "Material");
+                    return null;
+                }
             }
-            if (context.Materials.TryGetValue(pointer.m_PathID, out var cached))
-                return cached;
-
-            var record = ResolveInternal(context, pointer, "Material", ownerName);
-            if (record == null)
-                return null;
+            else
+            {
+                cache = context.Materials;
+                if (cache.TryGetValue(pointer.m_PathID, out var cached))
+                    return cached;
+                record = ResolveInternal(context, pointer, "Material", ownerName);
+                if (record == null)
+                    return null;
+            }
             if (!TryReadJson<MaterialDump>(context, record, out var dump, out _))
                 return null;
 
@@ -928,11 +1478,21 @@ namespace ArknightsACT.Editor.OHMS
             if (dump.m_CustomRenderQueue >= 0)
                 material.renderQueue = dump.m_CustomRenderQueue;
 
-            var assetPath = AssetDatabase.GenerateUniqueAssetPath(
-                $"{context.MaterialRoot}/{SanitizeFileName(material.name)}_{SafePathId(record.PathID)}.mat");
-            AssetDatabase.CreateAsset(material, assetPath);
-            context.Materials[pointer.m_PathID] = material;
-            context.Report.MaterialsCreated++;
+            var assetPath = $"{context.MaterialRoot}/{SanitizeFileName(material.name)}_{SafePathId(record.PathID)}.mat";
+            var existingMaterial = AssetDatabase.LoadAssetAtPath<Material>(assetPath);
+            if (existingMaterial != null)
+            {
+                EditorUtility.CopySerialized(material, existingMaterial);
+                EditorUtility.SetDirty(existingMaterial);
+                UnityEngine.Object.DestroyImmediate(material);
+                material = existingMaterial;
+            }
+            else
+            {
+                AssetDatabase.CreateAsset(material, assetPath);
+                context.Report.MaterialsCreated++;
+            }
+            cache[pointer.m_PathID] = material;
             return material;
         }
 
@@ -940,17 +1500,30 @@ namespace ArknightsACT.Editor.OHMS
         {
             if (pointer == null || pointer.m_PathID == 0)
                 return null;
+
+            Dictionary<long, Texture2D> cache;
+            AssetRecord record;
             if (pointer.m_FileID != 0)
             {
-                ReportExternal(context, pointer, ownerName, "Texture");
-                return null;
+                cache = context.ExternalTextures;
+                if (cache.TryGetValue(pointer.m_PathID, out var externalCached))
+                    return externalCached;
+                if (!context.ExternalByPathId.TryGetValue(pointer.m_PathID, out record) ||
+                    !IsType(record, "Texture2D"))
+                {
+                    ReportExternal(context, pointer, ownerName, "Texture");
+                    return null;
+                }
             }
-            if (context.Textures.TryGetValue(pointer.m_PathID, out var cached))
-                return cached;
-
-            var record = ResolveInternal(context, pointer, "Texture2D", ownerName);
-            if (record == null)
-                return null;
+            else
+            {
+                cache = context.Textures;
+                if (cache.TryGetValue(pointer.m_PathID, out var cached))
+                    return cached;
+                record = ResolveInternal(context, pointer, "Texture2D", ownerName);
+                if (record == null)
+                    return null;
+            }
             var payloadPath = GetPayloadPath(context, record);
             if (!File.Exists(payloadPath))
             {
@@ -966,7 +1539,7 @@ namespace ArknightsACT.Editor.OHMS
             }
 
             var fileName = $"{SanitizeFileName(record.Name)}_{SafePathId(record.PathID)}.png";
-            var assetPath = AssetDatabase.GenerateUniqueAssetPath($"{context.TextureRoot}/{fileName}");
+            var assetPath = $"{context.TextureRoot}/{fileName}";
             File.WriteAllBytes(ToAbsoluteAssetPath(assetPath), bytes);
             AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceSynchronousImport);
             if (AssetImporter.GetAtPath(assetPath) is TextureImporter importer)
@@ -981,7 +1554,7 @@ namespace ArknightsACT.Editor.OHMS
             var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
             if (texture != null)
             {
-                context.Textures[pointer.m_PathID] = texture;
+                cache[pointer.m_PathID] = texture;
                 context.Report.TexturesCreated++;
             }
             return texture;
@@ -1009,11 +1582,21 @@ namespace ArknightsACT.Editor.OHMS
             if (mesh == null)
                 return null;
 
-            var assetPath = AssetDatabase.GenerateUniqueAssetPath(
-                $"{context.MeshRoot}/{SanitizeFileName(record.Name)}_{SafePathId(record.PathID)}.asset");
-            AssetDatabase.CreateAsset(mesh, assetPath);
+            var assetPath = $"{context.MeshRoot}/{SanitizeFileName(record.Name)}_{SafePathId(record.PathID)}.asset";
+            var existingMesh = AssetDatabase.LoadAssetAtPath<Mesh>(assetPath);
+            if (existingMesh != null)
+            {
+                EditorUtility.CopySerialized(mesh, existingMesh);
+                EditorUtility.SetDirty(existingMesh);
+                UnityEngine.Object.DestroyImmediate(mesh);
+                mesh = existingMesh;
+            }
+            else
+            {
+                AssetDatabase.CreateAsset(mesh, assetPath);
+                context.Report.MeshesCreated++;
+            }
             context.Meshes[pointer.m_PathID] = mesh;
-            context.Report.MeshesCreated++;
             return mesh;
         }
 
@@ -1217,6 +1800,59 @@ namespace ArknightsACT.Editor.OHMS
             }
         }
 
+        private static void LoadExternalRecords(ImportContext context, string configuredRoot)
+        {
+            var root = configuredRoot;
+            if (string.IsNullOrWhiteSpace(root))
+                root = Environment.GetEnvironmentVariable("OHMS_EXTERNAL_ROOT");
+            if (string.IsNullOrWhiteSpace(root))
+                root = @"D:\AK_Extract\Unpacked\20260917-171222";
+            root = Path.GetFullPath(root);
+
+            if (!File.Exists(Path.Combine(root, "assets.json")) ||
+                !Directory.Exists(Path.Combine(root, "things")))
+            {
+                context.Report.Warnings.Add(
+                    $"External OHMS dependency export not found at '{root}'; external materials/textures remain unresolved.");
+                return;
+            }
+
+            if (!TryReadIndex(root, out var records, out var error))
+            {
+                context.Report.Warnings.Add("Could not read external OHMS dependency index: " + error);
+                return;
+            }
+
+            LoadExternalIndex(context, root, records);
+
+            // The material/sharedbattle export references the shared FX texture bundles by
+            // external FileID.  Load the texture-only index as a second source so those
+            // references resolve to the original PNG payloads as well.
+            var textureRoot = @"D:\AK_Extract\Unpacked\20260917-171120";
+            if (!string.Equals(Path.GetFullPath(textureRoot), root, StringComparison.OrdinalIgnoreCase) &&
+                File.Exists(Path.Combine(textureRoot, "assets.json")) &&
+                Directory.Exists(Path.Combine(textureRoot, "things")) &&
+                TryReadIndex(textureRoot, out var textureRecords, out _))
+            {
+                LoadExternalIndex(context, textureRoot, textureRecords);
+            }
+        }
+
+        private static void LoadExternalIndex(
+            ImportContext context,
+            string root,
+            IEnumerable<AssetRecord> records)
+        {
+            var thingsRoot = Path.Combine(root, "things");
+            foreach (var record in records)
+            {
+                if (record == null || record.PathID == 0 || context.ExternalByPathId.ContainsKey(record.PathID))
+                    continue;
+                context.ExternalByPathId.Add(record.PathID, record);
+                context.ExternalRecordRoots.Add(record, thingsRoot);
+            }
+        }
+
         private static bool TryPrepareSource(
             string sourceRoot,
             out OhmsStructuredExportStager.StageResult staged,
@@ -1316,7 +1952,11 @@ namespace ArknightsACT.Editor.OHMS
         }
 
         private static string GetPayloadPath(ImportContext context, AssetRecord record)
-            => Path.Combine(context.ThingsRoot, record.ID + ".ttbin");
+            => Path.Combine(
+                context.ExternalRecordRoots.TryGetValue(record, out var externalThingsRoot)
+                    ? externalThingsRoot
+                    : context.ThingsRoot,
+                record.ID + ".ttbin");
 
         private static bool IsType(AssetRecord record, string type)
             => record?.Type != null && string.Equals(record.Type.name, type, StringComparison.OrdinalIgnoreCase);

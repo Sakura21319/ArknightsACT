@@ -2,6 +2,7 @@
 using System;
 using System.Reflection;
 using ArknightsACT.Editor.PRTS;
+using UnityEditor;
 using UnityEngine;
 
 namespace ArknightsACT.Editor
@@ -15,6 +16,16 @@ namespace ArknightsACT.Editor
         [UnityEditor.MenuItem("ArknightsACT/Build Prototype Scene", false, 10)]
         private static void BuildPrototypeScene()
         {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                EditorUtility.DisplayDialog(
+                    "ArknightsACT",
+                    "不能在 Play Mode 中构建场景。请先点击 Unity 顶部的停止按钮，再重新执行构建。",
+                    "确定");
+                Debug.LogWarning("[ArknightsACT/25D] 已阻止 Play Mode 内的场景构建。请先退出 Play Mode。");
+                return;
+            }
+
             // The combat Spine already contains Ch'en's authored Attack / Skill_2 / Skill_3 effects.
             // Refresh its special blend-mode materials before composing the scene so those original
             // attachments render at full intensity instead of being replaced by synthetic VFX.
@@ -51,6 +62,24 @@ namespace ArknightsACT.Editor
         private static void OpenOhmsEffectImporter()
         {
             OHMS.OhmsStructuredFxImporterWindow.Open();
+        }
+
+        [UnityEditor.MenuItem("ArknightsACT/Assets/OHMS/Import staged Ch'en combat FX", false, 140)]
+        private static void ImportStagedChenCombatFx()
+        {
+            OHMS.OhmsStructuredFxBatchCommands.ImportStagedChenCombatFx();
+        }
+
+        [UnityEditor.MenuItem("ArknightsACT/Assets/OHMS/Repair Ch'en skill 3 blade textures", false, 141)]
+        private static void RepairChenSkill3BladeTextures()
+        {
+            OHMS.OhmsStructuredFxBatchCommands.RepairChenSkill3BladeTextures();
+        }
+
+        [UnityEditor.MenuItem("ArknightsACT/Assets/Import Extracted Frame FX", false, 150)]
+        private static void OpenExtractedFrameFxImporter()
+        {
+            Effects.ExtractedFrameFxImporterWindow.Open();
         }
 
         private static void InvokeHidden(Type type, string methodName)

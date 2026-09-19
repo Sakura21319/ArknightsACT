@@ -2,6 +2,7 @@
 using ArknightsACT.Combat;
 using ArknightsACT.Combat.Status;
 using ArknightsACT.Editor.PRTS;
+using ArknightsACT.Editor.Effects;
 using ArknightsACT.Gameplay.Abilities;
 using ArknightsACT.Gameplay.Characters;
 using ArknightsACT.Gameplay.Characters.Chen;
@@ -13,6 +14,7 @@ using ArknightsACT.Gameplay.Roguelite.Collectibles;
 using ArknightsACT.Gameplay.Roguelite.Progression;
 using ArknightsACT.Gameplay.Roguelite.SkillUpgrades;
 using ArknightsACT.Gameplay.Roguelite.Treasure;
+using UnityEditor;
 using UnityEngine;
 
 namespace ArknightsACT.Editor
@@ -23,6 +25,9 @@ namespace ArknightsACT.Editor
     /// </summary>
     internal static class ChenPrototypePlayerFactory
     {
+        private const string CustomFxSlashTexturePath =
+            "Assets/_Game/Art/FX/Chen/ChenCustomSlash.png";
+
         public static GameObject Create(AttackDefinition[] attacks, float spawnY)
         {
             var go = new GameObject("Player_Chen");
@@ -61,7 +66,8 @@ namespace ArknightsACT.Editor
             AddSharedGameplay(go, attacks);
             go.AddComponent<PlayerMotor2D>();
             go.AddComponent<ChenPresentationDriver2D>();
-            AttachOriginalFx(go);
+            PrepareCustomFxMountPoint(go);
+            AddCustomFxController(go);
             go.AddComponent<DamageTintFlash2D>();
             go.AddComponent<WorldHealthBar2D>();
             go.AddComponent<DamageNumberEmitter2D>();
@@ -112,7 +118,12 @@ namespace ArknightsACT.Editor
             }
 
             go.AddComponent<ChenPresentationDriver25D>();
-            AttachOriginalFx(go);
+            PrepareCustomFxMountPoint(go);
+            AddCustomFxController(go);
+            var trainingDummy = go.AddComponent<ChenTrainingDummySpawner>();
+            trainingDummy.ConfigurePresentationPrefab(
+                AssetDatabase.LoadAssetAtPath<GameObject>(
+                    "Assets/_Game/Generated/PRTS/Prefabs/enemy_1006_shield.prefab"));
             go.AddComponent<DamageTintFlash2D>();
             go.AddComponent<WorldHealthBar2D>();
             go.AddComponent<DamageNumberEmitter2D>();
@@ -120,18 +131,37 @@ namespace ArknightsACT.Editor
             return go;
         }
 
-        private static void AttachOriginalFx(GameObject go)
+        private static void PrepareCustomFxMountPoint(GameObject owner)
         {
-            // Character-level Spine BG effects are not the skill slash effects. Keep that visual
-            // family reserved for dash only, as a light character after-image/accent.
-            var characterFx = go.AddComponent<ChenOriginalSpineFxVisibilityController>();
-            characterFx.enabled = false;
-            go.AddComponent<ChenDashSpineFxGateController>().Configure(characterFx);
+            // Original client Spine/battle FX are intentionally not mounted.  Keep one stable,
+            // empty anchor so a future authored FX controller can attach effects without changing
+            // the generated player hierarchy again.
+            if (owner == null || owner.transform.Find("CustomFxMountPoint") != null)
+                return;
 
-            // Actual skill slashes come from independent game-client battle/prefabs/effects assets.
-            // The local catalog wires them when extracted prefabs are present; there is no synthetic
-            // LineRenderer or generated slash fallback.
-            ChenOriginalSkillFxCatalog.Configure(go);
+            var mount = new GameObject("CustomFxMountPoint");
+            mount.transform.SetParent(owner.transform, false);
+            mount.transform.localPosition = new Vector3(0f, 0.8f, 0f);
+            mount.transform.localRotation = Quaternion.identity;
+            mount.transform.localScale = Vector3.one;
+        }
+
+        private static void AddCustomFxController(GameObject owner)
+        {
+            if (ChenExtractedFxSetup.HasImportedEffects())
+            {
+                // Imported frame FX are the explicit replacement path.  Keep the procedural
+                // controller as a fallback only when the extraction importer has not produced a
+                // Chen package yet; this prevents duplicate skill visuals after re-building the
+                // prototype scene.
+                ChenExtractedFxSetup.Configure(owner);
+                return;
+            }
+
+            var controller = owner.GetComponent<ChenCustomFxController>() ??
+                             owner.AddComponent<ChenCustomFxController>();
+            controller.Configure(
+                AssetDatabase.LoadAssetAtPath<Texture2D>(CustomFxSlashTexturePath));
         }
 
         private static void AttachMotionRetarget(GameObject owner, Transform presentationParent, GameObject combatPresentation)

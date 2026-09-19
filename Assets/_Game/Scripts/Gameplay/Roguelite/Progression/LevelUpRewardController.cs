@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using ArknightsACT.Gameplay.Feedback;
+using ArknightsACT.Gameplay.Abilities;
+using ArknightsACT.Gameplay.Presentation;
 using ArknightsACT.Gameplay.Roguelite.Rewards;
 using ArknightsACT.Gameplay.Roguelite.Routing;
 using UnityEngine;
@@ -15,6 +17,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
         [SerializeField] private PlayerCombatProfile combatProfile;
         [SerializeField] private LevelUpgradeDefinition[] upgradePool;
         [SerializeField, Range(1, 3)] private int choiceCount = 3;
+        [SerializeField] private Transform player;
 
         private readonly Queue<int> _pendingLevels = new();
         private readonly List<LevelUpgradeDefinition> _choices = new();
@@ -23,6 +26,8 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
         private bool _isOpen;
         private int _displayLevel;
         private int _inputUnlockFrame;
+        private PlayerSkillController _playerSkills;
+        private IGameplayPresentationLock _presentationLock;
 
         public bool IsOpen => _isOpen;
 
@@ -30,18 +35,22 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
             RogueliteRunState state,
             LevelUpgradeInventory targetInventory,
             PlayerCombatProfile profile,
-            LevelUpgradeDefinition[] pool)
+            LevelUpgradeDefinition[] pool,
+            Transform playerTransform = null)
         {
             runState = state;
             inventory = targetInventory;
             combatProfile = profile;
             upgradePool = pool;
+            player = playerTransform;
+            ResolvePresentationDependencies();
         }
 
         private void OnEnable()
         {
             _pause = GameplayPauseService.Instance;
             _coordinator = RewardSelectionCoordinator.Instance ?? FindFirstObjectByType<RewardSelectionCoordinator>();
+            ResolvePresentationDependencies();
             if (runState != null)
                 runState.LevelIncreased += OnLevelIncreased;
         }
@@ -58,12 +67,19 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
         private void OnLevelIncreased(int level)
         {
             _pendingLevels.Enqueue(level);
-            TryOpenNext();
+            // Health.Died is raised from inside DamageSystem.Apply. Defer the actual UI attempt
+            // to Update so the current hit can finish dispatching its presentation events first.
+            // Otherwise the level-up overlay can open before the final skill-3 hit FX registers
+            // its remaining playback time.
         }
 
         private void TryOpenNext()
         {
             if (_isOpen || _pendingLevels.Count == 0)
+                return;
+
+            ResolvePresentationDependencies();
+            if (IsPresentationBusy())
                 return;
 
             _coordinator ??= RewardSelectionCoordinator.Instance ?? FindFirstObjectByType<RewardSelectionCoordinator>();
@@ -169,6 +185,22 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
 
             Close();
             TryOpenNext();
+        }
+
+        private void ResolvePresentationDependencies()
+        {
+            if (_playerSkills == null && player != null)
+                _playerSkills = player.GetComponent<PlayerSkillController>();
+            _playerSkills ??= FindFirstObjectByType<PlayerSkillController>();
+
+            if (_presentationLock == null && _playerSkills != null)
+                _presentationLock = _playerSkills.GetComponent<IGameplayPresentationLock>();
+        }
+
+        private bool IsPresentationBusy()
+        {
+            return (_playerSkills != null && _playerSkills.IsCasting) ||
+                   (_presentationLock != null && _presentationLock.IsPresentationBusy);
         }
 
         private void Close()

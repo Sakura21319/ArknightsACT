@@ -83,6 +83,7 @@ namespace ArknightsACT.Gameplay.Combat
 
         private void OnDisable()
         {
+            CancelCurrentAttack();
             if (_entity?.Health != null)
                 _entity.Health.Died -= OnDied;
         }

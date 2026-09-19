@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ArknightsACT.Gameplay.Roguelite.World;
 using UnityEngine;
 
 namespace ArknightsACT.Gameplay.Roguelite.Routing
@@ -16,12 +17,21 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
         [SerializeField] private RogueliteStageMapController stageMap;
 
         private readonly HashSet<int> _boundPits = new();
+        private RogueliteStageRuntimeContext _context;
         private GameObject _stage;
         private float _nextResolveAt;
 
         public void Configure(RogueliteStageMapController map)
         {
+            _context ??= GetComponent<RogueliteStageRuntimeContext>();
             stageMap = map;
+        }
+
+        private void Awake()
+        {
+            _context = GetComponent<RogueliteStageRuntimeContext>();
+            if (stageMap == null && _context != null)
+                stageMap = _context.StageMap;
         }
 
         private void Update()
@@ -30,11 +40,14 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                 return;
             _nextResolveAt = Time.unscaledTime + 0.10f;
 
-            stageMap ??= FindFirstObjectByType<RogueliteStageMapController>();
+            if (_context != null)
+                stageMap ??= _context.StageMap;
             if (stageMap == null)
                 return;
 
-            var stage = GameObject.Find($"[Stage_{stageMap.StageIndex:00}_Runtime]");
+            var stage = _context != null && _context.StageRoot != null
+                ? _context.StageRoot.gameObject
+                : null;
             if (stage == null)
                 return;
 
@@ -61,7 +74,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                     if (child == null || !child.name.StartsWith("Hazard_Hole", StringComparison.Ordinal))
                         continue;
 
-                    var id = child.gameObject.GetInstanceID();
+                    var id = child.gameObject.GetHashCode();
                     if (_boundPits.Contains(id))
                         continue;
                     if (TryBindPit(block, child))

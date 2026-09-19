@@ -12,8 +12,9 @@ namespace ArknightsACT.Gameplay.Characters.Chen
     [RequireComponent(typeof(CombatEntity))]
     public sealed class ChenSkill1 : MonoBehaviour, IPlayerSkill
     {
-        [SerializeField, Min(0.1f)] private float cooldownSeconds = 6f;
-        [SerializeField, Min(0f)] private float impactDelay = 0.34f;
+        [SerializeField, Min(0.1f)] private float cooldownSeconds = 1f;
+        [Tooltip("横向刀光在起手第 1 帧出现，因此伤害与起手特效同帧结算。")]
+        [SerializeField, Min(0f)] private float impactDelay = 0f;
         [SerializeField, Min(0.1f)] private float castLockSeconds = 1.15f;
         [SerializeField, Min(0f)] private float physicalDamage = 28f;
         [SerializeField, Min(0f)] private float artsDamage = 28f;
@@ -35,10 +36,17 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         public bool IsCasting { get; private set; }
 
         /// <summary>
-        /// Fired once for every enemy that actually receives damage from 赤霄·拔刀.
-        /// Original client skill-hit FX can bind to the struck target without guessing timing.
+        /// Fired once for every valid enemy selected by 赤霄·拔刀. The combat result is kept
+        /// separate so presentation FX still play when damage is blocked.
         /// </summary>
         public event Action<Transform> HitResolved;
+
+        /// <summary>
+        /// Fired as soon as 赤霄·拔刀 is accepted by the skill controller. This is intentionally
+        /// separate from HitResolved because the cast presentation must start even before the
+        /// delayed hitbox resolves.
+        /// </summary>
+        public event Action CastStarted;
 
         private void Awake()
         {
@@ -75,6 +83,10 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         private IEnumerator CastRoutine()
         {
             IsCasting = true;
+            // The extracted skill_02_start horizontal slash is already visible on frame 1.
+            // Fire the presentation event before a zero-delay hit resolves so both happen in
+            // the same simulation step instead of waiting for the slash animation to finish.
+            CastStarted?.Invoke();
             if (impactDelay > 0f)
                 yield return new WaitForSeconds(impactDelay);
 
@@ -118,10 +130,10 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                     continue;
 
                 if (ApplyDamagePair(target, new Vector2(4.2f * facing, 0.9f)))
-                {
                     hitAny = true;
-                    HitResolved?.Invoke(target.transform);
-                }
+                // Presentation FX should still play when a valid target is found but the
+                // damage is blocked by invulnerability/other combat rules.
+                HitResolved?.Invoke(target.transform);
             }
 
             ApplyFeedback(hitAny);
@@ -160,10 +172,8 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                     continue;
 
                 if (ApplyDamagePair(target, Vector2.zero))
-                {
                     hitAny = true;
-                    HitResolved?.Invoke(target.transform);
-                }
+                HitResolved?.Invoke(target.transform);
             }
 
             ApplyFeedback(hitAny);

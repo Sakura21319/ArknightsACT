@@ -6,10 +6,10 @@ using UnityEngine;
 namespace ArknightsACT.Gameplay.Roguelite.World
 {
     /// <summary>
-    /// Bridges the legacy 14x11 presentation kit to the enlarged 18x14 gameplay chunks.
-    /// Physical block ownership comes from RogueliteStageRuntimeController; this pass expands the
-    /// segmented floor/presentation roots so the visual kit fills the new combat footprint without
-    /// stretching gameplay cover colliders or Facility traversal geometry.
+    /// Bridges the legacy 14x11 presentation kit to the enlarged 30x24 gameplay chunks.
+    /// Physical block ownership and floor sockets come from the current runtime footprint; this
+    /// pass expands only legacy presentation roots without stretching gameplay cover colliders or
+    /// Facility traversal geometry.
     /// </summary>
     [DefaultExecutionOrder(-70)]
     [DisallowMultipleComponent]
@@ -17,8 +17,8 @@ namespace ArknightsACT.Gameplay.Roguelite.World
     {
         private const float LegacyWidth = 14f;
         private const float LegacyDepth = 11f;
-        private const float ChunkWidth = 18f;
-        private const float ChunkDepth = 14f;
+        private const float ChunkWidth = RogueliteStageWorldMetrics.ChunkWidth;
+        private const float ChunkDepth = RogueliteStageWorldMetrics.ChunkDepth;
         private const int FloorColumns = 6;
         private const int FloorRows = 5;
 
@@ -29,13 +29,22 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         [SerializeField] private RogueliteStageMapController stageMap;
 
+        private RogueliteStageRuntimeContext _context;
         private readonly HashSet<int> _scaledRoots = new();
         private GameObject _stage;
         private float _nextResolveAt;
 
         public void Configure(RogueliteStageMapController map)
         {
+            _context ??= GetComponent<RogueliteStageRuntimeContext>();
             stageMap = map;
+        }
+
+        private void Awake()
+        {
+            _context = GetComponent<RogueliteStageRuntimeContext>();
+            if (_context != null)
+                stageMap ??= _context.StageMap;
         }
 
         private void Update()
@@ -44,11 +53,13 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 return;
             _nextResolveAt = Time.unscaledTime + 0.08f;
 
-            stageMap ??= FindFirstObjectByType<RogueliteStageMapController>();
+            if (_context == null)
+                return;
+            stageMap ??= _context.StageMap;
             if (stageMap == null)
                 return;
 
-            var stage = GameObject.Find($"[Stage_{stageMap.StageIndex:00}_Runtime]");
+            var stage = _context.StageRoot != null ? _context.StageRoot.gameObject : null;
             if (stage == null)
                 return;
 
@@ -58,11 +69,11 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 _scaledRoots.Clear();
             }
 
-            ExpandFloorSockets(stage.transform);
+            NormalizeFloorSockets(stage.transform);
             ExpandLatePresentation(stage.transform);
         }
 
-        private void ExpandFloorSockets(Transform stage)
+        private void NormalizeFloorSockets(Transform stage)
         {
             for (var i = 0; i < stageMap.Blocks.Count; i++)
             {
@@ -71,11 +82,14 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 if (socketsRoot == null)
                     continue;
 
-                var id = socketsRoot.gameObject.GetInstanceID();
+                var id = socketsRoot.gameObject.GetHashCode();
                 if (!_scaledRoots.Add(id))
                     continue;
 
-                socketsRoot.localScale = PresentationScale;
+                // StageLayout authors sockets directly at the shared 30x24 gameplay footprint.
+                // Scaling this root again would enlarge an already-correct floor and make its
+                // visual boundary disagree with the physical stage.
+                socketsRoot.localScale = Vector3.one;
 
                 var sockets = socketsRoot.GetComponentsInChildren<RogueliteFloorSocket25D>(true);
                 var footprint = new Vector2(ChunkWidth / FloorColumns, ChunkDepth / FloorRows);
@@ -86,8 +100,8 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         private void ExpandLatePresentation(Transform stage)
         {
-            // The broad floor meshes were authored to the old socket size. Their positions already
-            // come from expanded floor sockets; only mesh extent needs the same X/Z ratio.
+            // Broad floor meshes remain legacy presentation assets. Their extent needs the same
+            // X/Z ratio as the enlarged stage, while gameplay floor sockets stay unscaled.
             var broad = stage.Find("[Chernobog_FloorComposition]/BroadDeckMasses");
             ScaleChildrenOnce(broad, PresentationScale);
 
@@ -114,7 +128,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         {
             if (root == null)
                 return;
-            var id = root.gameObject.GetInstanceID();
+            var id = root.gameObject.GetHashCode();
             if (!_scaledRoots.Add(id))
                 return;
             root.localScale = Vector3.Scale(root.localScale, scale);
@@ -129,7 +143,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 var child = root.GetChild(i);
                 if (child == null)
                     continue;
-                var id = child.gameObject.GetInstanceID();
+                var id = child.gameObject.GetHashCode();
                 if (!_scaledRoots.Add(id))
                     continue;
                 child.localScale = Vector3.Scale(child.localScale, scale);
@@ -138,14 +152,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         private static Transform FindBlockTransform(Transform stage, int index)
         {
-            var prefix = $"Block_{index:00}_";
-            for (var i = 0; i < stage.childCount; i++)
-            {
-                var child = stage.GetChild(i);
-                if (child != null && child.name.StartsWith(prefix, StringComparison.Ordinal))
-                    return child;
-            }
-            return null;
+            return RogueliteStageBlockUtility.FindBlockTransform(stage, index);
         }
     }
 }

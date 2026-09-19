@@ -25,26 +25,43 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         [SerializeField] private RogueliteStageMapController stageMap;
         [SerializeField] private ChernobogEnvironmentKit kit;
 
+        private const float ResolveIntervalSeconds = 0.12f;
+
+        private RogueliteStageRuntimeContext _context;
         private GameObject _preparedStage;
         private float _nextResolveAt;
 
         public void Configure(RogueliteStageMapController map, ChernobogEnvironmentKit environmentKit)
         {
+            _context ??= GetComponent<RogueliteStageRuntimeContext>();
             stageMap = map;
             kit = environmentKit;
+        }
+
+        private void Awake()
+        {
+            _context = GetComponent<RogueliteStageRuntimeContext>();
+            if (_context == null)
+                return;
+
+            stageMap ??= _context.StageMap;
+            kit ??= _context.EnvironmentKit;
         }
 
         private void Update()
         {
             if (Time.unscaledTime < _nextResolveAt)
                 return;
-            _nextResolveAt = Time.unscaledTime + 0.12f;
+            _nextResolveAt = Time.unscaledTime + ResolveIntervalSeconds;
 
-            stageMap ??= FindFirstObjectByType<RogueliteStageMapController>();
+            if (_context == null)
+                return;
+            stageMap ??= _context.StageMap;
+            kit ??= _context.EnvironmentKit;
             if (stageMap == null || kit == null || !kit.IsUsable)
                 return;
 
-            var stage = GameObject.Find($"[Stage_{stageMap.StageIndex:00}_Runtime]");
+            var stage = _context.StageRoot != null ? _context.StageRoot.gameObject : null;
             if (stage == null || stage == _preparedStage)
                 return;
 
@@ -98,8 +115,10 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             if (old != null)
                 Destroy(old.gameObject);
 
-            var root = new GameObject("[Chernobog_UrbanArchitecture]").transform;
-            root.SetParent(stage, false);
+            var root = RogueliteStageVisualRootUtility.GetOrCreate(
+                stage,
+                "[Chernobog_UrbanArchitecture]",
+                true);
 
             for (var i = 0; i < stageMap.Blocks.Count; i++)
             {
@@ -206,7 +225,9 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             var inset = kit.insetMaterial != null ? kit.insetMaterial : wall;
             var steel = kit.steelMaterial != null ? kit.steelMaterial : wall;
             var grate = kit.grateMaterial != null ? kit.grateMaterial : inset;
-            const float floorHeight = 2.25f;
+            // Visual building scale only. Tactical footprints and navigation remain unchanged.
+            // Chernobog needs vertical industrial density instead of low-rise prototype blocks.
+            const float floorHeight = 3.15f;
             var totalHeight = floors * floorHeight;
 
             CreateSolidBox(root, "BuildingMass", new Vector3(0f, totalHeight * 0.5f, 0f),
@@ -231,13 +252,13 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             CreateVisualBox(root, "RoofCap", new Vector3(0f, totalHeight + 0.10f, 0f),
                 new Vector3(width * 1.08f, 0.20f, depth * 1.04f), 0.04f, steel);
             CreateVisualBox(root, "RoofUnit", new Vector3(0f, totalHeight + 0.48f, depth * 0.12f),
-                new Vector3(width * 0.72f, 0.62f, Mathf.Min(1.55f, depth * 0.38f)), 0.08f, inset);
+                new Vector3(width * 0.72f, 0.92f, Mathf.Min(1.55f, depth * 0.38f)), 0.08f, inset);
 
             if (kit.wallVent != null && PositiveMod(seed, 2) == 0)
             {
                 var vent = Instantiate(kit.wallVent, root);
                 vent.name = "RoofVentModule";
-                vent.transform.localPosition = new Vector3(0f, totalHeight + 0.22f, -depth * 0.23f);
+                vent.transform.localPosition = new Vector3(0f, totalHeight + 0.45f, -depth * 0.23f);
                 vent.transform.localScale = new Vector3(0.60f, 0.48f, 0.45f);
             }
         }
@@ -252,7 +273,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             var wall = kit.wallMaterial != null ? kit.wallMaterial : kit.deckHeavyMaterial;
             var inset = kit.insetMaterial != null ? kit.insetMaterial : wall;
             var steel = kit.steelMaterial != null ? kit.steelMaterial : wall;
-            const float width = 2.05f;
             const float depth = 4.55f;
 
             CreateSolidBox(root, "RearWall", new Vector3(openSide * 0.25f, height * 0.5f, 0f),
@@ -378,14 +398,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         private static Transform FindBlockTransform(Transform stage, int index)
         {
-            var prefix = $"Block_{index:00}_";
-            for (var i = 0; i < stage.childCount; i++)
-            {
-                var child = stage.GetChild(i);
-                if (child != null && child.name.StartsWith(prefix, StringComparison.Ordinal))
-                    return child;
-            }
-            return null;
+            return RogueliteStageBlockUtility.FindBlockTransform(stage, index);
         }
 
         private static GameObject CreateSolidBox(
@@ -430,8 +443,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         private static int PositiveMod(int value, int divisor)
         {
-            var result = value % divisor;
-            return result < 0 ? result + divisor : result;
+            return RogueliteStageMath.PositiveMod(value, divisor);
         }
     }
 }

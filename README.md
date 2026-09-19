@@ -70,3 +70,13 @@ The legacy `PrototypeRoomLoopController` remains in the repository as a fallback
 ## Validation
 
 Repository changes are source/static edits until tested in a local Unity Editor. Rebuild the prototype scene after pulling changes that modify editor factories, generated scene composition or PRTS presentation setup.
+
+## Extracted effect workflow
+
+Extract effects with `D:\Effect\EffectExtractor.exe`, then import and apply the generated PNG frames from Unity:
+
+```text
+ArknightsACT > Assets > Import Extracted Frame FX
+```
+
+The importer creates Sprite animations and Prefabs under `Assets/_Game/Art/FX/Extracted`. For the current Ch'en prototype, use “导入并应用到当前陈原型”; the generated controller listens to the existing skill events and uses `CustomFxMountPoint`. Details are documented in `Docs/EXTRACTED_FX_PIPELINE.md`.

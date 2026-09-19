@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using ArknightsACT.Combat;
@@ -36,8 +37,6 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         [SerializeField] private GameObject[] jueyingHitFx = new GameObject[10];
 
         [Header("Placement")]
-        [SerializeField] private Vector3 actorLocalOffset = new(0f, 0.78f, 0f);
-        [SerializeField] private Vector3 hitWorldOffset = new(0f, 0.72f, 0f);
         [SerializeField, Min(0.25f)] private float fallbackLifetimeSeconds = 4f;
 
         private PlayerAttackController _attacks;
@@ -176,9 +175,16 @@ namespace ArknightsACT.Gameplay.Characters.Chen
 
             var instance = Instantiate(prefab, transform);
             instance.name = key + "_Runtime";
-            instance.transform.localPosition = actorLocalOffset;
-            instance.transform.localRotation = Quaternion.identity;
-            instance.transform.localScale = Vector3.one;
+
+            // Original client FX prefabs already contain static_offset / rotation_y / emitter
+            // hierarchy. Do not overwrite their root transform with a generic actor offset.
+            // The previous placement code collapsed the whole FX hierarchy onto Chen's body,
+            // producing the large white vertical slash in runtime.
+            var root = instance.transform;
+            root.localPosition = Vector3.zero;
+            root.localRotation = Quaternion.identity;
+            root.localScale = Vector3.one;
+
             Debug.Log($"[ArknightsACT/ChenSkillFX] SpawnOnActor '{key}' from '{prefab.name}'.", this);
             ArmOriginalFx(instance);
         }
@@ -195,9 +201,12 @@ namespace ArknightsACT.Gameplay.Characters.Chen
 
             var instance = Instantiate(
                 prefab,
-                target.position + hitWorldOffset,
+                target.position,
                 Quaternion.identity);
             instance.name = key + "_Runtime";
+
+            // Keep source prefab offsets. Hit FX already owns its static_offset placement.
+            // Adding gameplay-side offsets here duplicates the original client offset.
             Debug.Log($"[ArknightsACT/ChenSkillFX] SpawnAtTarget '{key}' from '{prefab.name}'.", this);
             ArmOriginalFx(instance);
         }
@@ -207,17 +216,29 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             if (instance == null)
                 return;
 
-            // Original client MonoBehaviours/animation clips toggle many FX children and renderers.
-            // OHMS does not export those behaviours, so make the reconstructed presentation hierarchy
-            // visible before starting its standard Unity components.
+            // The extracted hierarchy already contains the source m_IsActive state.  Do not
+            // recursively enable every child here: the original client deliberately keeps
+            // helper emitters inactive until their animation/script asks for them.  Enabling the
+            // whole tree at once was the main reason a single slash became a cloud of unrelated
+            // particles in the prototype.
             var renderers = instance.GetComponentsInChildren<Renderer>(true);
+            var hiddenMissingMaterialRenderers = 0;
+
             for (var i = 0; i < renderers.Length; i++)
             {
                 var renderer = renderers[i];
-                if (renderer == null)
+                if (renderer == null || !renderer.gameObject.activeInHierarchy)
                     continue;
-                ActivateAncestorChain(renderer.transform, instance.transform);
-                renderer.enabled = true;
+
+                // OHMS keeps unresolved cross-bundle references as a diagnostic material.  That
+                // red marker is useful in the importer report, but it must never become gameplay
+                // VFX.  Hide renderers whose complete material set is unresolved while allowing
+                // partially reconstructed renderers to keep their valid slots.
+                if (UsesOnlyMissingExternalMaterials(renderer))
+                {
+                    renderer.enabled = false;
+                    hiddenMissingMaterialRenderers++;
+                }
             }
 
             var particleSystems = instance.GetComponentsInChildren<ParticleSystem>(true);
@@ -226,8 +247,30 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                 var system = particleSystems[i];
                 if (system == null)
                     continue;
-                ActivateAncestorChain(system.transform, instance.transform);
-                system.Play(true);
+
+                var particleRenderer = system.GetComponent<ParticleSystemRenderer>();
+                if (particleRenderer != null && UsesOnlyMissingExternalMaterials(particleRenderer))
+                {
+                    particleRenderer.enabled = false;
+                    continue;
+                }
+
+                var main = system.main;
+                main.cullingMode = ParticleSystemCullingMode.AlwaysSimulate;
+                system.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            }
+
+            // Reconstruct the client FX as a timeline. The prefab is a container, not a finished
+            // animation clip: every child renderer/particle group has its own attack-frame timing.
+            PrepareChenFxTimeline(instance);
+            StartCoroutine(PlayChenFxTimeline(instance));
+
+            if (hiddenMissingMaterialRenderers > 0)
+            {
+                Debug.Log(
+                    $"[ArknightsACT/ChenSkillFX] '{instance.name}' hid {hiddenMissingMaterialRenderers} renderer(s) " +
+                    "whose source dependency material is unavailable; diagnostic red placeholders are not played as combat FX.",
+                    instance);
             }
 
             if (renderers.Length == 0 && particleSystems.Length == 0)
@@ -240,11 +283,153 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             var animators = instance.GetComponentsInChildren<Animator>(true);
             for (var i = 0; i < animators.Length; i++)
             {
-                if (animators[i] != null)
+                if (animators[i] != null && animators[i].gameObject.activeInHierarchy)
                     animators[i].enabled = true;
             }
 
-            Destroy(instance, fallbackLifetimeSeconds);
+            // Original hit FX are short animation fragments. The old 4s fallback lifetime left
+            // completed slash textures lingering on screen and made the blade look like a static
+            // white wall. Let the imported particle lifetime drive the effect; this is only a safety
+            // cleanup.
+            Destroy(instance, Mathf.Min(fallbackLifetimeSeconds, 1.6f));
+        }
+
+        private static bool UsesOnlyMissingExternalMaterials(Renderer renderer)
+        {
+            if (renderer == null)
+                return false;
+
+            var materials = renderer.sharedMaterials;
+            if (materials == null || materials.Length == 0)
+                return false;
+
+            var sawMaterial = false;
+            for (var i = 0; i < materials.Length; i++)
+            {
+                var material = materials[i];
+                if (material == null)
+                    continue;
+
+                sawMaterial = true;
+                if (!material.name.StartsWith("OHMS_MissingExternalMaterial", StringComparison.OrdinalIgnoreCase))
+                    return false;
+            }
+
+            return sawMaterial;
+        }
+
+        private static void PrepareChenFxTimeline(GameObject instance)
+        {
+            if (instance == null)
+                return;
+
+            foreach (var renderer in instance.GetComponentsInChildren<Renderer>(true))
+            {
+                if (renderer == null)
+                    continue;
+
+                var name = renderer.transform.name;
+                if (IsOriginalDisabledNode(name))
+                    renderer.enabled = false;
+                else if (IsTimelineControllerNode(renderer.transform))
+                    renderer.enabled = false;
+                else if (IsImpactFxNode(name) || IsSecondaryFxNode(name))
+                    renderer.enabled = false;
+            }
+        }
+
+        private static IEnumerator PlayChenFxTimeline(GameObject instance)
+        {
+            if (instance == null)
+                yield break;
+
+            var systems = instance.GetComponentsInChildren<ParticleSystem>(true);
+            var renderers = instance.GetComponentsInChildren<Renderer>(true);
+
+            // Frame 0-3: blade release.
+            foreach (var renderer in renderers)
+            {
+                if (renderer != null && IsBladeFxNode(renderer.transform.name) &&
+                    !IsOriginalDisabledNode(renderer.transform.name))
+                    renderer.enabled = true;
+            }
+            foreach (var system in systems)
+            {
+                if (system != null && IsBladeFxNode(system.transform.name) &&
+                    !IsOriginalDisabledNode(system.transform.name) && !IsTimelineControllerNode(system.transform))
+                    system.Play(false);
+            }
+
+            yield return new WaitForSeconds(0.035f);
+
+            // Frame 4-8: hit flash. This is intentionally delayed; original client does not show
+            // the impact layer together with the outgoing slash.
+            foreach (var renderer in renderers)
+            {
+                if (renderer != null && IsImpactFxNode(renderer.transform.name))
+                    renderer.enabled = true;
+            }
+            foreach (var system in systems)
+            {
+                if (system != null && IsImpactFxNode(system.transform.name))
+                    system.Play(false);
+            }
+
+            yield return new WaitForSeconds(0.06f);
+
+            foreach (var renderer in renderers)
+            {
+                if (renderer != null && IsSecondaryFxNode(renderer.transform.name))
+                    renderer.enabled = true;
+            }
+            foreach (var system in systems)
+            {
+                if (system != null && IsSecondaryFxNode(system.transform.name))
+                    system.Play(false);
+            }
+        }
+
+        private static bool IsTimelineControllerNode(Transform node)
+        {
+            if (node == null)
+                return false;
+            var parent = node.parent;
+            while (parent != null)
+            {
+                if (parent.name.Equals("static_offset", StringComparison.OrdinalIgnoreCase) ||
+                    parent.name.Equals("rotation_y", StringComparison.OrdinalIgnoreCase))
+                    return true;
+                parent = parent.parent;
+            }
+            return false;
+        }
+
+        private static bool IsBladeFxNode(string name)
+        {
+            return name.Contains("daoguang", StringComparison.OrdinalIgnoreCase) ||
+                   name.Contains("jian", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsOriginalDisabledNode(string name)
+        {
+            // chen_skill_03_hit_01's original FX controller explicitly lists daoguang_liang
+            // in _disableObjects.  It is a helper highlight layer, not the outgoing blade; the
+            // extracted prefab keeps it active because the controller MonoBehaviour is not run.
+            return name.Contains("daoguang_liang", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsImpactFxNode(string name)
+        {
+            return name.Contains("baoci", StringComparison.OrdinalIgnoreCase) ||
+                   name.Contains("baoshan", StringComparison.OrdinalIgnoreCase) ||
+                   name.Contains("manyue", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsSecondaryFxNode(string name)
+        {
+            return name.Contains("huoxing", StringComparison.OrdinalIgnoreCase) ||
+                   name.Contains("smoke", StringComparison.OrdinalIgnoreCase) ||
+                   name.Contains("lizi", StringComparison.OrdinalIgnoreCase);
         }
 
         private int CountConfiguredFx()

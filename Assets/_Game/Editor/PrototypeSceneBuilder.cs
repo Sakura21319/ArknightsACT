@@ -16,14 +16,24 @@ namespace ArknightsACT.Editor
         [MenuItem("ArknightsACT/Build Prototype Scene")]
         public static void Build()
         {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                EditorUtility.DisplayDialog(
+                    "ArknightsACT",
+                    "不能在 Play Mode 中构建场景。请先点击 Unity 顶部的停止按钮，再重新执行构建。",
+                    "确定");
+                Debug.LogWarning("[ArknightsACT/25D] 已阻止 Play Mode 内的场景构建。请先退出 Play Mode。");
+                return;
+            }
+
             PrototypePlayerSettings.Apply();
             EnsureFolder(DataDir);
             EnsureFolder(SceneDir);
             var attacks = BuildChenAttackDefinitions();
 
             // Reuse the validated 2.5D shell to create lighting, camera and material assets, then
-            // remove its fixed demo arena. PrototypeRun now materializes the random 4/6/9-block
-            // stage at runtime instead of playing inside one editor-authored room.
+            // remove its fixed demo arena. PrototypeRun now materializes a fixed 2x2 town at runtime
+            // instead of playing inside one editor-authored room.
             Prototype25DSceneBuilder.Build();
             RemoveDemoActor("Player_Chen_25D");
             RemoveDemoActor("Enemy_Soldier");
@@ -57,7 +67,7 @@ namespace ArknightsACT.Editor
             Debug.Log(
                 $"ArknightsACT Chen 2.5D exploration roguelite generated: {ScenePath}. " +
                 "Controls: WASD/Stick move on XZ, Space jump, J/LMB combo, K/Shift dash, L skill1, I/RMB skill2. " +
-                "Runtime flow: Stage1 4 blocks -> Boss -> Stage2 6 blocks -> Boss -> Stage3 9 blocks -> Final Boss.");
+                "Runtime flow: every stage uses the same 2x2 town: residential -> commercial -> industrial -> checkpoint/boss.");
         }
 
         private static void RemoveDemoActor(string objectName)

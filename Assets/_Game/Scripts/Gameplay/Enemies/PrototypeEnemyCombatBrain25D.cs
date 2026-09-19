@@ -36,6 +36,8 @@ namespace ArknightsACT.Gameplay.Enemies
         [SerializeField, Min(0.05f)] private float walkProbeRadius = 0.24f;
         [SerializeField, Min(0.1f)] private float walkProbeHeight = 0.55f;
         [SerializeField, Min(0.1f)] private float directWalkHeightTolerance = 0.70f;
+        [SerializeField, Min(0.1f)] private float blockedEscapeDistance = 1.10f;
+        [SerializeField, Min(0.05f)] private float blockedRecoveryCooldown = 0.18f;
 
         [Header("Combat")]
         [SerializeField, Min(0.1f)] private float moveSpeed = 2.4f;
@@ -64,6 +66,7 @@ namespace ArknightsACT.Gameplay.Enemies
         private float _nextSearchAt;
         private float _nextPathRefreshAt;
         private float _verticalVelocity;
+        private float _nextBlockedRecoveryAt;
         private bool _hasLastKnownTarget;
 
         public event Action<int> AttackStarted;
@@ -104,6 +107,7 @@ namespace ArknightsACT.Gameplay.Enemies
             _path.Clear();
             _pathIndex = 0;
             IsMoving = false;
+            _nextBlockedRecoveryAt = 0f;
         }
 
         private void Update()
@@ -351,7 +355,7 @@ namespace ArknightsACT.Gameplay.Enemies
                 _navigation = PrototypeNavigationGraph25D.Instance ??
                               FindFirstObjectByType<PrototypeNavigationGraph25D>();
             if (_navigation == null)
-                return destination;
+                return ResolveBlockedChasePoint(destination);
 
             if (_path.Count == 0 || _pathIndex >= _path.Count || Time.time >= _nextPathRefreshAt)
             {
@@ -359,11 +363,20 @@ namespace ArknightsACT.Gameplay.Enemies
                 if (_navigation.TryBuildPath(transform.position, destination, _path))
                     _pathIndex = 0;
                 else
+                {
                     _path.Clear();
+                    _pathIndex = 0;
+                }
             }
 
             AdvanceReachedWaypoints();
-            return _pathIndex < _path.Count ? _path[_pathIndex] : destination;
+            if (_pathIndex >= _path.Count)
+                return HasDirectWalkPath(destination) ? destination : ResolveBlockedChasePoint(destination);
+
+            var waypoint = _path[_pathIndex];
+            return HasDirectWalkPath(waypoint)
+                ? waypoint
+                : ResolveBlockedChasePoint(destination);
         }
 
         private void AdvanceReachedWaypoints()
@@ -449,8 +462,56 @@ namespace ArknightsACT.Gameplay.Enemies
                 return;
             }
             direction.Normalize();
-            _controller.Move(direction * (moveSpeed * Time.deltaTime));
+            var before = transform.position;
+            var requestedDistance = moveSpeed * Time.deltaTime;
+            var flags = _controller.Move(direction * requestedDistance);
+            var movedDistance = PlanarDistance(before, transform.position);
+
+            if ((flags & CollisionFlags.Sides) != 0 && movedDistance < requestedDistance * 0.35f)
+            {
+                _path.Clear();
+                _pathIndex = 0;
+                _nextPathRefreshAt = 0f;
+                if (Time.time >= _nextBlockedRecoveryAt)
+                {
+                    _nextBlockedRecoveryAt = Time.time + blockedRecoveryCooldown;
+                    var escape = FindOpenEscapeDirection(direction);
+                    if (escape.sqrMagnitude > 0.001f)
+                        _controller.Move(escape * (requestedDistance * 1.35f));
+                }
+            }
             IsMoving = true;
+        }
+
+        private Vector3 ResolveBlockedChasePoint(Vector3 destination)
+        {
+            var direction = destination - transform.position;
+            direction.y = 0f;
+            if (direction.sqrMagnitude < 0.001f)
+                return transform.position;
+
+            var escape = FindOpenEscapeDirection(direction.normalized);
+            return escape.sqrMagnitude > 0.001f
+                ? transform.position + escape * blockedEscapeDistance
+                : transform.position;
+        }
+
+        private Vector3 FindOpenEscapeDirection(Vector3 blockedDirection)
+        {
+            blockedDirection.y = 0f;
+            if (blockedDirection.sqrMagnitude < 0.001f)
+                return Vector3.zero;
+            blockedDirection.Normalize();
+
+            var side = Vector3.Cross(Vector3.up, blockedDirection).normalized;
+            var candidates = new[] { side, -side, -blockedDirection };
+            for (var i = 0; i < candidates.Length; i++)
+            {
+                var candidate = candidates[i];
+                if (HasDirectWalkPath(transform.position + candidate * blockedEscapeDistance))
+                    return candidate;
+            }
+            return Vector3.zero;
         }
 
         private void ApplyGravity()

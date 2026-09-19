@@ -38,6 +38,9 @@ namespace ArknightsACT.Editor
             ChernobogProductionDetailPass.EnsureApplied(environmentKit);
 
             var go = new GameObject("[StageRuntime]");
+            var context = go.AddComponent<RogueliteStageRuntimeContext>();
+            context.Configure(stageMap, environmentKit, runState: runState);
+            rogueliteRoot.GetComponent<RogueliteStageEnvironmentController>()?.ConfigureContext(context);
             var controller = go.AddComponent<RogueliteStageRuntimeController>();
             controller.Configure(
                 player,
@@ -116,11 +119,17 @@ namespace ArknightsACT.Editor
             go.AddComponent<RogueliteMobileCityDeepBaseController>().Configure(stageMap, environmentKit);
             go.AddComponent<RogueliteStageDistantDistrictController>().Configure(stageMap, environmentKit);
             go.AddComponent<RogueliteStageHorizonCityController>().Configure(stageMap, environmentKit);
+            go.AddComponent<ChernobogCityBackdropController>().Configure(stageMap, environmentKit);
+            go.AddComponent<ChernobogRoadMarkingController>().Configure(stageMap);
+            go.AddComponent<ChernobogBuildingDetailController>().Configure(stageMap);
+            go.AddComponent<ChernobogFacadeModuleController>().Configure(stageMap);
+            go.AddComponent<ChernobogRoadDetailController>();
             go.AddComponent<RogueliteStageContainmentController>().Configure(stageMap);
             go.AddComponent<RogueliteStageActorOcclusionController>().Configure(stageMap);
             go.AddComponent<RogueliteStageTerrainPresentationController>().Configure(stageMap);
             go.AddComponent<RogueliteActiveOriginiumPresentationController>().Configure(stageMap);
             go.AddComponent<RogueliteStageBackdropReferenceController>().Configure(stageMap, LoadEnvironmentBackdrops());
+            go.AddComponent<ChernobogInfrastructureController>();
             return go;
         }
 

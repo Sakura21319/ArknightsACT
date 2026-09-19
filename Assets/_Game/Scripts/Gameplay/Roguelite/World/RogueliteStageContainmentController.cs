@@ -12,19 +12,28 @@ namespace ArknightsACT.Gameplay.Roguelite.World
     [DisallowMultipleComponent]
     public sealed class RogueliteStageContainmentController : MonoBehaviour
     {
-        private const float ChunkWidth = 18f;
-        private const float ChunkDepth = 14f;
+        private const float ChunkWidth = RogueliteStageWorldMetrics.ChunkWidth;
+        private const float ChunkDepth = RogueliteStageWorldMetrics.ChunkDepth;
         private const float WallHeight = 10f;
         private const float WallThickness = 0.80f;
 
         [SerializeField] private RogueliteStageMapController stageMap;
 
+        private RogueliteStageRuntimeContext _context;
         private GameObject _preparedStage;
         private float _nextResolveAt;
 
         public void Configure(RogueliteStageMapController map)
         {
+            _context ??= GetComponent<RogueliteStageRuntimeContext>();
             stageMap = map;
+        }
+
+        private void Awake()
+        {
+            _context = GetComponent<RogueliteStageRuntimeContext>();
+            if (_context != null)
+                stageMap ??= _context.StageMap;
         }
 
         private void Update()
@@ -33,11 +42,13 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 return;
             _nextResolveAt = Time.unscaledTime + 0.15f;
 
-            stageMap ??= FindFirstObjectByType<RogueliteStageMapController>();
+            if (_context == null)
+                return;
+            stageMap ??= _context.StageMap;
             if (stageMap == null)
                 return;
 
-            var stage = GameObject.Find($"[Stage_{stageMap.StageIndex:00}_Runtime]");
+            var stage = _context.StageRoot != null ? _context.StageRoot.gameObject : null;
             if (stage == null || stage == _preparedStage)
                 return;
 

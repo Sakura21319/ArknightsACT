@@ -70,7 +70,7 @@ namespace ArknightsACT.Editor
             rewards.Configure(inventory, profile, collectiblePool);
 
             var levelUps = root.AddComponent<LevelUpRewardController>();
-            levelUps.Configure(runState, upgradeInventory, profile, upgradePool);
+            levelUps.Configure(runState, upgradeInventory, profile, upgradePool, player);
 
             var skillRewards = root.AddComponent<CharacterSkillUpgradeRewardController>();
             skillRewards.Configure(skillUpgradeInventory, skillUpgradePool);

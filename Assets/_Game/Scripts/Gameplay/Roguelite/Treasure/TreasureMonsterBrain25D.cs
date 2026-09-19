@@ -25,6 +25,8 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
         [SerializeField, Min(0.05f)] private float walkProbeRadius = 0.22f;
         [SerializeField, Min(0.1f)] private float walkProbeHeight = 0.50f;
         [SerializeField, Min(0.1f)] private float directWalkHeightTolerance = 0.70f;
+        [SerializeField, Min(0.1f)] private float blockedEscapeDistance = 1.10f;
+        [SerializeField, Min(0.05f)] private float blockedRecoveryCooldown = 0.18f;
 
         private readonly List<Vector3> _path = new(16);
 
@@ -38,6 +40,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
         private float _verticalVelocity;
         private Vector3 _forward = Vector3.back;
         private int _pathIndex;
+        private float _nextBlockedRecoveryAt;
 
         public event Action Activated;
         public event Action<int> AttackStarted;
@@ -80,6 +83,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
             _path.Clear();
             _pathIndex = 0;
             IsMoving = false;
+            _nextBlockedRecoveryAt = 0f;
         }
 
         private void Update()
@@ -119,7 +123,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
             if (move.sqrMagnitude > 0.0025f)
             {
                 FaceToward(chasePoint);
-                _controller.Move(move.normalized * (moveSpeed * Time.deltaTime));
+                MoveSafely(move.normalized);
                 IsMoving = true;
             }
             else
@@ -177,7 +181,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
             if (_navigation == null)
                 _navigation = PrototypeNavigationGraph25D.Instance ?? FindFirstObjectByType<PrototypeNavigationGraph25D>();
             if (_navigation == null)
-                return destination;
+                return ResolveBlockedChasePoint(destination);
 
             if (_path.Count == 0 || _pathIndex >= _path.Count || Time.time >= _nextPathRefreshAt)
             {
@@ -185,11 +189,20 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
                 if (_navigation.TryBuildPath(transform.position, destination, _path))
                     _pathIndex = 0;
                 else
+                {
                     _path.Clear();
+                    _pathIndex = 0;
+                }
             }
 
             AdvanceReachedWaypoints();
-            return _pathIndex < _path.Count ? _path[_pathIndex] : destination;
+            if (_pathIndex >= _path.Count)
+                return HasDirectWalkPath(destination) ? destination : ResolveBlockedChasePoint(destination);
+
+            var waypoint = _path[_pathIndex];
+            return HasDirectWalkPath(waypoint)
+                ? waypoint
+                : ResolveBlockedChasePoint(destination);
         }
 
         private void AdvanceReachedWaypoints()
@@ -267,6 +280,70 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
                 return false;
             }
             return true;
+        }
+
+        private void MoveSafely(Vector3 direction)
+        {
+            direction.y = 0f;
+            if (direction.sqrMagnitude < 0.001f)
+                return;
+            direction.Normalize();
+
+            var before = transform.position;
+            var requestedDistance = moveSpeed * Time.deltaTime;
+            var flags = _controller.Move(direction * requestedDistance);
+            var movedDistance = PlanarDistance(before, transform.position);
+            if ((flags & CollisionFlags.Sides) == 0 || movedDistance >= requestedDistance * 0.35f)
+                return;
+
+            _path.Clear();
+            _pathIndex = 0;
+            _nextPathRefreshAt = 0f;
+            if (Time.time < _nextBlockedRecoveryAt)
+                return;
+
+            _nextBlockedRecoveryAt = Time.time + blockedRecoveryCooldown;
+            var escape = FindOpenEscapeDirection(direction);
+            if (escape.sqrMagnitude > 0.001f)
+                _controller.Move(escape * (requestedDistance * 1.35f));
+        }
+
+        private Vector3 ResolveBlockedChasePoint(Vector3 destination)
+        {
+            var direction = destination - transform.position;
+            direction.y = 0f;
+            if (direction.sqrMagnitude < 0.001f)
+                return transform.position;
+
+            var escape = FindOpenEscapeDirection(direction.normalized);
+            return escape.sqrMagnitude > 0.001f
+                ? transform.position + escape * blockedEscapeDistance
+                : transform.position;
+        }
+
+        private Vector3 FindOpenEscapeDirection(Vector3 blockedDirection)
+        {
+            blockedDirection.y = 0f;
+            if (blockedDirection.sqrMagnitude < 0.001f)
+                return Vector3.zero;
+            blockedDirection.Normalize();
+
+            var side = Vector3.Cross(Vector3.up, blockedDirection).normalized;
+            var candidates = new[] { side, -side, -blockedDirection };
+            for (var i = 0; i < candidates.Length; i++)
+            {
+                var candidate = candidates[i];
+                if (HasDirectWalkPath(transform.position + candidate * blockedEscapeDistance))
+                    return candidate;
+            }
+            return Vector3.zero;
+        }
+
+        private static float PlanarDistance(Vector3 a, Vector3 b)
+        {
+            var dx = a.x - b.x;
+            var dz = a.z - b.z;
+            return Mathf.Sqrt(dx * dx + dz * dz);
         }
 
         private void ApplyGravity()

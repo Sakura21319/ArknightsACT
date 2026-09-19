@@ -126,7 +126,15 @@ namespace ArknightsACT.Editor.OHMS
                     var packagePath = string.IsNullOrWhiteSpace(package) ? string.Empty : $"{root}/{package}";
                     if (!string.IsNullOrWhiteSpace(packagePath) && AssetDatabase.IsValidFolder(packagePath))
                     {
-                        AssetDatabase.DeleteAsset(packagePath);
+                        // Keep the staged Ch'en dependency textures.  They are external to
+                        // chen.ab and are deliberately rebound after import; deleting the whole
+                        // package here would erase the local copies before the post-process runs.
+                        foreach (var child in new[] { "Prefabs", "Materials", "Meshes", "TimelineDump" })
+                        {
+                            var childPath = $"{packagePath}/{child}";
+                            if (AssetDatabase.IsValidFolder(childPath))
+                                AssetDatabase.DeleteAsset(childPath);
+                        }
                         AssetDatabase.Refresh();
                     }
                 }
@@ -140,6 +148,9 @@ namespace ArknightsACT.Editor.OHMS
                     ExcludeTokens = _exclude,
                     PreserveLayers = _preserveLayers
                 });
+                if (string.Equals((_packageName ?? string.Empty).Trim(), "Chen", StringComparison.OrdinalIgnoreCase))
+                    OhmsStructuredFxBatchCommands.BindChenBladeFallbacks(
+                        $"{(_outputRoot ?? string.Empty).Replace('\\', '/').TrimEnd('/')}/Chen");
                 _status = report.ToSummary() + "\nSee OHMS_IMPORT_REPORT.txt inside the imported package for unresolved external references.";
                 Debug.Log($"[ArknightsACT/OHMS] Import finished. {report.ToSummary()}");
             }

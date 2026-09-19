@@ -7,23 +7,23 @@ using ArknightsACT.Gameplay.Navigation;
 using ArknightsACT.Gameplay.Roguelite.Collectibles;
 using ArknightsACT.Gameplay.Roguelite.Progression;
 using ArknightsACT.Gameplay.Roguelite.Rewards;
+using ArknightsACT.Gameplay.Roguelite.World;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace ArknightsACT.Gameplay.Roguelite.Routing
 {
     /// <summary>
-    /// Runtime assembler for the exploration prototype. The logical map chooses 4/6/9 blocks;
-    /// this component materializes those cells into one continuous 3D stage, activates encounters
-    /// when cells are first entered, and keeps all rewards/progression on the same run state.
+    /// Runtime assembler for the exploration prototype. Scheme 1 keeps a 2x2 logical town and
+    /// materializes large, connected blocks, activates encounters when cells are first entered,
+    /// and keeps all rewards/progression on the same run state.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class RogueliteStageRuntimeController : MonoBehaviour
     {
-        // Phase-08.1: larger ACT combat spaces. Keep these values in sync with the presentation
-        // expansion pass; physical routing/block ownership is authoritative here.
-        private const float ChunkWidth = 18f;
-        private const float ChunkDepth = 14f;
+        // Scheme 1 keeps four logical blocks but gives every block a readable town footprint.
+        private const float ChunkWidth = RogueliteStageWorldMetrics.ChunkWidth;
+        private const float ChunkDepth = RogueliteStageWorldMetrics.ChunkDepth;
         private const float CoverHeight = 0.82f;
         private const float SecondFloorY = 2.10f;
 
@@ -48,6 +48,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
         private readonly List<BlockRuntime> _runtimeBlocks = new(9);
         private GameObject _stageRoot;
         private GameObject _exitMarker;
+        private RogueliteStageRuntimeContext _context;
         private int _currentBlockIndex = -1;
         private bool _exitReady;
         private bool _runComplete;
@@ -107,6 +108,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
         private void Start()
         {
+            _context ??= GetComponent<RogueliteStageRuntimeContext>();
             ResolveReferences();
             if (!CanBuild())
             {
@@ -140,9 +142,13 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
         private void ResolveReferences()
         {
-            runState ??= RogueliteRunState.Instance ?? FindFirstObjectByType<RogueliteRunState>();
-            stageMap ??= FindFirstObjectByType<RogueliteStageMapController>();
-            rewards ??= FindFirstObjectByType<RogueliteRewardController>();
+            if (_context != null)
+            {
+                runState ??= _context.RunState;
+                stageMap ??= _context.StageMap;
+            }
+
+            runState ??= RogueliteRunState.Instance;
             if (player == null)
             {
                 var entities = FindObjectsByType<CombatEntity>(FindObjectsSortMode.None);
@@ -192,11 +198,13 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                 });
             }
 
+            BuildGameplaySafetyDeck();
             BuildOuterBounds();
             BuildNavigationGraph();
             TeleportPlayer(GetChunkCenter(Vector2Int.zero) + new Vector3(0f, 0.08f, 0f));
             _currentBlockIndex = 0;
             EnterBlock(0);
+            _context?.SetStageRoot(_stageRoot.transform);
 
             Debug.Log(
                 $"[ArknightsACT/StageRuntime] Physical Stage {stageMap.StageIndex} built: " +
@@ -204,10 +212,28 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                 this);
         }
 
+        /// <summary>
+        /// Keeps the generated town physically continuous even if a block floor is temporarily
+        /// disabled, rebuilt, or exposed to a tiny seam at a chunk boundary. This is collision
+        /// only: visual floors and road dressing remain owned by their normal block roots.
+        /// </summary>
+        private void BuildGameplaySafetyDeck()
+        {
+            var width = Mathf.Max(1, stageMap.Width) * ChunkWidth;
+            var depth = Mathf.Max(1, stageMap.Height) * ChunkDepth;
+            var deck = new GameObject("[GameplaySafetyDeck]");
+            deck.transform.SetParent(_stageRoot.transform, false);
+
+            var collider = deck.AddComponent<BoxCollider>();
+            collider.center = new Vector3(0f, -0.14f, 0f);
+            collider.size = new Vector3(width, 0.28f, depth);
+        }
+
         private void TearDownStage()
         {
             if (_stageRoot == null)
                 return;
+            _context?.SetStageRoot(null);
             _stageRoot.SetActive(false);
             Destroy(_stageRoot);
             _stageRoot = null;
@@ -264,28 +290,28 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
         private void BuildOpenChunk(Transform root)
         {
-            CreateCover(root, new Vector3(-4.2f, 0f, 1.9f), new Vector2(1.65f, 0.72f), 12f);
-            CreateCover(root, new Vector3(4.8f, 0f, -2.6f), new Vector2(1.25f, 0.92f), -12f);
+            CreateCover(root, new Vector3(-9.2f, 0f, 6.8f), new Vector2(2.10f, 0.72f), 12f);
+            CreateCover(root, new Vector3(8.6f, 0f, -7.0f), new Vector2(1.70f, 0.92f), -12f);
         }
 
         private void BuildStreetChunk(Transform root)
         {
-            CreateVisual(root, "RoadStrip", Vector3.zero, new Vector3(ChunkWidth - 0.4f, 0.035f, 6.4f), roadMaterial);
-            CreateVisual(root, "RoadStripe", new Vector3(0f, 0.035f, 0f), new Vector3(ChunkWidth - 1.0f, 0.02f, 0.10f), accentMaterial);
-            CreateCover(root, new Vector3(-5.2f, 0f, 3.3f), new Vector2(1.55f, 0.72f), 0f);
-            CreateCover(root, new Vector3(4.8f, 0f, -3.2f), new Vector2(1.55f, 0.72f), 0f);
+            // CityStreets owns the actual carriageway. Keep only two small lot covers here so the
+            // runtime layer does not draw a second arbitrary road across the authored junction.
+            CreateCover(root, new Vector3(-10.0f, 0f, 7.2f), new Vector2(2.15f, 0.72f), 0f);
+            CreateCover(root, new Vector3(9.8f, 0f, -7.1f), new Vector2(1.85f, 0.72f), 0f);
         }
 
         private void BuildCoverLaneChunk(Transform root)
         {
-            CreateCover(root, new Vector3(-4.8f, 0f, 0.7f), new Vector2(2.6f, 0.68f), 90f);
-            CreateCover(root, new Vector3(0.3f, 0f, 3.0f), new Vector2(2.4f, 0.68f), 0f);
-            CreateCover(root, new Vector3(5.1f, 0f, -2.4f), new Vector2(2.2f, 0.68f), 90f);
+            CreateCover(root, new Vector3(-9.8f, 0f, -7.2f), new Vector2(2.8f, 0.68f), 90f);
+            CreateCover(root, new Vector3(-3.2f, 0f, 6.9f), new Vector2(2.5f, 0.68f), 0f);
+            CreateCover(root, new Vector3(10.0f, 0f, -7.0f), new Vector2(2.35f, 0.68f), 90f);
         }
 
         private void BuildSafePlazaChunk(Transform root, bool shop)
         {
-            CreateVisual(root, "PlazaPad", Vector3.zero, new Vector3(10.2f, 0.035f, 8.2f), sidewalkMaterial);
+            CreateVisual(root, "PlazaPad", Vector3.zero, new Vector3(25.8f, 0.035f, 19.8f), sidewalkMaterial);
             if (!shop)
                 return;
 
@@ -295,14 +321,14 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
         private void BuildBossArenaChunk(Transform root)
         {
-            CreateVisual(root, "ArenaPad", Vector3.zero, new Vector3(15.0f, 0.035f, 11.2f), roadMaterial);
-            CreateCover(root, new Vector3(-5.8f, 0f, 3.6f), new Vector2(1.25f, 0.72f), 0f);
-            CreateCover(root, new Vector3(5.8f, 0f, -3.6f), new Vector2(1.25f, 0.72f), 0f);
+            CreateVisual(root, "ArenaPad", Vector3.zero, new Vector3(ChunkWidth - 0.60f, 0.035f, ChunkDepth - 0.60f), roadMaterial);
+            CreateCover(root, new Vector3(-10.2f, 0f, 7.6f), new Vector2(1.65f, 0.72f), 0f);
+            CreateCover(root, new Vector3(10.0f, 0f, -7.4f), new Vector2(1.65f, 0.72f), 0f);
 
             _exitMarker = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             _exitMarker.name = "NextStageEntrance";
             _exitMarker.transform.SetParent(root, false);
-            _exitMarker.transform.localPosition = new Vector3(6.4f, 0.06f, 4.1f);
+            _exitMarker.transform.localPosition = new Vector3(11.0f, 0.06f, 9.15f);
             _exitMarker.transform.localScale = new Vector3(1.15f, 0.06f, 1.15f);
             var collider = _exitMarker.GetComponent<Collider>();
             if (collider != null)
@@ -320,8 +346,8 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
             const float centerX = 2.15f;
             const float centerZ = 1.45f;
-            const float width = 6.0f;
-            const float depth = 5.2f;
+            const float width = 8.50f;
+            const float depth = 6.80f;
             const float slab = 0.18f;
             const float wallHeight = 1.86f;
 
@@ -375,6 +401,8 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             var nodes = new List<Vector3>(stageMap.Blocks.Count * 7);
             var edges = new List<int>(stageMap.Blocks.Count * 14);
             var cells = new NavCell[stageMap.Blocks.Count];
+            var roadReachX = ChunkWidth * 0.5f - RogueliteStageWorldMetrics.MainRoadWidth * 0.25f;
+            var roadReachZ = ChunkDepth * 0.5f - RogueliteStageWorldMetrics.MainRoadWidth * 0.25f;
 
             for (var i = 0; i < stageMap.Blocks.Count; i++)
             {
@@ -383,10 +411,10 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                 var nav = new NavCell
                 {
                     Center = AddNavNode(nodes, center),
-                    West = AddNavNode(nodes, center + new Vector3(-7.0f, 0f, 0f)),
-                    East = AddNavNode(nodes, center + new Vector3(7.0f, 0f, 0f)),
-                    South = AddNavNode(nodes, center + new Vector3(0f, 0f, -5.2f)),
-                    North = AddNavNode(nodes, center + new Vector3(0f, 0f, 5.2f))
+                    West = AddNavNode(nodes, center + new Vector3(-roadReachX, 0f, 0f)),
+                    East = AddNavNode(nodes, center + new Vector3(roadReachX, 0f, 0f)),
+                    South = AddNavNode(nodes, center + new Vector3(0f, 0f, -roadReachZ)),
+                    North = AddNavNode(nodes, center + new Vector3(0f, 0f, roadReachZ))
                 };
                 cells[i] = nav;
                 AddEdge(edges, nav.Center, nav.West);
@@ -394,7 +422,8 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                 AddEdge(edges, nav.Center, nav.South);
                 AddEdge(edges, nav.Center, nav.North);
 
-                if (block.Theme == RogueliteChunkTheme.Facility)
+                var district = RogueliteStageDistrictTemplateController.ResolveDistrict(block, i, stageMap.StageIndex);
+                if (block.Theme == RogueliteChunkTheme.Facility || district == ChernobogDistrictType.Industrial)
                 {
                     var rampBase = AddNavNode(nodes, center + new Vector3(-1.25f, 0f, -3.45f));
                     var rampTop = AddNavNode(nodes, center + new Vector3(-1.25f, SecondFloorY, 2.75f));
@@ -402,6 +431,58 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                     AddEdge(edges, nav.Center, rampBase);
                     AddEdge(edges, rampBase, rampTop);
                     AddEdge(edges, rampTop, upper);
+                }
+
+                if (district == ChernobogDistrictType.Residential)
+                {
+                    // Matches WalkInStreetTenement in PlayableArchitecture: the front doorway is
+                    // north of the south-west lot, while the ramp returns to the main street spine.
+                    var entry = AddNavNode(nodes, center + new Vector3(-7.40f, 0f, -4.23f));
+                    var rampBase = AddNavNode(nodes, center + new Vector3(-7.40f, 0f, -2.75f));
+                    var rampTop = AddNavNode(nodes, center + new Vector3(-7.40f, SecondFloorY, -5.02f));
+                    var upper = AddNavNode(nodes, center + new Vector3(-7.40f, SecondFloorY, -5.36f));
+                    AddEdge(edges, nav.Center, entry);
+                    AddEdge(edges, nav.Center, rampBase);
+                    AddEdge(edges, entry, rampBase);
+                    AddEdge(edges, rampBase, rampTop);
+                    AddEdge(edges, rampTop, upper);
+                }
+                else if (district == ChernobogDistrictType.Commercial)
+                {
+                    // Matches the open-front commercial room at local (7, 0.9). The doorway and
+                    // counter are both on the ground plane, so enemies can route through the room.
+                    var entry = AddNavNode(nodes, center + new Vector3(7.00f, 0f, 2.83f));
+                    var interior = AddNavNode(nodes, center + new Vector3(7.00f, 0f, 0.40f));
+                    AddEdge(edges, nav.Center, entry);
+                    AddEdge(edges, entry, interior);
+                }
+                else if (district == ChernobogDistrictType.Checkpoint)
+                {
+                    var shelter = AddNavNode(nodes, center + new Vector3(5.90f, 0f, 2.25f));
+                    AddEdge(edges, nav.Center, shelter);
+                }
+                else if (ShouldBuildStreetTenement(block, i))
+                {
+                    var side = ResolvePlayableBuildingSide(i, block);
+                    var entry = AddNavNode(nodes, center + new Vector3(side * 4.55f, 0f, -3.25f));
+                    var rampBase = AddNavNode(nodes, center + new Vector3(side * 4.55f, 0f, -1.80f));
+                    var rampTop = AddNavNode(nodes, center + new Vector3(side * 4.55f, SecondFloorY, -4.07f));
+                    var upper = AddNavNode(nodes, center + new Vector3(side * 4.55f, SecondFloorY, -4.66f));
+                    AddEdge(edges, nav.Center, entry);
+                    AddEdge(edges, nav.Center, rampBase);
+                    AddEdge(edges, entry, rampBase);
+                    AddEdge(edges, rampBase, rampTop);
+                    AddEdge(edges, rampTop, upper);
+                }
+                else if (ShouldBuildInteractiveDeck(block, i))
+                {
+                    var side = ResolvePlayableBuildingSide(i, block);
+                    var rampBase = AddNavNode(nodes, center + new Vector3(side * 4.25f, 0f, -3.15f));
+                    var deckTop = AddNavNode(nodes, center + new Vector3(side * 4.25f, 1.07f, -4.15f));
+                    var deckInner = AddNavNode(nodes, center + new Vector3(side * 4.25f, 1.05f, -5.25f));
+                    AddEdge(edges, nav.Center, rampBase);
+                    AddEdge(edges, rampBase, deckTop);
+                    AddEdge(edges, deckTop, deckInner);
                 }
             }
 
@@ -422,6 +503,31 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             }
 
             graph.Configure(nodes.ToArray(), edges.ToArray());
+        }
+
+        private bool ShouldBuildStreetTenement(RogueliteBlockState block, int blockIndex)
+        {
+            if (block == null || block.Theme != RogueliteChunkTheme.Street)
+                return false;
+            return PositiveMod(stageMap.StageIndex * 11 + blockIndex * 7 + (int)block.Theme, 3) == 0;
+        }
+
+        private bool ShouldBuildInteractiveDeck(RogueliteBlockState block, int blockIndex)
+        {
+            if (block == null || block.Theme != RogueliteChunkTheme.CoverLane)
+                return false;
+            return PositiveMod(stageMap.StageIndex * 13 + blockIndex * 5 + (int)block.Theme, 2) == 0;
+        }
+
+        private float ResolvePlayableBuildingSide(int blockIndex, RogueliteBlockState block)
+        {
+            return PositiveMod(stageMap.StageIndex * 5 + blockIndex * 3 + (int)block.Theme, 2) == 1 ? 1f : -1f;
+        }
+
+        private static int PositiveMod(int value, int divisor)
+        {
+            var result = value % divisor;
+            return result < 0 ? result + divisor : result;
         }
 
         private static int AddNavNode(List<Vector3> nodes, Vector3 position)
@@ -561,23 +667,52 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             {
                 return new[]
                 {
-                    new Vector3(-5.8f, 0.03f, -3.9f),
-                    new Vector3(-3.2f, 0.03f, -3.1f),
-                    new Vector3(-6.0f, 0.03f, 1.1f),
-                    new Vector3(0.0f, 0.03f, -4.2f),
-                    new Vector3(6.2f, 0.03f, -3.9f),
-                    new Vector3(-6.3f, 0.03f, 3.9f)
+                    new Vector3(-10.5f, 0.03f, 0.6f),
+                    new Vector3(-8.0f, 0.03f, -8.9f),
+                    new Vector3(0.0f, 0.03f, -8.7f),
+                    new Vector3(8.6f, 0.03f, -7.1f),
+                    new Vector3(-9.0f, 0.03f, 7.5f),
+                    new Vector3(9.2f, 0.03f, 8.1f)
                 };
             }
 
+            if (theme == RogueliteChunkTheme.CoverLane)
+            {
+                return new[]
+                {
+                    new Vector3(-13.0f, 0.03f, -6.0f),
+                    new Vector3(-10.0f, 0.03f, 0.0f),
+                    new Vector3(-6.0f, 0.03f, 7.0f),
+                    new Vector3(0.0f, 0.03f, -7.2f),
+                    new Vector3(1.0f, 0.03f, 9.0f),
+                    new Vector3(11.0f, 0.03f, -5.4f)
+                };
+            }
+
+            if (theme == RogueliteChunkTheme.Street)
+            {
+                return new[]
+                {
+                    new Vector3(-12.0f, 0.03f, -1.0f),
+                    new Vector3(0.0f, 0.03f, -7.8f),
+                    new Vector3(5.0f, 0.03f, -6.0f),
+                    new Vector3(10.0f, 0.03f, 3.0f),
+                    new Vector3(-1.0f, 0.03f, 8.0f),
+                    new Vector3(11.0f, 0.03f, 8.0f)
+                };
+            }
+
+            // Keep encounter spawns on the street spine. South-edge rooms/ramps and north-edge
+            // frontages are allowed to be entered by the player, but must never receive an enemy
+            // inside their wall volume before the presentation architecture has finished building.
             return new[]
             {
-                new Vector3(-5.8f, 0.03f, -3.8f),
-                new Vector3(5.8f, 0.03f, 3.8f),
-                new Vector3(-5.2f, 0.03f, 3.7f),
-                new Vector3(5.2f, 0.03f, -3.7f),
-                new Vector3(0f, 0.03f, 4.7f),
-                new Vector3(0f, 0.03f, -4.7f)
+                new Vector3(-10.5f, 0.03f, -1.2f),
+                new Vector3(-3.4f, 0.03f, -7.4f),
+                new Vector3(3.6f, 0.03f, -1.6f),
+                new Vector3(10.4f, 0.03f, 2.8f),
+                new Vector3(-7.2f, 0.03f, 7.3f),
+                new Vector3(4.4f, 0.03f, 8.4f)
             };
         }
 

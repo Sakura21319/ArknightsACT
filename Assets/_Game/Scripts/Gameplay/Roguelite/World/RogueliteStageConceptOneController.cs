@@ -18,11 +18,12 @@ namespace ArknightsACT.Gameplay.Roguelite.World
     [DisallowMultipleComponent]
     public sealed class RogueliteStageConceptOneController : MonoBehaviour
     {
-        private const float ChunkWidth = 14f;
-        private const float ChunkDepth = 11f;
+        private const float ChunkWidth = RogueliteStageWorldMetrics.ChunkWidth;
+        private const float ChunkDepth = RogueliteStageWorldMetrics.ChunkDepth;
 
         [SerializeField] private RogueliteStageMapController stageMap;
 
+        private RogueliteStageRuntimeContext _context;
         private readonly List<Material> _ownedMaterials = new();
         private readonly List<Texture2D> _ownedTextures = new();
         private GameObject _preparedStage;
@@ -42,7 +43,15 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         public void Configure(RogueliteStageMapController map)
         {
+            _context ??= GetComponent<RogueliteStageRuntimeContext>();
             stageMap = map;
+        }
+
+        private void Awake()
+        {
+            _context = GetComponent<RogueliteStageRuntimeContext>();
+            if (_context != null)
+                stageMap ??= _context.StageMap;
         }
 
         private void Update()
@@ -51,11 +60,13 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 return;
             _nextResolveAt = Time.unscaledTime + 0.10f;
 
-            stageMap ??= FindFirstObjectByType<RogueliteStageMapController>();
+            if (_context == null)
+                return;
+            stageMap ??= _context.StageMap;
             if (stageMap == null)
                 return;
 
-            var stage = GameObject.Find($"[Stage_{stageMap.StageIndex:00}_Runtime]");
+            var stage = _context.StageRoot != null ? _context.StageRoot.gameObject : null;
             if (stage == null || stage == _preparedStage)
                 return;
 
@@ -323,25 +334,31 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 if (facility == null || !string.Equals(facility.name, "TwoFloorFacility", StringComparison.Ordinal))
                     continue;
 
+                // Keep the skin aligned with the enlarged runtime facility (8.5 x 6.8) instead of
+                // leaving the old 6 x 5.2 facade floating halfway inside the industrial block.
+                const float facilityCenterX = 2.15f;
+                const float facilityNorthZ = 4.85f;
+                const float facadeWidth = 7.80f;
+
                 var skin = new GameObject("[Concept01Facility]").transform;
                 skin.SetParent(facility, false);
 
                 // A broad north facade, equipment frame and vents make the facility feel assembled
                 // rather than like a few intersecting prototype cubes. Colliders stay untouched.
-                CreateVisual(skin, "NorthFacadeBand", new Vector3(2.15f, 1.16f, 4.075f),
-                    new Vector3(5.58f, 0.78f, 0.065f), _wallInset);
+                CreateVisual(skin, "NorthFacadeBand", new Vector3(facilityCenterX, 1.16f, facilityNorthZ),
+                    new Vector3(facadeWidth, 0.78f, 0.065f), _wallInset);
                 for (var panel = -2; panel <= 2; panel++)
                 {
-                    CreateVisual(skin, "FacadeVent", new Vector3(2.15f + panel * 0.92f, 1.17f, 4.115f),
+                    CreateVisual(skin, "FacadeVent", new Vector3(facilityCenterX + panel * 1.22f, 1.17f, facilityNorthZ + 0.04f),
                         new Vector3(0.70f, 0.46f, 0.035f), _grate);
                 }
 
-                CreateVisual(skin, "FacadeTopCap", new Vector3(2.15f, 1.82f, 4.06f),
-                    new Vector3(5.82f, 0.12f, 0.16f), _steelEdge);
-                CreateVisual(skin, "FacadeLight", new Vector3(0.60f, 0.55f, 4.115f),
+                CreateVisual(skin, "FacadeTopCap", new Vector3(facilityCenterX, 1.82f, facilityNorthZ - 0.015f),
+                    new Vector3(facadeWidth + 0.24f, 0.12f, 0.16f), _steelEdge);
+                CreateVisual(skin, "FacadeLight", new Vector3(0.60f, 0.55f, facilityNorthZ + 0.04f),
                     new Vector3(0.70f, 0.09f, 0.030f), _warmLight);
 
-                BuildPipePair(skin, new Vector3(4.72f, 0.52f, 3.98f), 1.46f, 0.075f);
+                BuildPipePair(skin, new Vector3(5.35f, 0.52f, facilityNorthZ - 0.10f), 1.46f, 0.075f);
 
                 // Upper-deck HVAC block mirrors the selected concept's small service machinery.
                 var hvac = new GameObject("UpperHVAC").transform;
@@ -764,20 +781,12 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         private static Transform FindBlockTransform(Transform stage, int index)
         {
-            var prefix = $"Block_{index:00}_";
-            for (var i = 0; i < stage.childCount; i++)
-            {
-                var child = stage.GetChild(i);
-                if (child != null && child.name.StartsWith(prefix, StringComparison.Ordinal))
-                    return child;
-            }
-            return null;
+            return RogueliteStageBlockUtility.FindBlockTransform(stage, index);
         }
 
         private static int PositiveMod(int value, int divisor)
         {
-            var result = value % divisor;
-            return result < 0 ? result + divisor : result;
+            return RogueliteStageMath.PositiveMod(value, divisor);
         }
 
         private static float Hash01(int x, int y)

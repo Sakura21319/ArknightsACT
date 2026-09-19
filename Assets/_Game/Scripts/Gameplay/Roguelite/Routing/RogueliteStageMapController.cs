@@ -73,10 +73,10 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
     }
 
     /// <summary>
-    /// Logical city-scale stage map. Stage 1 = 3x3 (9 blocks), Stage 2 = 4x3 (12),
-    /// Stage 3 = 4x4 (16). Start is fixed at bottom-left and Boss/exit at top-right.
-    /// The enlarged grids give roads, buildings, alleys and service yards enough room to read as a
-    /// real mobile-city district instead of a handful of adjacent combat platforms.
+    /// Logical city-scale stage map. Every stage keeps the same 2x2 district skeleton; progression
+    /// changes the encounter pressure and dressing, while the physical block footprint is large
+    /// enough for recognizable roads, lots and usable buildings. Start is bottom-left and Boss/exit
+    /// is top-right so the four quadrants remain easy to read.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class RogueliteStageMapController : MonoBehaviour
@@ -94,8 +94,8 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
         public IReadOnlyList<RogueliteBlockState> Blocks => _blocks;
         public int StageIndex { get; private set; } = 1;
-        public int Width { get; private set; } = 3;
-        public int Height { get; private set; } = 3;
+        public int Width { get; private set; } = 2;
+        public int Height { get; private set; } = 2;
         public int StartIndex => 0;
         public int BossIndex => _blocks.Count > 0 ? _blocks.Count - 1 : -1;
 
@@ -121,7 +121,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             Height = height;
 
             var seed = useRandomSeed
-                ? unchecked(Environment.TickCount * 397 ^ GetInstanceID() ^ StageIndex * 7919)
+                ? unchecked(Environment.TickCount * 397 ^ GetHashCode() ^ StageIndex * 7919)
                 : fixedSeed + StageIndex * 7919;
             _random = new System.Random(seed);
 
@@ -190,6 +190,19 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
         private void AssignSpecialCombatBlocks()
         {
+            if (Width == 2 && Height == 2)
+            {
+                // The four quadrants have stable urban roles. Keep the commercial slot available for
+                // the shop and reserve the industrial slot for the encounter so the town layout does
+                // not change into four visually interchangeable combat cells.
+                var fixedLayoutShopChance = Mathf.Clamp01(baseShopChance + (StageIndex - 1) * 0.15f);
+                if (_random.NextDouble() < fixedLayoutShopChance)
+                    ReplaceBlock(1, RogueliteBlockType.Shop, RogueliteChunkTheme.CoverLane);
+
+                ReplaceBlock(2, RogueliteBlockType.EmergencyCombat, RogueliteChunkTheme.Facility);
+                return;
+            }
+
             var candidates = BuildMutableCandidateIndices();
             if (candidates.Count == 0)
                 return;
@@ -216,6 +229,16 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
         private void AssignChunkThemes()
         {
+            if (Width == 2 && Height == 2)
+            {
+                // Scheme 1: residential / commercial / industrial / checkpoint quadrants.
+                ReplaceBlock(0, RogueliteBlockType.Start, RogueliteChunkTheme.Street);
+                ReplaceBlock(1, _blocks[1].Type, RogueliteChunkTheme.CoverLane);
+                ReplaceBlock(2, _blocks[2].Type, RogueliteChunkTheme.Facility);
+                ReplaceBlock(3, RogueliteBlockType.Boss, RogueliteChunkTheme.BossArena);
+                return;
+            }
+
             ReplaceBlock(StartIndex, RogueliteBlockType.Start, RogueliteChunkTheme.SafePlaza);
             ReplaceBlock(BossIndex, RogueliteBlockType.Boss, RogueliteChunkTheme.BossArena);
 
@@ -350,21 +373,8 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
         private static void ResolveDimensions(int stageIndex, out int width, out int height)
         {
-            switch (stageIndex)
-            {
-                case 2:
-                    width = 4;
-                    height = 3;
-                    break;
-                case 3:
-                    width = 4;
-                    height = 4;
-                    break;
-                default:
-                    width = 3;
-                    height = 3;
-                    break;
-            }
+            width = 2;
+            height = 2;
         }
     }
 }

@@ -29,6 +29,16 @@ namespace ArknightsACT.Editor
         [MenuItem("ArknightsACT/Build 2.5D Demo Scene")]
         public static void Build()
         {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                EditorUtility.DisplayDialog(
+                    "ArknightsACT",
+                    "不能在 Play Mode 中构建场景。请先点击 Unity 顶部的停止按钮，再重新执行构建。",
+                    "确定");
+                Debug.LogWarning("[ArknightsACT/25D] 已阻止 Play Mode 内的场景构建。请先退出 Play Mode。");
+                return;
+            }
+
             EnsureFolder(SceneDir);
             EnsureFolder(MaterialDir);
             EnsureFolder(TextureDir);

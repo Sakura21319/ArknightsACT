@@ -30,6 +30,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         [SerializeField] private bool prototypeHazardsEnabled = true;
         [SerializeField] private bool catastrophesEnabled;
 
+        private RogueliteStageRuntimeContext _context;
         private readonly List<Material> _ownedMaterials = new();
         private GameObject _decoratedStage;
         private float _nextResolveAt;
@@ -42,9 +43,30 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         public void Configure(Transform playerTransform, RogueliteRunState state, RogueliteStageMapController map)
         {
+            _context ??= GetComponent<RogueliteStageRuntimeContext>();
             player = playerTransform;
             runState = state;
             stageMap = map;
+        }
+
+        public void ConfigureContext(RogueliteStageRuntimeContext context)
+        {
+            _context = context;
+            if (_context == null)
+                return;
+
+            runState ??= _context.RunState;
+            stageMap ??= _context.StageMap;
+        }
+
+        private void Awake()
+        {
+            _context = GetComponent<RogueliteStageRuntimeContext>();
+            if (_context == null)
+                return;
+
+            runState ??= _context.RunState;
+            stageMap ??= _context.StageMap;
         }
 
         private void Update()
@@ -53,12 +75,14 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 return;
             _nextResolveAt = Time.unscaledTime + 0.25f;
 
-            runState ??= RogueliteRunState.Instance ?? FindFirstObjectByType<RogueliteRunState>();
-            stageMap ??= FindFirstObjectByType<RogueliteStageMapController>();
+            if (_context == null)
+                return;
+            runState ??= _context.RunState;
+            stageMap ??= _context.StageMap;
             if (runState == null || stageMap == null)
                 return;
 
-            var stage = GameObject.Find($"[Stage_{stageMap.StageIndex:00}_Runtime]");
+            var stage = _context.StageRoot != null ? _context.StageRoot.gameObject : null;
             if (stage == null || stage == _decoratedStage)
                 return;
 
@@ -69,9 +93,11 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         private void DecorateStage(GameObject stage)
         {
-            var layer = new GameObject("[MobileCityEnvironment]");
-            layer.transform.SetParent(stage.transform, false);
-            BuildIndustrialBackdrop(layer.transform);
+            var layer = RogueliteStageVisualRootUtility.GetOrCreate(
+                stage.transform,
+                "[MobileCityEnvironment]",
+                true);
+            BuildIndustrialBackdrop(layer);
 
             CurrentCatastrophe = catastrophesEnabled
                 ? RollPrototypeCatastrophe(stageMap.StageIndex)
@@ -148,8 +174,8 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             if (stageMap == null)
                 return;
 
-            var width = stageMap.Width * 14f;
-            var depth = stageMap.Height * 11f;
+            var width = stageMap.Width * RogueliteStageWorldMetrics.ChunkWidth;
+            var depth = stageMap.Height * RogueliteStageWorldMetrics.ChunkDepth;
             var rng = new System.Random(9109 + stageMap.StageIndex * 101);
             var root = new GameObject("ChernobogStyleSkyline").transform;
             root.SetParent(parent, false);
@@ -255,14 +281,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         private static Transform FindBlockTransform(Transform stage, int index)
         {
-            var prefix = $"Block_{index:00}_";
-            for (var i = 0; i < stage.childCount; i++)
-            {
-                var child = stage.GetChild(i);
-                if (child != null && child.name.StartsWith(prefix, StringComparison.Ordinal))
-                    return child;
-            }
-            return null;
+            return RogueliteStageBlockUtility.FindBlockTransform(stage, index);
         }
 
         private RogueliteCatastropheKind RollPrototypeCatastrophe(int stage)

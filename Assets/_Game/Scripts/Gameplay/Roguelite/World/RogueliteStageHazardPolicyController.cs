@@ -15,16 +15,22 @@ namespace ArknightsACT.Gameplay.Roguelite.World
     {
         [SerializeField] private RogueliteStageMapController stageMap;
 
+        private RogueliteStageRuntimeContext _context;
         private GameObject _stage;
         private float _nextResolveAt;
 
         public void Configure(RogueliteStageMapController map)
         {
+            _context ??= GetComponent<RogueliteStageRuntimeContext>();
             stageMap = map;
         }
 
         private void Awake()
         {
+            _context = GetComponent<RogueliteStageRuntimeContext>();
+            if (_context != null)
+                stageMap ??= _context.StageMap;
+
             // The old pit-floor bridge should never open floor sockets in the no-pit policy.
             var legacyPitSync = GetComponent<RoguelitePitFloorSyncController>();
             if (legacyPitSync != null)
@@ -37,11 +43,13 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 return;
             _nextResolveAt = Time.unscaledTime + 0.08f;
 
-            stageMap ??= FindFirstObjectByType<RogueliteStageMapController>();
+            if (_context == null)
+                return;
+            stageMap ??= _context.StageMap;
             if (stageMap == null)
                 return;
 
-            var stage = GameObject.Find($"[Stage_{stageMap.StageIndex:00}_Runtime]");
+            var stage = _context.StageRoot != null ? _context.StageRoot.gameObject : null;
             if (stage == null)
                 return;
 

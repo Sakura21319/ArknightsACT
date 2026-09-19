@@ -14,19 +14,31 @@ namespace ArknightsACT.Gameplay.Roguelite.World
     [DisallowMultipleComponent]
     public sealed class RogueliteStageDistantDistrictController : MonoBehaviour
     {
-        private const float ChunkWidth = 18f;
-        private const float ChunkDepth = 14f;
+        private const float ChunkWidth = RogueliteStageWorldMetrics.ChunkWidth;
+        private const float ChunkDepth = RogueliteStageWorldMetrics.ChunkDepth;
 
         [SerializeField] private RogueliteStageMapController stageMap;
         [SerializeField] private ChernobogEnvironmentKit kit;
+        private RogueliteStageRuntimeContext _context;
 
         private GameObject _preparedStage;
         private float _nextResolveAt;
 
         public void Configure(RogueliteStageMapController map, ChernobogEnvironmentKit environmentKit)
         {
+            _context ??= GetComponent<RogueliteStageRuntimeContext>();
             stageMap = map;
             kit = environmentKit;
+        }
+
+        private void Awake()
+        {
+            _context = GetComponent<RogueliteStageRuntimeContext>();
+            if (_context != null)
+            {
+                stageMap ??= _context.StageMap;
+                kit ??= _context.EnvironmentKit;
+            }
         }
 
         private void Update()
@@ -35,11 +47,12 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 return;
             _nextResolveAt = Time.unscaledTime + 0.18f;
 
-            stageMap ??= FindFirstObjectByType<RogueliteStageMapController>();
             if (stageMap == null || kit == null || !kit.IsUsable)
                 return;
 
-            var stage = GameObject.Find($"[Stage_{stageMap.StageIndex:00}_Runtime]");
+            var stage = _context != null && _context.StageRoot != null
+                ? _context.StageRoot.gameObject
+                : null;
             if (stage == null || stage == _preparedStage)
                 return;
 
@@ -54,8 +67,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             if (old != null)
                 Destroy(old.gameObject);
 
-            var root = new GameObject("[Chernobog_DistantDistrict]").transform;
-            root.SetParent(stage, false);
+            var root = RogueliteStageVisualRootUtility.GetOrCreate(stage, "[Chernobog_DistantDistrict]", true);
 
             var width = Mathf.Max(ChunkWidth, stageMap.Width * ChunkWidth);
             var depth = Mathf.Max(ChunkDepth, stageMap.Height * ChunkDepth);

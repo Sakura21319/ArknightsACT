@@ -20,7 +20,6 @@ Shader "ArknightsACT/ImportedClientFX"
         {
             "RenderType"="Transparent"
             "Queue"="Transparent"
-            "RenderPipeline"="UniversalPipeline"
             "IgnoreProjector"="True"
         }
 
@@ -36,7 +35,11 @@ Shader "ArknightsACT/ImportedClientFX"
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            // Keep this shader usable in both the project's current built-in
+            // renderer and a future URP asset.  A RenderPipeline tag would make
+            // the whole subshader invisible while GraphicsSettings has no
+            // active URP asset.
+            #include "UnityCG.cginc"
 
             struct Attributes
             {
@@ -52,10 +55,8 @@ Shader "ArknightsACT/ImportedClientFX"
                 float4 color : COLOR;
             };
 
-            TEXTURE2D(_MainTex);
-            SAMPLER(sampler_MainTex);
-            TEXTURE2D(_DissolveTex);
-            SAMPLER(sampler_DissolveTex);
+            sampler2D _MainTex;
+            sampler2D _DissolveTex;
 
             CBUFFER_START(UnityPerMaterial)
                 float4 _MainTex_ST;
@@ -69,7 +70,7 @@ Shader "ArknightsACT/ImportedClientFX"
             Varyings vert(Attributes input)
             {
                 Varyings output;
-                output.positionHCS = TransformObjectToHClip(input.positionOS.xyz);
+                output.positionHCS = UnityObjectToClipPos(input.positionOS);
                 output.uv = input.uv * _MainTex_ST.xy + _MainTex_ST.zw;
                 output.color = input.color;
                 return output;
@@ -77,13 +78,20 @@ Shader "ArknightsACT/ImportedClientFX"
 
             half4 frag(Varyings input) : SV_Target
             {
-                half4 baseColor = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, input.uv);
+                half4 baseColor = tex2D(_MainTex, input.uv);
                 baseColor *= _TintColor * _Color * input.color;
+
+                // Several client materials intentionally use One/Zero blend
+                // (opaque/additive-looking) while their source textures still
+                // carry meaningful alpha.  Without an alpha test those
+                // transparent texels become a solid quad in the fallback
+                // shader, hiding the actual blade/glow silhouette.
+                clip(baseColor.a - 0.001);
 
                 if (_Amount > 0.0001)
                 {
                     float2 dissolveUV = input.uv * _DissolveTex_ST.xy + _DissolveTex_ST.zw;
-                    half dissolve = SAMPLE_TEXTURE2D(_DissolveTex, sampler_DissolveTex, dissolveUV).r;
+                    half dissolve = tex2D(_DissolveTex, dissolveUV).r;
                     clip(dissolve - _Amount);
                     half edge = saturate((_Amount + max(_BorderWidth, 0.0001) - dissolve) / max(_BorderWidth, 0.0001));
                     baseColor.rgb += edge * baseColor.rgb;

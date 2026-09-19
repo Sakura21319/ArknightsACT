@@ -15,12 +15,13 @@ namespace ArknightsACT.Gameplay.Roguelite.World
     [DisallowMultipleComponent]
     public sealed class RogueliteStageSetDressingController : MonoBehaviour
     {
-        private const float ChunkWidth = 18f;
-        private const float ChunkDepth = 14f;
+        private const float ChunkWidth = RogueliteStageWorldMetrics.ChunkWidth;
+        private const float ChunkDepth = RogueliteStageWorldMetrics.ChunkDepth;
 
         [SerializeField] private RogueliteStageMapController stageMap;
         [SerializeField] private ChernobogEnvironmentKit kit;
 
+        private RogueliteStageRuntimeContext _context;
         private GameObject _preparedStage;
         private float _nextResolveAt;
         private Material _crystalDark;
@@ -30,8 +31,19 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         public void Configure(RogueliteStageMapController map, ChernobogEnvironmentKit environmentKit)
         {
+            _context ??= GetComponent<RogueliteStageRuntimeContext>();
             stageMap = map;
             kit = environmentKit;
+        }
+
+        private void Awake()
+        {
+            _context = GetComponent<RogueliteStageRuntimeContext>();
+            if (_context == null)
+                return;
+
+            stageMap ??= _context.StageMap;
+            kit ??= _context.EnvironmentKit;
         }
 
         private void Update()
@@ -40,11 +52,14 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 return;
             _nextResolveAt = Time.unscaledTime + 0.16f;
 
-            stageMap ??= FindFirstObjectByType<RogueliteStageMapController>();
+            if (_context == null)
+                return;
+            stageMap ??= _context.StageMap;
+            kit ??= _context.EnvironmentKit;
             if (stageMap == null || kit == null || !kit.IsUsable)
                 return;
 
-            var stage = GameObject.Find($"[Stage_{stageMap.StageIndex:00}_Runtime]");
+            var stage = _context.StageRoot != null ? _context.StageRoot.gameObject : null;
             if (stage == null || stage == _preparedStage)
                 return;
 
@@ -443,14 +458,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         private static Transform FindBlockTransform(Transform stage, int index)
         {
-            var prefix = $"Block_{index:00}_";
-            for (var i = 0; i < stage.childCount; i++)
-            {
-                var child = stage.GetChild(i);
-                if (child != null && child.name.StartsWith(prefix, StringComparison.Ordinal))
-                    return child;
-            }
-            return null;
+            return RogueliteStageBlockUtility.FindBlockTransform(stage, index);
         }
 
         private static void SetColor(Material material, Color color)
@@ -490,8 +498,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         private static int PositiveMod(int value, int divisor)
         {
-            var result = value % divisor;
-            return result < 0 ? result + divisor : result;
+            return RogueliteStageMath.PositiveMod(value, divisor);
         }
     }
 }

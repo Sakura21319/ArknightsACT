@@ -8,6 +8,7 @@ using ArknightsACT.Gameplay.Roguelite.Rewards;
 using ArknightsACT.Gameplay.Roguelite.Routing;
 using ArknightsACT.Gameplay.Roguelite.SkillUpgrades;
 using ArknightsACT.Gameplay.Roguelite.Treasure;
+using ArknightsACT.Gameplay.Roguelite.World;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -129,8 +130,8 @@ namespace ArknightsACT.Gameplay.Roguelite.Shop
 
             var width = stageMap.Width;
             var height = stageMap.Height;
-            const float chunkWidth = 14f;
-            const float chunkDepth = 11f;
+            const float chunkWidth = RogueliteStageWorldMetrics.ChunkWidth;
+            const float chunkDepth = RogueliteStageWorldMetrics.ChunkDepth;
             var origin = new Vector3(-(width - 1) * chunkWidth * 0.5f, 0f, -(height - 1) * chunkDepth * 0.5f);
             var x = Mathf.FloorToInt((player.position.x - (origin.x - chunkWidth * 0.5f)) / chunkWidth);
             var y = Mathf.FloorToInt((player.position.z - (origin.z - chunkDepth * 0.5f)) / chunkDepth);
