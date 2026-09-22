@@ -22,6 +22,7 @@ namespace ArknightsACT.Gameplay.Input
         {
             get
             {
+                if (GameplayInputBlocker.IsBlocked) return Vector2.zero;
                 var actionValue = _move?.ReadValue<Vector2>() ?? Vector2.zero;
                 var keyboardValue = ReadKeyboardMove();
                 return keyboardValue.sqrMagnitude > 0.001f ? keyboardValue : actionValue;
@@ -29,45 +30,42 @@ namespace ArknightsACT.Gameplay.Input
         }
 
         public bool JumpPressedThisFrame =>
-            (_jump?.WasPressedThisFrame() ?? false) ||
-            (Keyboard.current?.spaceKey.wasPressedThisFrame ?? false);
+            !GameplayInputBlocker.IsBlocked &&
+            ((_jump?.WasPressedThisFrame() ?? false) ||
+             (Keyboard.current?.spaceKey.wasPressedThisFrame ?? false));
 
         public bool AttackPressedThisFrame =>
-            (_attack?.WasPressedThisFrame() ?? false) ||
-            (Keyboard.current?.jKey.wasPressedThisFrame ?? false) ||
-            (Mouse.current?.leftButton.wasPressedThisFrame ?? false);
+            !GameplayInputBlocker.IsBlocked &&
+            ((_attack?.WasPressedThisFrame() ?? false) ||
+             (Keyboard.current?.jKey.wasPressedThisFrame ?? false) ||
+             (Mouse.current?.leftButton.wasPressedThisFrame ?? false));
 
         public bool DashPressedThisFrame =>
-            (_dash?.WasPressedThisFrame() ?? false) ||
-            (Keyboard.current?.kKey.wasPressedThisFrame ?? false) ||
-            (Keyboard.current?.leftShiftKey.wasPressedThisFrame ?? false);
+            !GameplayInputBlocker.IsBlocked &&
+            ((_dash?.WasPressedThisFrame() ?? false) ||
+             (Keyboard.current?.kKey.wasPressedThisFrame ?? false) ||
+             (Keyboard.current?.leftShiftKey.wasPressedThisFrame ?? false));
 
         public bool Skill1PressedThisFrame =>
-            (_skill1?.WasPressedThisFrame() ?? false) ||
-            (Keyboard.current?.lKey.wasPressedThisFrame ?? false);
+            !GameplayInputBlocker.IsBlocked &&
+            ((_skill1?.WasPressedThisFrame() ?? false) ||
+             (Keyboard.current?.lKey.wasPressedThisFrame ?? false));
 
         public bool Skill2PressedThisFrame =>
-            (_skill2?.WasPressedThisFrame() ?? false) ||
-            (Keyboard.current?.iKey.wasPressedThisFrame ?? false) ||
-            (Mouse.current?.rightButton.wasPressedThisFrame ?? false);
+            !GameplayInputBlocker.IsBlocked &&
+            ((_skill2?.WasPressedThisFrame() ?? false) ||
+             (Keyboard.current?.iKey.wasPressedThisFrame ?? false) ||
+             (Mouse.current?.rightButton.wasPressedThisFrame ?? false));
 
-        private void Awake()
-        {
-            BuildActions();
-        }
+        private void Awake() => BuildActions();
 
         private void OnEnable()
         {
-            // Generated prototype actors may be composed while inactive. Build again here so
-            // enabling the actor always leaves a valid, enabled map even after editor rebuilds.
             BuildActions();
             _gameplay?.Enable();
         }
 
-        private void OnDisable()
-        {
-            _gameplay?.Disable();
-        }
+        private void OnDisable() => _gameplay?.Disable();
 
         private void OnDestroy()
         {
@@ -77,8 +75,7 @@ namespace ArknightsACT.Gameplay.Input
 
         private void BuildActions()
         {
-            if (_gameplay != null)
-                return;
+            if (_gameplay != null) return;
 
             _gameplay = new InputActionMap("Gameplay");
 
@@ -121,19 +118,15 @@ namespace ArknightsACT.Gameplay.Input
 
         private static Vector2 ReadKeyboardMove()
         {
+            if (GameplayInputBlocker.IsBlocked) return Vector2.zero;
             var keyboard = Keyboard.current;
-            if (keyboard == null)
-                return Vector2.zero;
+            if (keyboard == null) return Vector2.zero;
 
             var value = Vector2.zero;
-            if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed)
-                value.x -= 1f;
-            if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed)
-                value.x += 1f;
-            if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed)
-                value.y -= 1f;
-            if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed)
-                value.y += 1f;
+            if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed) value.x -= 1f;
+            if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed) value.x += 1f;
+            if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed) value.y -= 1f;
+            if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed) value.y += 1f;
 
             return value.sqrMagnitude > 1f ? value.normalized : value;
         }

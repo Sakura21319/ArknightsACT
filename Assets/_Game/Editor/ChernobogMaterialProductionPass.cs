@@ -17,7 +17,6 @@ namespace ArknightsACT.Editor
         private const int TextureSize = 512;
         private const string TextureFolder = ChernobogEnvironmentKitBuilder.Root + "/Textures/Production";
 
-        [MenuItem("ArknightsACT/Assets/Apply Chernobog Material Production Pass")]
         private static void ApplyMenu()
         {
             var kit = ChernobogEnvironmentKitBuilder.EnsureBuilt();

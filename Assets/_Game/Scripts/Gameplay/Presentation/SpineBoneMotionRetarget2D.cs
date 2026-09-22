@@ -27,6 +27,7 @@ namespace ArknightsACT.Gameplay.Presentation
         [SerializeField] private Transform sourceMotionRoot;
         [SerializeField] private string preferredMoveAnimation = "Move";
         [SerializeField, Range(0.25f, 1f)] private float minimumBoneCoverage = 0.60f;
+        [SerializeField] private string[] excludedBoneNameTokens = Array.Empty<string>();
 
         private readonly List<BonePair> _pairs = new();
         private Component _targetSkeletonAnimation;
@@ -49,11 +50,16 @@ namespace ArknightsACT.Gameplay.Presentation
         public float BoneCoverage { get; private set; }
         public string ResolvedMoveAnimation => _resolvedMoveAnimation;
 
-        public void Configure(Transform targetRoot, Transform sourceRoot, string moveAnimation = "Move")
+        public void Configure(
+            Transform targetRoot,
+            Transform sourceRoot,
+            string moveAnimation = "Move",
+            string[] excludedBoneTokens = null)
         {
             targetPresentationRoot = targetRoot;
             sourceMotionRoot = sourceRoot;
             preferredMoveAnimation = string.IsNullOrWhiteSpace(moveAnimation) ? "Move" : moveAnimation;
+            excludedBoneNameTokens = excludedBoneTokens ?? Array.Empty<string>();
             HideMotionSourceVisuals();
         }
 
@@ -171,7 +177,8 @@ namespace ArknightsACT.Gameplay.Presentation
             _pairs.Clear();
             foreach (var item in sourceByName)
             {
-                if (string.Equals(item.Key, "root", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(item.Key, "root", StringComparison.OrdinalIgnoreCase) ||
+                    IsExcludedBone(item.Key))
                     continue;
                 if (!targetByName.TryGetValue(item.Key, out var targetBone))
                     continue;
@@ -184,7 +191,11 @@ namespace ArknightsACT.Gameplay.Presentation
                 _pairs.Add(new BonePair(item.Key, item.Value, targetBone, sourceData, targetData));
             }
 
-            var comparableSourceCount = Mathf.Max(1, sourceByName.Keys.Count(name => !string.Equals(name, "root", StringComparison.OrdinalIgnoreCase)));
+            var comparableSourceCount = Mathf.Max(
+                1,
+                sourceByName.Keys.Count(name =>
+                    !string.Equals(name, "root", StringComparison.OrdinalIgnoreCase) &&
+                    !IsExcludedBone(name)));
             BoneCoverage = (float)_pairs.Count / comparableSourceCount;
             if (BoneCoverage < minimumBoneCoverage)
             {
@@ -197,6 +208,22 @@ namespace ArknightsACT.Gameplay.Presentation
             _boneAccessors = new BoneAccessors(sampleBone.SourceBone.GetType(), true);
             _dataAccessors = new BoneAccessors(sampleBone.SourceData.GetType(), false);
             return _boneAccessors.CanReadCore && _dataAccessors.CanReadCore;
+        }
+
+        private bool IsExcludedBone(string boneName)
+        {
+            if (string.IsNullOrWhiteSpace(boneName) || excludedBoneNameTokens == null)
+                return false;
+
+            for (var i = 0; i < excludedBoneNameTokens.Length; i++)
+            {
+                var token = excludedBoneNameTokens[i];
+                if (!string.IsNullOrWhiteSpace(token) &&
+                    boneName.IndexOf(token, StringComparison.OrdinalIgnoreCase) >= 0)
+                    return true;
+            }
+
+            return false;
         }
 
         private void ResolveMoveAnimation()

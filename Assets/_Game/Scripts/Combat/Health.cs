@@ -23,14 +23,11 @@ namespace ArknightsACT.Combat
         {
             maxHealth = Mathf.Max(1f, value);
             if (refill)
-            {
                 CurrentHealth = maxHealth;
-                Changed?.Invoke(CurrentHealth, maxHealth);
-            }
             else
-            {
                 CurrentHealth = Mathf.Min(CurrentHealth, maxHealth);
-            }
+
+            Changed?.Invoke(CurrentHealth, maxHealth);
         }
 
         public float TakeDamage(float amount)

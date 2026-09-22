@@ -35,6 +35,38 @@ namespace ArknightsACT.Gameplay.Navigation
         public static PrototypeNavigationGraph25D Instance { get; private set; }
         public int NodeCount => nodes?.Length ?? 0;
 
+        public void AppendRoomRoute(Vector3[] route)
+        {
+            if (route == null || route.Length < 2) return;
+            var oldCount = NodeCount;
+            var links = new List<Edge>(edges);
+            Array.Resize(ref nodes, oldCount + route.Length);
+            for (var i = 0; i < route.Length; i++)
+            {
+                nodes[oldCount + i] = route[i];
+                if (i > 0) links.Add(new Edge(oldCount + i - 1, oldCount + i));
+            }
+            // Only join exterior approach nodes with a clear actor-width corridor.
+            for (var r = 0; r < route.Length - 2; r++)
+            {
+                var best = -1;
+                var distance = float.PositiveInfinity;
+                for (var n = 0; n < oldCount; n++)
+                {
+                    if (Mathf.Abs(nodes[n].y - route[r].y) > 0.5f) continue;
+                    var delta = nodes[n] - route[r];
+                    if (delta.sqrMagnitude >= distance || delta.magnitude < 0.01f) continue;
+                    if (Physics.SphereCast(route[r] + Vector3.up * 0.8f, 0.25f, delta.normalized,
+                        out _, delta.magnitude, ~0, QueryTriggerInteraction.Ignore)) continue;
+                    best = n;
+                    distance = delta.sqrMagnitude;
+                }
+                if (best >= 0) links.Add(new Edge(best, oldCount + r));
+            }
+            edges = links.ToArray();
+            RebuildAdjacency();
+        }
+
         public void Configure(Vector3[] nodePositions, int[] edgePairs)
         {
             nodes = nodePositions ?? Array.Empty<Vector3>();

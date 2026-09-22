@@ -25,6 +25,85 @@ namespace ArknightsACT.Editor.PRTS
             -0.72f,
             0.38f);
 
+        // Schwarz is sourced from the user's already-unpacked local client assets. These
+        // descriptors are intentionally NOT part of GetFullPrototypePack(), which remains the
+        // network/downloadable PRTS pack.
+        public static readonly PrtsAssetDescriptor SchwarzDefault = new(
+            "黑·原版",
+            "local",
+            string.Empty,
+            "char_340_shwaz",
+            "Assets/_Game/Art/Characters/Schwarz/PRTS/Default/Spine",
+            "Player",
+            1.64f,
+            -0.72f,
+            0.38f);
+
+        public static readonly PrtsAssetDescriptor SchwarzDefaultMotion = new(
+            "黑·原版动作源",
+            "local",
+            string.Empty,
+            "build_char_340_shwaz",
+            "Assets/_Game/Art/Characters/Schwarz/PRTS/Default/BaseMotion",
+            "MotionSource",
+            1.64f,
+            -0.72f,
+            0.38f);
+
+        public static readonly PrtsAssetDescriptor SchwarzSnow = new(
+            "黑·雪境皮肤",
+            "local",
+            string.Empty,
+            "char_340_shwaz_snow#1",
+            "Assets/_Game/Art/Characters/Schwarz/PRTS/Snow/Spine",
+            "Player",
+            1.64f,
+            -0.72f,
+            0.38f);
+
+        public static readonly PrtsAssetDescriptor SchwarzSnowMotion = new(
+            "黑·雪境皮肤动作源",
+            "local",
+            string.Empty,
+            "build_char_340_shwaz_snow#1",
+            "Assets/_Game/Art/Characters/Schwarz/PRTS/Snow/BaseMotion",
+            "MotionSource",
+            1.64f,
+            -0.72f,
+            0.38f);
+
+        public static readonly PrtsAssetDescriptor SchwarzStriker = new(
+            "黑·Striker皮肤",
+            "local",
+            string.Empty,
+            "char_340_shwaz_striker#1",
+            "Assets/_Game/Art/Characters/Schwarz/PRTS/Striker/Spine",
+            "Player",
+            1.64f,
+            -0.72f,
+            0.38f);
+
+        public static readonly PrtsAssetDescriptor SchwarzStrikerMotion = new(
+            "黑·Striker皮肤动作源",
+            "local",
+            string.Empty,
+            "build_char_340_shwaz_striker#1",
+            "Assets/_Game/Art/Characters/Schwarz/PRTS/Striker/BaseMotion",
+            "MotionSource",
+            1.64f,
+            -0.72f,
+            0.38f);
+
+        public static readonly PrtsAssetDescriptor[] SchwarzLocalAssets =
+        {
+            SchwarzDefault,
+            SchwarzDefaultMotion,
+            SchwarzSnow,
+            SchwarzSnowMotion,
+            SchwarzStriker,
+            SchwarzStrikerMotion
+        };
+
         public static readonly PrtsAssetDescriptor NormalTreasureChest = new(
             "宝箱·水月",
             "https://prts.wiki/w/%E5%AE%9D%E7%AE%B1%28%E6%B0%B4%E6%9C%88%29",

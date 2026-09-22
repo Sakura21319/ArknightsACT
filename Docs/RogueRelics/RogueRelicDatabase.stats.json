@@ -1,0 +1,36 @@
+{
+  "records_total": 1789,
+  "unique_names": 842,
+  "duplicate_name_groups": 295,
+  "duplicate_extra_records": 947,
+  "variant_changed_groups": 144,
+  "by_is": {
+    "IS1": 190,
+    "IS2": 245,
+    "IS3": 262,
+    "IS4": 263,
+    "IS5": 296,
+    "IS6": 294,
+    "IS7": 239
+  },
+  "by_topic": {
+    "legacy_roguelike": 190,
+    "rogue_1": 245,
+    "rogue_2": 262,
+    "rogue_3": 263,
+    "rogue_4": 296,
+    "rogue_5": 294,
+    "rogue_6": 239
+  },
+  "missing_names": 0,
+  "missing_effects": 0,
+  "missing_icons": 190,
+  "icons_ok": 1599,
+  "icons_failed": 190,
+  "legacy_is1_loaded": true,
+  "master_policy": "same-name relics use latest IS version only",
+  "master_missing_icons": 100,
+  "excel_icons_embedded_locally": true,
+  "xlsx_generated": true,
+  "xlsx_message": "embedded 742 local icons into D:\\WorkSpace\\ArknightsACT\\Docs\\RogueRelics\\RogueRelicDatabase.xlsx"
+}

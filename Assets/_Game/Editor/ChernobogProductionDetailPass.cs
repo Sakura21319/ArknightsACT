@@ -23,7 +23,6 @@ namespace ArknightsACT.Editor
 
         private static readonly Dictionary<string, Mesh> MeshCache = new(StringComparer.Ordinal);
 
-        [MenuItem("ArknightsACT/Assets/Apply Chernobog Production Detail Pass")]
         private static void ApplyMenu()
         {
             var kit = ChernobogEnvironmentKitBuilder.EnsureBuilt();

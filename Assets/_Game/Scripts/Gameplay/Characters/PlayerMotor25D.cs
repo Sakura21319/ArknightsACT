@@ -85,7 +85,8 @@ namespace ArknightsACT.Gameplay.Characters
             }
 
             var movementLocked = (_attack != null && _attack.IsMovementLocked) ||
-                                 (_skills != null && _skills.IsCasting);
+                                 (_skills != null && _skills.IsCasting) ||
+                                 IsExternallyMovementLocked();
             var desired = movementLocked ? Vector3.zero : ResolveDesiredPlanarVelocity();
             var rate = desired.sqrMagnitude > _planarVelocity.sqrMagnitude ? acceleration : deceleration;
             _planarVelocity = Vector3.MoveTowards(_planarVelocity, desired, rate * Time.deltaTime);
@@ -101,10 +102,37 @@ namespace ArknightsACT.Gameplay.Characters
             _controller.Move((_planarVelocity + Vector3.up * _verticalVelocity) * Time.deltaTime);
         }
 
+        public void SetPlanarFacing(Vector3 worldDirection)
+        {
+            worldDirection.y = 0f;
+            if (worldDirection.sqrMagnitude < 0.001f)
+                return;
+
+            _planarForward = worldDirection.normalized;
+            ResolveCameraAxes(out _, out var right);
+            var screenHorizontal = Vector3.Dot(_planarForward, right);
+            if (Mathf.Abs(screenHorizontal) >= FacingHorizontalDeadzone)
+                FacingSign = screenHorizontal >= 0f ? 1 : -1;
+        }
+
+        public void ForceFacingSign(int sign)
+        {
+            FacingSign = sign < 0 ? -1 : 1;
+        }
+
         public void ResetMotion()
         {
             _planarVelocity = Vector3.zero;
             _verticalVelocity = 0f;
+        }
+
+        private bool IsExternallyMovementLocked()
+        {
+            var behaviours = GetComponents<MonoBehaviour>();
+            for (var i = 0; i < behaviours.Length; i++)
+                if (behaviours[i] is IPlayerControlLockSource source && source.BlocksMovement)
+                    return true;
+            return false;
         }
 
         private Vector3 ResolveDesiredPlanarVelocity()

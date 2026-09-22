@@ -108,6 +108,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
 
         private void Update()
         {
+            if (ArknightsACT.Gameplay.Input.GameplayInputBlocker.IsBlocked) return;
             if (!_isOpen)
             {
                 TryOpenNext();

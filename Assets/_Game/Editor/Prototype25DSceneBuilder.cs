@@ -26,7 +26,6 @@ namespace ArknightsACT.Editor
 
         private static readonly Vector3 CameraOffset = new(-10.5f, 6.8f, -10.5f);
 
-        [MenuItem("ArknightsACT/Build 2.5D Demo Scene")]
         public static void Build()
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode)

@@ -52,7 +52,8 @@ namespace ArknightsACT.Gameplay.Characters
 
         public bool TryDash()
         {
-            if (IsDead || IsDashing || Time.time < _cooldownUntil || (_skills != null && _skills.IsCasting))
+            if (IsDead || IsDashing || Time.time < _cooldownUntil ||
+                (_skills != null && _skills.IsCasting) || IsExternallyDashLocked())
                 return false;
             if (_body2D == null && _controller3D == null)
                 return false;
@@ -124,6 +125,15 @@ namespace ArknightsACT.Gameplay.Characters
                 _controller3D.Move(direction * (dashSpeed * dt));
                 yield return null;
             }
+        }
+
+        private bool IsExternallyDashLocked()
+        {
+            var behaviours = GetComponents<MonoBehaviour>();
+            for (var i = 0; i < behaviours.Length; i++)
+                if (behaviours[i] is IPlayerControlLockSource source && source.BlocksDash)
+                    return true;
+            return false;
         }
 
         private IPlayerLocomotion FindLocomotion()

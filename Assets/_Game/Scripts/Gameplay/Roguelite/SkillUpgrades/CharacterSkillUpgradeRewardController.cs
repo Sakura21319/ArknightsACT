@@ -100,6 +100,7 @@ namespace ArknightsACT.Gameplay.Roguelite.SkillUpgrades
 
         private void Update()
         {
+            if (ArknightsACT.Gameplay.Input.GameplayInputBlocker.IsBlocked) return;
             if (!_isOpen)
             {
                 TryOpenNext();

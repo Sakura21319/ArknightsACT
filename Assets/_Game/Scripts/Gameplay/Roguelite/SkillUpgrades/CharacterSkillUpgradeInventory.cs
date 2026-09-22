@@ -9,6 +9,7 @@ namespace ArknightsACT.Gameplay.Roguelite.SkillUpgrades
         string CharacterId { get; }
         bool Supports(string effectId);
         void Apply(string effectId, float value, int newStack);
+        void ResetRun();
     }
 
     [DisallowMultipleComponent]
@@ -76,6 +77,13 @@ namespace ArknightsACT.Gameplay.Roguelite.SkillUpgrades
             Upgraded?.Invoke(definition, nextStack);
             Debug.Log($"[ArknightsACT/SkillUpgrade] {definition.DisplayName} -> {nextStack}/{definition.MaxStacks}", this);
             return true;
+        }
+
+        public void ResetRun()
+        {
+            _stacks.Clear();
+            for (var i = 0; i < _appliers.Count; i++)
+                _appliers[i]?.ResetRun();
         }
     }
 }

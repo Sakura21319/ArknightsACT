@@ -48,6 +48,19 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                 Instance = null;
         }
 
+        public void ResetRun()
+        {
+            Ingots = Mathf.Max(0, startingIngots);
+            RouteDepth = 1;
+            CombatWinsSinceBoss = 0;
+            StageIndex = 1;
+            ExploredBlocks = 0;
+            EmergencyClears = 0;
+            Level = 1;
+            CurrentExperience = 0;
+            Changed?.Invoke();
+        }
+
         public void AddIngots(int amount)
         {
             if (amount <= 0)

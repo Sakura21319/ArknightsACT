@@ -68,6 +68,17 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
             return true;
         }
 
+        public void ResetRun()
+        {
+            foreach (var pair in _burnRoutines)
+                if (pair.Value != null)
+                    StopCoroutine(pair.Value);
+            _burnRoutines.Clear();
+            _stacks.Clear();
+            _definitions.Clear();
+            _chainHitCounter = 0;
+        }
+
         public float ModifyOutgoingDamage(in DamageContext context, float currentDamage)
         {
             var percent = SumEffect(LevelUpgradeEffectType.AllDamagePercent);

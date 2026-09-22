@@ -19,4 +19,16 @@ MonoBehaviour:
   requiredFeatures: 0
   effectType: 0
   value: 0.08
+  effects:
+  - type: 0
+    value: 0.08
+    profession: 0
+    durationSeconds: 0
+  effectDescription: "\u6240\u6709\u9020\u6210\u7684\u4F24\u5BB3 +8%\u3002"
   maxStacks: 3
+  profession: 0
+  salvageCommodity: 0
+  salvageRarity: 0
+  salvageGridSize: {x: 1, y: 1}
+  salvageIconResource: 
+  collectionValue: 0

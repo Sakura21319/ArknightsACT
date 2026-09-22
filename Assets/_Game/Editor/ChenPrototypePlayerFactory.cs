@@ -207,12 +207,23 @@ namespace ArknightsACT.Editor
             go.AddComponent<ChenSkillUpgradeApplier>();
 
             var profile = go.AddComponent<PlayerCombatProfile>();
+            profile.SetProfession(OperatorProfession.Guard);
             profile.Configure(
                 CombatFeature.BasicAttack |
                 CombatFeature.ActiveSkills |
                 CombatFeature.Dash |
                 CombatFeature.PhysicalDamage |
                 CombatFeature.ArtsDamage);
+
+            var identity = go.AddComponent<PlayableOperatorIdentity>();
+            identity.Configure(
+                "Chen",
+                "陈",
+                "default",
+                "UI/HUD/chen_avatar",
+                "UI/Skills/chen_badao",
+                "UI/Skills/chen_jueying");
+
             go.AddComponent<CollectibleInventory>();
             go.AddComponent<LevelUpgradeInventory>();
             go.AddComponent<CharacterSkillUpgradeInventory>();

@@ -81,7 +81,76 @@ namespace ArknightsACT.Editor.Effects
                 // Extracted output is a finite captured sequence.  Do not infer an infinite
                 // runtime loop from the client asset name "buff"; the runtime controller can
                 // explicitly keep an effect alive later if a future skill needs that behavior.
-                const bool loop = false;
+                var loop = ShouldLoopEffect(effectName);
+                var clipPath = packageRoot + "/" + AnimationFolder + "/" + effectName + ".anim";
+                var controllerPath = packageRoot + "/" + ControllerFolder + "/" + effectName + ".controller";
+                var prefabPath = packageRoot + "/" + PrefabFolder + "/" + effectName + ".prefab";
+                DeleteAssetIfExists(clipPath);
+                DeleteAssetIfExists(controllerPath);
+                DeleteAssetIfExists(prefabPath);
+
+                var clip = CreateClip(clipPath, sprites, loop);
+                var controller = CreateController(controllerPath, clip);
+                CreatePrefab(prefabPath, effectName, sprites[0], material, controller, sprites.Length, loop);
+                result.PrefabPaths.Add(prefabPath);
+                result.ImportedEffects++;
+            }
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            return result;
+        }
+
+        internal static ImportResult ImportSelected(
+            IEnumerable<string> sourceFolders,
+            string outputRoot,
+            string packageName)
+        {
+            if (sourceFolders == null)
+                throw new ArgumentNullException(nameof(sourceFolders));
+
+            var folders = sourceFolders
+                .Where(path => !string.IsNullOrWhiteSpace(path) && Directory.Exists(path))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            if (folders.Length == 0)
+                throw new InvalidOperationException("没有找到指定的特效帧目录。");
+
+            packageName = SanitizeName(packageName, "Imported");
+            outputRoot = NormalizeAssetPath(string.IsNullOrWhiteSpace(outputRoot) ? DefaultOutputRoot : outputRoot);
+            EnsureAssetFolder(outputRoot);
+            var packageRoot = outputRoot + "/" + packageName;
+            EnsureAssetFolder(packageRoot);
+            foreach (var child in new[] { PrefabFolder, AnimationFolder, ControllerFolder, MaterialFolder, "Frames" })
+                EnsureAssetFolder(packageRoot + "/" + child);
+
+            var result = new ImportResult
+            {
+                FramesRoot = Path.GetDirectoryName(folders[0]),
+                PackageRoot = packageRoot
+            };
+
+            var copiedFolders = new List<string>();
+            foreach (var sourceFolder in folders)
+            {
+                var effectName = SanitizeName(Path.GetFileName(sourceFolder), "Effect");
+                var destination = packageRoot + "/Frames/" + effectName;
+                EnsureAssetFolder(destination);
+                CopyFrames(sourceFolder, destination, result);
+                copiedFolders.Add(destination);
+            }
+
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            var material = CreateOrLoadMaterial(packageRoot + "/" + MaterialFolder + "/" + packageName + "_Frame.mat");
+            foreach (var destination in copiedFolders)
+            {
+                var effectName = Path.GetFileName(destination);
+                var sprites = ImportSprites(destination);
+                if (sprites.Length == 0)
+                    continue;
+
+                var loop = ShouldLoopEffect(effectName);
                 var clipPath = packageRoot + "/" + AnimationFolder + "/" + effectName + ".anim";
                 var controllerPath = packageRoot + "/" + ControllerFolder + "/" + effectName + ".controller";
                 var prefabPath = packageRoot + "/" + PrefabFolder + "/" + effectName + ".prefab";
@@ -301,11 +370,24 @@ namespace ArknightsACT.Editor.Effects
             return string.IsNullOrWhiteSpace(value) ? fallback : value;
         }
 
+        private static bool ShouldLoopEffect(string effectName)
+        {
+            if (string.IsNullOrWhiteSpace(effectName))
+                return false;
+
+            return effectName.StartsWith("skill_03_buff_02", StringComparison.OrdinalIgnoreCase) ||
+                   effectName.StartsWith("skill_03_buff_03", StringComparison.OrdinalIgnoreCase) ||
+                   effectName.Equals("common_064_ignite_attack_red", StringComparison.OrdinalIgnoreCase) ||
+                   effectName.Equals("common_combustion_buff_02", StringComparison.OrdinalIgnoreCase);
+        }
+
         private static bool IsEffectFolder(string path)
         {
             var name = Path.GetFileName(path);
             return name.StartsWith("skill_", StringComparison.OrdinalIgnoreCase) ||
-                   name.StartsWith("attack_", StringComparison.OrdinalIgnoreCase);
+                   name.StartsWith("attack_", StringComparison.OrdinalIgnoreCase) ||
+                   name.StartsWith("buff_", StringComparison.OrdinalIgnoreCase) ||
+                   name.IndexOf("_attack_", StringComparison.OrdinalIgnoreCase) >= 0;
         }
     }
 

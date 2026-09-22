@@ -20,4 +20,17 @@ MonoBehaviour:
   requiredFeatures: 3
   effectType: 5
   value: 0.12
+  effects:
+  - type: 5
+    value: 0.12
+    profession: 0
+    durationSeconds: 0
+  effectDescription: "\u666E\u653B\u6BCF\u547D\u4E2D\u4E00\u4E2A\u654C\u4EBA\uFF0C\u4F7F\u6240\u6709\u4E3B\u52A8\u6280\u80FD\u51B7\u5374\u51CF\u5C11
+    0.12 \u79D2\u3002"
   maxStacks: 3
+  profession: 0
+  salvageCommodity: 0
+  salvageRarity: 0
+  salvageGridSize: {x: 1, y: 1}
+  salvageIconResource: 
+  collectionValue: 0

@@ -1,3 +1,4 @@
+using ArknightsACT.Gameplay.Input;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -36,6 +37,17 @@ namespace ArknightsACT.Gameplay.Prototype25D
 
         private void Update()
         {
+            if (GameplayInputBlocker.IsBlocked)
+            {
+                IsMoving = false;
+                if (_controller.isGrounded)
+                    _verticalVelocity = -2f;
+                else
+                    _verticalVelocity += gravity * Time.deltaTime;
+                _controller.Move(Vector3.up * _verticalVelocity * Time.deltaTime);
+                return;
+            }
+
             var keyboard = Keyboard.current;
             var input = Vector2.zero;
             if (keyboard != null)

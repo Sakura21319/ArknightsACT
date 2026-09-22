@@ -99,11 +99,13 @@ namespace ArknightsACT.Gameplay.Presentation
             var width = widthOverride > 0f ? widthOverride : (isPlayer ? 1.48f : 1.08f);
             var height = heightOverride > 0f ? heightOverride : (isPlayer ? 0.11f : 0.085f);
             var border = Mathf.Min(width, height) * 0.18f;
-            var y = worldYOffsetOverride > 0f ? worldYOffsetOverride : (isPlayer ? 1.62f : 1.48f);
+            // Keep the player's bar clear of the character silhouette and the newly moved top-left SP HUD.
+            var y = worldYOffsetOverride > 0f ? worldYOffsetOverride : (isPlayer ? 1.95f : 1.48f);
+            var x = isPlayer ? -0.14f : 0f;
 
             _root = new GameObject("WorldHealthBar");
             _root.transform.SetParent(transform, false);
-            _root.transform.localPosition = new Vector3(0f, y, -0.08f);
+            _root.transform.localPosition = new Vector3(x, y, -0.08f);
 
             var background = new GameObject("Background");
             background.transform.SetParent(_root.transform, false);

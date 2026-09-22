@@ -207,6 +207,11 @@ namespace ArknightsACT.Gameplay.Presentation
             ApplyProceduralLocomotion(facing);
         }
 
+        public void SetFacingImmediate(int facing)
+        {
+            SetFacing(facing);
+        }
+
         public void PlayAttack(int comboIndex, int facing)
         {
             SetFacing(facing);
@@ -242,6 +247,24 @@ namespace ArknightsACT.Gameplay.Presentation
             SetFacing(facing);
             ResetProceduralLocomotion();
             PlayOneShot(skillAnimation, Mathf.Max(skillLockSeconds, DurationOrZero(skillAnimation) * 0.72f));
+        }
+
+        public bool PlayNamedAnimation(string animation, int facing, bool loop, float lockSeconds = 0f)
+        {
+            if (string.IsNullOrWhiteSpace(animation))
+                return false;
+
+            InterruptAttackSequence();
+            SetFacing(facing);
+            ResetProceduralLocomotion();
+            _currentLoop = string.Empty;
+            if (lockSeconds > 0f)
+                _lockedUntil = Mathf.Max(_lockedUntil, Time.time + lockSeconds);
+
+            var played = Play(animation, loop, true);
+            if (played && loop)
+                _currentLoop = ResolveExact(animation) ?? animation;
+            return played;
         }
 
         public void PlayHit()

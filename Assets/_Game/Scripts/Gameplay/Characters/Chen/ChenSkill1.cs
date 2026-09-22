@@ -12,7 +12,10 @@ namespace ArknightsACT.Gameplay.Characters.Chen
     [RequireComponent(typeof(CombatEntity))]
     public sealed class ChenSkill1 : MonoBehaviour, IPlayerSkill
     {
-        [SerializeField, Min(0.1f)] private float cooldownSeconds = 1f;
+        [Header("Skill points")]
+        [SerializeField, Min(1f)] private float skillPointCost = 20f;
+        [SerializeField, Min(0f)] private float initialSkillPoints = 10f;
+        [SerializeField, Min(0f)] private float naturalSkillPointPerSecond = 1f;
         [Tooltip("横向刀光在起手第 1 帧出现，因此伤害与起手特效同帧结算。")]
         [SerializeField, Min(0f)] private float impactDelay = 0f;
         [SerializeField, Min(0.1f)] private float castLockSeconds = 1.15f;
@@ -25,14 +28,20 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         private CombatEntity _entity;
         private IPlayerLocomotion _motor;
         private PlayerMotor25D _motor25D;
-        private float _readyAt;
+        private float _skillPoints;
         private float _runtimeRangeMultiplier = 1f;
         private float _runtimeDamageMultiplier = 1f;
-        private float _runtimeCooldownMultiplier = 1f;
+        private float _runtimeSkillPointCostMultiplier = 1f;
 
         public int Slot => 1;
         public string DisplayName => "赤霄·拔刀";
-        public float CooldownRemaining => Mathf.Max(0f, _readyAt - Time.time);
+        public float SkillPointCost => Mathf.Max(1f, skillPointCost * _runtimeSkillPointCostMultiplier);
+        public float SkillPoints => Mathf.Clamp(_skillPoints, 0f, SkillPointCost);
+        public float SkillPointRatio => Mathf.Clamp01(SkillPoints / SkillPointCost);
+        public float NaturalSkillPointPerSecond => Mathf.Max(0f, naturalSkillPointPerSecond);
+        public float CooldownRemaining => NaturalSkillPointPerSecond <= 0f
+            ? (SkillPointRatio >= 1f ? 0f : float.PositiveInfinity)
+            : Mathf.Max(0f, SkillPointCost - SkillPoints) / NaturalSkillPointPerSecond;
         public bool IsCasting { get; private set; }
 
         /// <summary>
@@ -53,22 +62,36 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             _entity = GetComponent<CombatEntity>();
             _motor = FindLocomotion();
             _motor25D = GetComponent<PlayerMotor25D>();
+            _skillPoints = Mathf.Clamp(initialSkillPoints, 0f, SkillPointCost);
         }
 
         public bool TryCast()
         {
-            if (IsCasting || Time.time < _readyAt || _entity?.Health == null || _entity.Health.IsDead)
+            if (IsCasting || SkillPoints + 0.0001f < SkillPointCost || _entity?.Health == null || _entity.Health.IsDead)
                 return false;
 
-            _readyAt = Time.time + cooldownSeconds * _runtimeCooldownMultiplier;
+            _skillPoints = Mathf.Max(0f, SkillPoints - SkillPointCost);
             StartCoroutine(CastRoutine());
             return true;
+        }
+
+        public void TickSkillPoints(float deltaTime, float recoveryMultiplier, float flatRecoveryPerSecond)
+        {
+            if (IsCasting || deltaTime <= 0f || SkillPointRatio >= 1f) return;
+            var perSecond = NaturalSkillPointPerSecond * Mathf.Max(0f, recoveryMultiplier) + Mathf.Max(0f, flatRecoveryPerSecond);
+            GainSkillPoints(perSecond * deltaTime);
+        }
+
+        public void GainSkillPoints(float amount)
+        {
+            if (amount <= 0f) return;
+            _skillPoints = Mathf.Clamp(SkillPoints + amount, 0f, SkillPointCost);
         }
 
         public void ReduceCooldown(float seconds)
         {
             if (seconds > 0f)
-                _readyAt = Mathf.Max(Time.time, _readyAt - seconds);
+                GainSkillPoints(seconds * Mathf.Max(0.01f, NaturalSkillPointPerSecond));
         }
 
         public void AddRangePercent(float value) =>
@@ -78,7 +101,18 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             _runtimeDamageMultiplier = Mathf.Clamp(_runtimeDamageMultiplier + Mathf.Max(0f, value), 1f, 3f);
 
         public void AddCooldownReductionPercent(float value) =>
-            _runtimeCooldownMultiplier = Mathf.Clamp(_runtimeCooldownMultiplier * (1f - Mathf.Max(0f, value)), 0.45f, 1f);
+            _runtimeSkillPointCostMultiplier = Mathf.Clamp(
+                _runtimeSkillPointCostMultiplier * (1f - Mathf.Max(0f, value)), 0.45f, 1f);
+
+        public void ResetRunModifiers()
+        {
+            StopAllCoroutines();
+            IsCasting = false;
+            _runtimeRangeMultiplier = 1f;
+            _runtimeDamageMultiplier = 1f;
+            _runtimeSkillPointCostMultiplier = 1f;
+            _skillPoints = Mathf.Clamp(initialSkillPoints, 0f, SkillPointCost);
+        }
 
         private IEnumerator CastRoutine()
         {

@@ -24,7 +24,6 @@ namespace ArknightsACT.Editor
             DarkInset
         }
 
-        [MenuItem("ArknightsACT/Assets/Apply Chernobog Fine Material Detail")]
         private static void ApplyMenu()
         {
             var kit = ChernobogEnvironmentKitBuilder.EnsureBuilt();

@@ -15,7 +15,6 @@ namespace ArknightsACT.Editor.PRTS
     {
         internal const string GeneratedPrefabDirectory = "Assets/_Game/Generated/PRTS/Prefabs";
 
-        [MenuItem("ArknightsACT/Assets/PRTS/3. Build Presentation Prefabs")]
         public static void BuildAll()
         {
             var skeletonAnimationType = FindType("Spine.Unity.SkeletonAnimation");

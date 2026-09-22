@@ -16,37 +16,31 @@ namespace ArknightsACT.Editor.PRTS
     /// </summary>
     internal static class PrtsSpineSourceDownloader
     {
-        [MenuItem("ArknightsACT/Assets/PRTS/Download Full Prototype Pack")]
         private static async void DownloadFullPrototypePack()
         {
             await DownloadPack(PrtsPrototypeAssetCatalog.GetFullPrototypePack(), "完整 Demo 素材包");
         }
 
-        [MenuItem("ArknightsACT/Assets/PRTS/Download Ch'en")]
         private static async void DownloadChen()
         {
             await DownloadPack(new[] { PrtsPrototypeAssetCatalog.Chen }, "陈·战斗模型");
         }
 
-        [MenuItem("ArknightsACT/Assets/PRTS/Download Ch'en Base Motion Source")]
         private static async void DownloadChenBaseMotion()
         {
             await DownloadPack(new[] { PrtsPrototypeAssetCatalog.ChenBaseMotion }, "陈·基建动作源");
         }
 
-        [MenuItem("ArknightsACT/Assets/PRTS/Download Prototype Enemies")]
         private static async void DownloadPrototypeEnemies()
         {
             await DownloadPack(PrtsPrototypeAssetCatalog.PrototypeEnemies, "Demo 小兵素材包");
         }
 
-        [MenuItem("ArknightsACT/Assets/PRTS/Download Roguelite Treasure")]
         private static async void DownloadRogueliteTreasure()
         {
             await DownloadPack(PrtsPrototypeAssetCatalog.RogueliteTreasureAssets, "肉鸽宝箱素材包");
         }
 
-        [MenuItem("ArknightsACT/Assets/PRTS/Open Ch'en Source Page")]
         private static void OpenChenPage() => Application.OpenURL(PrtsPrototypeAssetCatalog.Chen.SourcePage);
 
         private static async Task DownloadPack(IReadOnlyList<PrtsAssetDescriptor> assets, string packName)

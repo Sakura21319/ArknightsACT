@@ -13,7 +13,6 @@ namespace ArknightsACT.Editor
         private const string SceneDir = "Assets/_Game/Scenes";
         private const string ScenePath = SceneDir + "/PrototypeRun.unity";
 
-        [MenuItem("ArknightsACT/Build Prototype Scene")]
         public static void Build()
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode)

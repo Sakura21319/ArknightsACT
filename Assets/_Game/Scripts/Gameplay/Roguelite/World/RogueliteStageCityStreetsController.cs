@@ -23,6 +23,48 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         private GameObject _preparedStage;
         private float _nextResolveAt;
+        private Material _asphalt;
+        private Material _lanePaint;
+        private Texture2D _asphaltGrain;
+
+        private void PrepareStreetMaterials()
+        {
+            if (_asphalt != null) return;
+            var source = kit.deckHeavyMaterial != null ? kit.deckHeavyMaterial : kit.deckMaterial;
+            _asphalt = new Material(source) { name = "City_Asphalt_Weathered" };
+            _lanePaint = new Material(source) { name = "City_WornLanePaint" };
+            foreach (var property in new[] { "_BaseColor", "_Color" })
+            {
+                if (_asphalt.HasProperty(property)) _asphalt.SetColor(property, new Color(0.12f, 0.14f, 0.15f));
+                if (_lanePaint.HasProperty(property)) _lanePaint.SetColor(property, new Color(0.65f, 0.61f, 0.46f));
+            }
+            _asphaltGrain = new Texture2D(64, 64, TextureFormat.RGBA32, true) { name = "AsphaltGrain", wrapMode = TextureWrapMode.Repeat };
+            var pixels = new Color[64 * 64];
+            for (var i = 0; i < pixels.Length; i++)
+            {
+                var shade = 0.76f + Hash01(i * 73) * 0.24f;
+                pixels[i] = new Color(shade, shade, shade, 1f);
+            }
+            _asphaltGrain.SetPixels(pixels);
+            _asphaltGrain.Apply(true, true);
+            foreach (var property in new[] { "_BaseMap", "_MainTex" })
+                if (_asphalt.HasProperty(property))
+                {
+                    _asphalt.SetTexture(property, _asphaltGrain);
+                    _asphalt.SetTextureScale(property, new Vector2(12f, 12f));
+                }
+            foreach (var material in new[] { _asphalt, _lanePaint })
+            {
+                if (material.HasProperty("_Smoothness")) material.SetFloat("_Smoothness", 0.12f);
+                if (material.HasProperty("_Metallic")) material.SetFloat("_Metallic", 0f);
+            }
+        }
+        private void OnDestroy()
+        {
+            if (_asphalt != null) Destroy(_asphalt);
+            if (_lanePaint != null) Destroy(_lanePaint);
+            if (_asphaltGrain != null) Destroy(_asphaltGrain);
+        }
 
         public void Configure(RogueliteStageMapController map, ChernobogEnvironmentKit environmentKit)
         {
@@ -71,6 +113,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         private void Build(Transform stage)
         {
+            PrepareStreetMaterials();
             var old = stage.Find("[Chernobog_CityStreets]");
             if (old != null)
                 Destroy(old.gameObject);
@@ -102,7 +145,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         private void BuildDistrictGround(Transform parent, ChernobogDistrictType district, int seed, Vector2Int coordinate)
         {
-            var road = kit.deckHeavyMaterial != null ? kit.deckHeavyMaterial : kit.deckMaterial;
+            var road = _asphalt;
             var pavement = kit.deckSecondaryMaterial != null ? kit.deckSecondaryMaterial : kit.deckMaterial;
             var edge = kit.steelMaterial != null ? kit.steelMaterial : road;
             var grate = kit.grateMaterial != null ? kit.grateMaterial : kit.insetMaterial;
@@ -350,8 +393,21 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             CreateBox(parent, "Road_Curb_EW", new Vector3(0f, 0.127f, curbZ),
                 new Vector3(ChunkWidth - 0.18f, 0.075f, 0.11f), 0.012f, edge, false);
 
-            BuildRoadMarkings(parent, seamX, seamZ, segmentWidth, inwardX, inwardZ, edge, grate);
-            BuildIntersectionCrosswalks(parent, seamX, seamZ, segmentWidth, inwardX, inwardZ, edge);
+            BuildRoadMarkings(parent, seamX, seamZ, segmentWidth, inwardX, inwardZ, _lanePaint, grate);
+            BuildIntersectionCrosswalks(parent, seamX, seamZ, segmentWidth, inwardX, inwardZ, _lanePaint);
+            // Restrained wear at human scale, shared materials and no additional colliders.
+            for (var i = 0; i < 10; i++)
+            {
+                var z = -ChunkDepth * 0.5f + 1.5f + i * (ChunkDepth - 3f) / 9f;
+                CreateBox(parent, $"PavementJoint_{i}", new Vector3(sidewalkX, 0.135f, z),
+                    new Vector3(sidewalk - 0.12f, 0.008f, 0.026f), 0.001f, grate, false);
+                if (i % 3 != 0) continue;
+                CreateBox(parent, $"AsphaltRepair_{i}", new Vector3(seamX + inwardX * 0.4f, 0.101f, z),
+                    new Vector3(0.78f, 0.006f, 1.18f), 0.001f, pavement, false);
+                for (var slot = 0; slot < 5; slot++)
+                    CreateBox(parent, $"DrainGrille_{i}_{slot}", new Vector3(curbX - inwardX * 0.25f, 0.119f, z + slot * 0.09f),
+                        new Vector3(0.32f, 0.012f, 0.035f), 0.002f, grate, false);
+            }
         }
 
         private void BuildRoadMarkings(
@@ -474,8 +530,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
             // These are skyline/frontage shells, deliberately visual-only. Enterable geometry stays
             // in PlayableArchitecture where the doorway and upper-floor graph are authoritative.
-            CreateBox(root, "ApartmentMass", new Vector3(0f, height * 0.5f, 0f),
-                new Vector3(width, height, depth), 0.12f, wall, false);
+            RogueliteStagePlayableArchitectureController.BuildInteriorShell(root, width, depth, height, wall, steel, inset);
             CreateBox(root, "ApartmentRoof", new Vector3(0f, height + 0.11f, 0f),
                 new Vector3(width * 1.06f, 0.20f, depth * 1.05f), 0.04f, steel, false);
 
@@ -488,6 +543,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
                 for (var panel = -1; panel <= 1; panel++)
                 {
+                    if (floor == 0 && panel == 0) continue;
                     var x = panel * width * 0.27f;
                     CreateBox(root, $"Window_{floor}_{panel + 1}",
                         new Vector3(x, y, -depth * 0.5f - 0.036f),
@@ -503,8 +559,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 }
             }
 
-            CreateBox(root, "EntranceFrame", new Vector3(0f, 1.02f, -depth * 0.5f - 0.055f),
-                new Vector3(1.20f, 1.80f, 0.08f), 0.012f, steel, false);
         }
 
         private void BuildCommercialFrontage(Transform parent, Vector2Int coordinate, int seed)
@@ -526,14 +580,9 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 unit.SetParent(root, false);
                 unit.localPosition = new Vector3((i - 0.5f) * (unitWidth + 0.18f), 0f, 0f);
 
-                CreateBox(unit, "ShopMass", new Vector3(0f, height * 0.5f, 0f),
-                    new Vector3(unitWidth, height, depth), 0.10f, wall, true);
-                CreateBox(unit, "ShopfrontWindow", new Vector3(0f, 1.22f, -depth * 0.5f - 0.035f),
-                    new Vector3(unitWidth * 0.72f, 1.55f, 0.055f), 0.008f, inset, false);
+                RogueliteStagePlayableArchitectureController.BuildInteriorShell(unit, unitWidth, depth, height, wall, steel, inset, 2.6f);
                 CreateBox(unit, "ShopUpperWindow", new Vector3(0f, 2.88f, -depth * 0.5f - 0.036f),
                     new Vector3(unitWidth * 0.54f, 0.48f, 0.055f), 0.006f, inset, false);
-                CreateBox(unit, "ShopDoor", new Vector3(unitWidth * 0.33f, 1.05f, -depth * 0.5f - 0.045f),
-                    new Vector3(0.72f, 2.10f, 0.06f), 0.008f, steel, false);
                 CreateBox(unit, "ShopAwning", new Vector3(0f, 2.35f, -depth * 0.5f - 0.42f),
                     new Vector3(unitWidth * 0.90f, 0.12f, 0.82f), 0.025f, steel, false,
                     Quaternion.Euler(7f, 0f, 0f));
@@ -559,15 +608,12 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             var grate = kit.grateMaterial != null ? kit.grateMaterial : inset;
             var root = new GameObject("IndustrialWorkshopFrontage").transform;
             root.SetParent(parent, false);
-            root.localPosition = new Vector3(-7.0f, 0f, -5.2f);
+            root.localPosition = new Vector3(-9.0f, 0f, -6.2f);
 
             const float width = 11.0f;
             const float depth = 6.1f;
             const float height = 4.35f;
-            CreateBox(root, "WorkshopMass", new Vector3(0f, height * 0.5f, 0f),
-                new Vector3(width, height, depth), 0.12f, wall, true);
-            CreateBox(root, "WorkshopRollerDoor", new Vector3(0f, 1.55f, -depth * 0.5f - 0.045f),
-                new Vector3(width * 0.64f, 2.55f, 0.065f), 0.008f, inset, false);
+            RogueliteStagePlayableArchitectureController.BuildInteriorShell(root, width, depth, height, wall, steel, grate, 3.8f);
             CreateBox(root, "WorkshopDoorFrameTop", new Vector3(0f, 2.88f, -depth * 0.5f - 0.075f),
                 new Vector3(width * 0.72f, 0.18f, 0.10f), 0.012f, steel, false);
             CreateBox(root, "WorkshopRoof", new Vector3(0f, height + 0.10f, 0f),
@@ -661,11 +707,8 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             root.SetParent(parent, false);
             root.localPosition = new Vector3(7.2f, 0f, 6.4f);
 
-            CreateBox(root, "GatehouseBody", new Vector3(0f, 1.45f, 0f), new Vector3(4.8f, 2.9f, 3.6f),
-                0.10f, inset, true);
+            RogueliteStagePlayableArchitectureController.BuildInteriorShell(root, 4.8f, 3.6f, 2.9f, inset, steel, grate);
             CreateBox(root, "GatehouseWindow", new Vector3(-0.85f, 1.55f, -1.84f), new Vector3(1.10f, 0.72f, 0.06f),
-                0.008f, steel, false);
-            CreateBox(root, "GatehouseDoor", new Vector3(1.15f, 1.05f, -1.84f), new Vector3(0.78f, 2.10f, 0.06f),
                 0.008f, steel, false);
             CreateBox(root, "GatehouseRoof", new Vector3(0f, 3.10f, 0f), new Vector3(5.15f, 0.20f, 3.95f),
                 0.040f, steel, false);
@@ -728,8 +771,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             var steel = kit.steelMaterial != null ? kit.steelMaterial : wall;
             var grate = kit.grateMaterial != null ? kit.grateMaterial : inset;
 
-            CreateBox(root, "BuildingMass", new Vector3(0f, height * 0.5f, 0f),
-                new Vector3(width, height, depth), 0.13f, wall, true);
+            RogueliteStagePlayableArchitectureController.BuildInteriorShell(root, width, depth, height, wall, steel, grate);
             CreateBox(root, "RoofCap", new Vector3(0f, height + 0.10f, 0f),
                 new Vector3(width * 1.06f, 0.20f, depth * 1.05f), 0.045f, steel, false);
 
@@ -741,6 +783,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                     break;
                 for (var panel = -1; panel <= 1; panel++)
                 {
+                    if (floor == 0 && panel == 0) continue;
                     var x = panel * width * 0.25f;
                     CreateBox(root, $"FacadeWindow_{floor}_{panel + 1}",
                         new Vector3(x, y, -depth * 0.5f - 0.036f),
@@ -770,10 +813,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             var steel = kit.steelMaterial != null ? kit.steelMaterial : wall;
             var grate = kit.grateMaterial != null ? kit.grateMaterial : inset;
 
-            CreateBox(root, "StoreMass", new Vector3(0f, height * 0.5f, 0f),
-                new Vector3(width, height, depth), 0.12f, wall, true);
-            CreateBox(root, "RollerShutter", new Vector3(0f, 1.25f, -depth * 0.5f - 0.045f),
-                new Vector3(width * 0.68f, 1.95f, 0.065f), 0.008f, grate, false);
+            RogueliteStagePlayableArchitectureController.BuildInteriorShell(root, width, depth, height, wall, steel, grate, 2.1f);
             CreateBox(root, "Awning", new Vector3(0f, 2.58f, -depth * 0.5f - 0.36f),
                 new Vector3(width * 0.80f, 0.12f, 0.72f), 0.025f, steel, false,
                 Quaternion.Euler(6f, 0f, 0f));

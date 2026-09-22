@@ -100,11 +100,18 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         private void RevealLineOfSight(Camera camera, Vector3 target, float now)
         {
-            var origin = camera.transform.position;
+            var origin = camera.orthographic
+                ? target - camera.transform.forward * camera.farClipPlane
+                : camera.transform.position;
             var delta = target - origin;
             var distance = delta.magnitude;
             if (distance <= 0.01f)
                 return;
+
+            var sight = new Ray(origin, delta / distance);
+            foreach (var building in EnterableBuilding25D.Active)
+                if (building != null && (building.Contains(target) || building.Intersects(sight, distance)))
+                    Fade(building.transform, now);
 
             var hits = Physics.SphereCastAll(
                 origin,
@@ -157,6 +164,11 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             {
                 var renderer = renderers[i];
                 if (renderer == null)
+                    continue;
+
+                // Keep the interior floor and searchable loot readable while walls/roofs fade.
+                if (renderer.name == "InteriorFloor" || renderer.name == "Floor_Ground" ||
+                    renderer.GetComponentInParent<ArknightsACT.Gameplay.Roguelite.Treasure.SearchableContainer25D>() != null)
                     continue;
 
                 var originals = renderer.sharedMaterials;
@@ -274,6 +286,11 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             {
                 switch (current.name)
                 {
+                    case "WalkInStreetTenement":
+                    case "WalkInCommercialUnit":
+                    case "WalkInServiceRoom":
+                    case "CoveredCheckpoint":
+                    case "TwoFloorFacility":
                     case "SealedCityBuilding":
                     case "SealedUtilityBuilding":
                     case "SealedSideBuilding":

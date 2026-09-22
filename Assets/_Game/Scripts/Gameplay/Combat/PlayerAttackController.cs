@@ -6,6 +6,7 @@ using ArknightsACT.Gameplay.Abilities;
 using ArknightsACT.Gameplay.Characters;
 using ArknightsACT.Gameplay.Feedback;
 using ArknightsACT.Gameplay.Input;
+using ArknightsACT.Gameplay.Roguelite.Collectibles;
 using UnityEngine;
 
 namespace ArknightsACT.Gameplay.Combat
@@ -25,6 +26,7 @@ namespace ArknightsACT.Gameplay.Combat
         private PlayerDashController _dash;
         private IPlayerInputSource _input;
         private PlayerSkillController _skills;
+        private CollectibleInventory _collectibles;
         private Coroutine _attackRoutine;
         private AttackDefinition _currentDefinition;
         private int _comboIndex;
@@ -73,6 +75,7 @@ namespace ArknightsACT.Gameplay.Combat
             _dash = GetComponent<PlayerDashController>();
             _input = GetComponent<IPlayerInputSource>();
             _skills = GetComponent<PlayerSkillController>();
+            _collectibles = GetComponent<CollectibleInventory>();
         }
 
         private void OnEnable()
@@ -91,6 +94,8 @@ namespace ArknightsACT.Gameplay.Combat
         private void Update()
         {
             if (_entity?.Health == null || _entity.Health.IsDead || _input == null)
+                return;
+            if (IsExternallyBasicAttackBlocked())
                 return;
             if (!_input.AttackPressedThisFrame)
                 return;
@@ -114,6 +119,64 @@ namespace ArknightsACT.Gameplay.Combat
         {
             combo = definitions;
             baseAttack = Mathf.Max(0f, attackValue);
+        }
+
+        public bool TryManualTargetAttack(
+            CombatEntity target,
+            string sourceId,
+            float damageMultiplier = 1f,
+            float impactDelay = 0f)
+        {
+            if (target == null || _entity?.Health == null || _entity.Health.IsDead ||
+                target.Health == null || target.Health.IsDead || target.Team == _entity.Team)
+                return false;
+            if (_dash != null && _dash.IsDashing)
+                return false;
+            if (_skills != null && _skills.IsCasting)
+                return false;
+
+            var definition = combo != null && combo.Length > 0 ? combo[0] : null;
+            var finalDamage = baseAttack * Mathf.Max(0f, damageMultiplier) * GetBasicAttackDamageMultiplier();
+            AttackStarted?.Invoke(0);
+            StartCoroutine(ManualTargetImpactRoutine(
+                target,
+                string.IsNullOrWhiteSpace(sourceId) ? "ManualBasicAttack" : sourceId,
+                finalDamage,
+                Mathf.Max(0f, impactDelay),
+                definition));
+            return true;
+        }
+
+        private IEnumerator ManualTargetImpactRoutine(
+            CombatEntity target,
+            string sourceId,
+            float finalDamage,
+            float impactDelay,
+            AttackDefinition definition)
+        {
+            if (impactDelay > 0f)
+                yield return new WaitForSeconds(impactDelay);
+
+            if (target == null || target.Health == null || target.Health.IsDead ||
+                _entity?.Health == null || _entity.Health.IsDead)
+                yield break;
+
+            var context = new DamageContext(
+                _entity,
+                _entity,
+                target,
+                finalDamage,
+                DamageType.Physical,
+                Vector2.zero,
+                sourceId: sourceId);
+            var result = DamageSystem.Apply(context);
+            if (!result.Applied)
+                yield break;
+
+            target.GetComponentInChildren<HitFlash2D>()?.Flash();
+            AttackHit?.Invoke(target);
+            if (definition != null)
+                ApplyImpactFeedback(definition, true);
         }
 
         public void CancelCurrentAttack()
@@ -153,8 +216,12 @@ namespace ArknightsACT.Gameplay.Combat
             _currentDefinition = definition;
             _attackStartedAt = Time.time;
             _attackQueued = false;
-            _currentImpactSeconds = Mathf.Max(0f, definition.startup);
-            _currentCycleSeconds = Mathf.Max(0.01f, definition.TotalDuration);
+            var attackSpeedBonus = _collectibles != null
+                ? _collectibles.GetEffectTotal(CollectibleEffectType.AttackSpeedPercent)
+                : 0f;
+            var timingMultiplier = GetBasicAttackTimingMultiplier() / Mathf.Max(0.1f, 1f + attackSpeedBonus);
+            _currentImpactSeconds = Mathf.Max(0f, definition.startup * timingMultiplier);
+            _currentCycleSeconds = Mathf.Max(0.01f, definition.TotalDuration * timingMultiplier);
             AttackStarted?.Invoke(presentationIndex);
 
             if (_currentImpactSeconds > 0f)
@@ -187,22 +254,58 @@ namespace ArknightsACT.Gameplay.Combat
 
         private void PerformHit(AttackDefinition definition)
         {
+            if (TryResolveCustomBasicAttack(definition))
+                return;
+
             if (_motor25D != null)
                 PerformHit25D(definition);
             else
                 PerformHit2D(definition);
         }
 
+        private bool TryResolveCustomBasicAttack(AttackDefinition definition)
+        {
+            var behaviours = GetComponents<MonoBehaviour>();
+            for (var i = 0; i < behaviours.Length; i++)
+            {
+                if (behaviours[i] is not IPlayerBasicAttackResolver resolver)
+                    continue;
+
+                var damage = baseAttack * definition.damageMultiplier * GetBasicAttackDamageMultiplier();
+                var hitAny = resolver.TryResolveBasicAttack(
+                    _entity,
+                    definition,
+                    _motor,
+                    damage,
+                    GetBasicAttackRangeMultiplier(),
+                    out var target);
+
+                if (hitAny && target != null)
+                {
+                    target.GetComponentInChildren<HitFlash2D>()?.Flash();
+                    AttackHit?.Invoke(target);
+                }
+
+                ApplyImpactFeedback(definition, hitAny);
+                return true;
+            }
+
+            return false;
+        }
+
         private void PerformHit2D(AttackDefinition definition)
         {
             var facing = _motor != null ? _motor.FacingSign : 1;
+            var rangeMultiplier = GetBasicAttackRangeMultiplier();
             var offset = definition.hitboxOffset;
-            offset.x *= facing;
+            offset.x *= facing * rangeMultiplier;
             var knockback = definition.knockback;
             knockback.x *= facing;
+            var hitboxSize = definition.hitboxSize;
+            hitboxSize.x *= rangeMultiplier;
 
             var center = (Vector2)transform.position + offset;
-            var hits = Physics2D.OverlapBoxAll(center, definition.hitboxSize, 0f);
+            var hits = Physics2D.OverlapBoxAll(center, hitboxSize, 0f);
             var processed = new HashSet<CombatEntity>();
             var hitAny = false;
 
@@ -239,13 +342,14 @@ namespace ArknightsACT.Gameplay.Combat
             const float closeRangeSafetyRadius = 0.92f;
             const float closeRangeForwardDot = -0.05f;
 
+            var rangeMultiplier = GetBasicAttackRangeMultiplier();
             var center = transform.position +
-                         forward * Mathf.Max(0.55f, Mathf.Abs(definition.hitboxOffset.x) * forwardCenterScale) +
+                         forward * Mathf.Max(0.55f, Mathf.Abs(definition.hitboxOffset.x) * forwardCenterScale) * rangeMultiplier +
                          Vector3.up * 0.78f;
             var halfExtents = new Vector3(
                 Mathf.Max(0.48f, definition.hitboxSize.y * lateralHalfExtentScale),
                 0.72f,
-                Mathf.Max(0.65f, definition.hitboxSize.x * forwardHalfExtentScale));
+                Mathf.Max(0.65f, definition.hitboxSize.x * forwardHalfExtentScale) * rangeMultiplier);
             var rotation = Quaternion.LookRotation(forward, Vector3.up);
 
             // The long slim box preserves the authored sword reach. A small point-blank sphere is
@@ -256,7 +360,7 @@ namespace ArknightsACT.Gameplay.Combat
             candidates.AddRange(Physics.OverlapBox(center, halfExtents, rotation, ~0, QueryTriggerInteraction.Ignore));
             candidates.AddRange(Physics.OverlapSphere(
                 transform.position + Vector3.up * 0.78f,
-                closeRangeSafetyRadius,
+                closeRangeSafetyRadius * Mathf.Min(1.35f, rangeMultiplier),
                 ~0,
                 QueryTriggerInteraction.Ignore));
 
@@ -335,7 +439,7 @@ namespace ArknightsACT.Gameplay.Combat
                 _entity,
                 _entity,
                 target,
-                baseAttack * definition.damageMultiplier,
+                baseAttack * definition.damageMultiplier * GetBasicAttackDamageMultiplier(),
                 DamageType.Physical,
                 knockback,
                 sourceId: definition.name);
@@ -356,6 +460,45 @@ namespace ArknightsACT.Gameplay.Combat
                 HitStopService.Instance?.Request(definition.hitStopSeconds);
             if (definition.cameraShakeAmplitude > 0f)
                 CameraShake2D.Instance?.Shake(definition.cameraShakeAmplitude, 0.06f);
+        }
+
+        private bool IsExternallyBasicAttackBlocked()
+        {
+            var behaviours = GetComponents<MonoBehaviour>();
+            for (var i = 0; i < behaviours.Length; i++)
+                if (behaviours[i] is IPlayerControlLockSource source && source.BlocksBasicAttack)
+                    return true;
+            return false;
+        }
+
+        private float GetBasicAttackDamageMultiplier()
+        {
+            var multiplier = 1f;
+            var behaviours = GetComponents<MonoBehaviour>();
+            for (var i = 0; i < behaviours.Length; i++)
+                if (behaviours[i] is IPlayerBasicAttackModifier modifier)
+                    multiplier *= Mathf.Max(0f, modifier.BasicAttackDamageMultiplier);
+            return Mathf.Clamp(multiplier, 0f, 12f);
+        }
+
+        private float GetBasicAttackRangeMultiplier()
+        {
+            var multiplier = 1f;
+            var behaviours = GetComponents<MonoBehaviour>();
+            for (var i = 0; i < behaviours.Length; i++)
+                if (behaviours[i] is IPlayerBasicAttackModifier modifier)
+                    multiplier *= Mathf.Max(0.1f, modifier.BasicAttackRangeMultiplier);
+            return Mathf.Clamp(multiplier, 0.25f, 4f);
+        }
+
+        private float GetBasicAttackTimingMultiplier()
+        {
+            var multiplier = 1f;
+            var behaviours = GetComponents<MonoBehaviour>();
+            for (var i = 0; i < behaviours.Length; i++)
+                if (behaviours[i] is IPlayerBasicAttackModifier modifier)
+                    multiplier *= Mathf.Max(0.1f, modifier.BasicAttackTimingMultiplier);
+            return Mathf.Clamp(multiplier, 0.25f, 4f);
         }
 
         private IPlayerLocomotion FindLocomotion()

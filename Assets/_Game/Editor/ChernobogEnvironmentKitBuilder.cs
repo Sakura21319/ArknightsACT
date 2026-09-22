@@ -27,7 +27,6 @@ namespace ArknightsACT.Editor
 
         private static readonly Dictionary<string, Mesh> MeshCache = new(StringComparer.Ordinal);
 
-        [MenuItem("ArknightsACT/Assets/Rebuild Chernobog Modular Kit")]
         private static void RebuildMenu()
         {
             var kit = Build(true);

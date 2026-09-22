@@ -1,0 +1,145 @@
+{
+  "all_unique_count": 842,
+  "is1_current_pool_count": 190,
+  "all_versions_record_count": 1789,
+  "type_counts_all": {
+    "收集品": 630,
+    "藏品": 212
+  },
+  "type_counts_is1": {
+    "藏品": 40,
+    "收集品": 150
+  },
+  "rarity_counts_all": {
+    "普通": 163,
+    "稀有": 267,
+    "珍贵": 321,
+    "绝世": 91
+  },
+  "rarity_counts_is1": {
+    "普通": 63,
+    "稀有": 56,
+    "珍贵": 52,
+    "绝世": 19
+  },
+  "size_counts_is1": {
+    "1x1": 143,
+    "1x2": 19,
+    "2x1": 12,
+    "2x2": 16
+  },
+  "size_review_is1": 125,
+  "all_xlsx": "D:\\WorkSpace\\ArknightsACT\\Docs\\RogueRelics\\RogueRelicDatabase_Preprocessed.xlsx",
+  "is1_xlsx": "D:\\WorkSpace\\ArknightsACT\\Docs\\RogueRelics\\RogueRelicDatabase_IS1_CurrentPool.xlsx",
+  "embedded_icons_all": 742,
+  "embedded_icons_is1": 90,
+  "missing_local_icons_all": 100,
+  "missing_local_icons_is1": 100,
+  "top_apex_candidates": [
+    {
+      "rank": 1,
+      "name": "垂降劫掠装置",
+      "rarity": "绝世",
+      "value": 34700,
+      "size": "2x2"
+    },
+    {
+      "rank": 2,
+      "name": "小财神雕像",
+      "rarity": "绝世",
+      "value": 27500,
+      "size": "2x2"
+    },
+    {
+      "rank": 3,
+      "name": "匠影",
+      "rarity": "绝世",
+      "value": 18900,
+      "size": "1x1"
+    },
+    {
+      "rank": 4,
+      "name": "维多利亚王冠（重铸）",
+      "rarity": "绝世",
+      "value": 21500,
+      "size": "1x1"
+    },
+    {
+      "rank": 5,
+      "name": "半洗孤钻（重铸）",
+      "rarity": "绝世",
+      "value": 21400,
+      "size": "1x1"
+    },
+    {
+      "rank": 6,
+      "name": "“阿猛”",
+      "rarity": "绝世",
+      "value": 21300,
+      "size": "1x1"
+    },
+    {
+      "rank": 7,
+      "name": "剿袭之手",
+      "rarity": "绝世",
+      "value": 24200,
+      "size": "1x1"
+    },
+    {
+      "rank": 8,
+      "name": "铁卫-高塔",
+      "rarity": "绝世",
+      "value": 24100,
+      "size": "1x1"
+    },
+    {
+      "rank": 9,
+      "name": "右半边椰子壳",
+      "rarity": "绝世",
+      "value": 23500,
+      "size": "1x1"
+    },
+    {
+      "rank": 10,
+      "name": "他缚",
+      "rarity": "绝世",
+      "value": 23400,
+      "size": "1x1"
+    },
+    {
+      "rank": 11,
+      "name": "仇名录",
+      "rarity": "绝世",
+      "value": 24100,
+      "size": "1x2"
+    },
+    {
+      "rank": 12,
+      "name": "老者面",
+      "rarity": "绝世",
+      "value": 22900,
+      "size": "1x1"
+    },
+    {
+      "rank": 13,
+      "name": "血钻",
+      "rarity": "绝世",
+      "value": 13400,
+      "size": "1x1"
+    },
+    {
+      "rank": 14,
+      "name": "“决心”",
+      "rarity": "绝世",
+      "value": 22200,
+      "size": "1x1"
+    },
+    {
+      "rank": 15,
+      "name": "不息",
+      "rarity": "绝世",
+      "value": 22100,
+      "size": "1x1"
+    }
+  ]
+}

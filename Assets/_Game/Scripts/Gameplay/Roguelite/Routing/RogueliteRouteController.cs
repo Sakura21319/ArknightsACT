@@ -71,6 +71,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
         private void Update()
         {
+            if (ArknightsACT.Gameplay.Input.GameplayInputBlocker.IsBlocked) return;
             if (_mode == OverlayMode.None || Time.frameCount < _inputUnlockFrame)
                 return;
 

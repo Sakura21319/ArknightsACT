@@ -10,8 +10,12 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
 
         public void Configure(RogueliteRunState state) => runState = state;
 
-        private void OnGUI()
+        // Legacy compatibility only. The formal GameplayHUDController now owns Run HUD rendering.
+        private void LegacyOnGUI_DISABLED()
         {
+            var flow = RogueliteGameFlowController.Instance;
+            if (flow != null && !flow.IsRunning)
+                return;
             if (runState == null)
                 return;
 

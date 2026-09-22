@@ -13,7 +13,6 @@ namespace ArknightsACT.Editor
     /// </summary>
     internal static class ArknightsActMenuCleanup
     {
-        [UnityEditor.MenuItem("ArknightsACT/Build Prototype Scene", false, 10)]
         private static void BuildPrototypeScene()
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode)
@@ -33,50 +32,42 @@ namespace ArknightsACT.Editor
             PrototypeSceneBuilder.Build();
         }
 
-        [UnityEditor.MenuItem("ArknightsACT/Assets/PRTS/Download Prototype Models", false, 100)]
         private static void DownloadPrototypeModels()
         {
             InvokeHidden(typeof(PrtsSpineSourceDownloader), "DownloadFullPrototypePack");
         }
 
-        [UnityEditor.MenuItem("ArknightsACT/Assets/PRTS/Build Presentation Prefabs", false, 110)]
         private static void BuildPresentationPrefabs()
         {
             PrtsSpinePrefabBuilder.BuildAll();
             PrtsOriginalSpineFxSetup.PrepareDownloadedChen();
         }
 
-        [UnityEditor.MenuItem("ArknightsACT/Assets/PRTS/Download Gameplay Audio", false, 120)]
         private static void DownloadGameplayAudio()
         {
             PrtsGameplayAudioDownloader.DownloadLegacyEntry();
         }
 
-        [UnityEditor.MenuItem("ArknightsACT/Assets/PRTS/Verify Gameplay Audio", false, 121)]
         private static void VerifyGameplayAudio()
         {
             PrtsGameplayAudioDownloader.VerifyLocalAudio();
         }
 
-        [UnityEditor.MenuItem("ArknightsACT/Assets/OHMS Effect Importer", false, 130)]
         private static void OpenOhmsEffectImporter()
         {
             OHMS.OhmsStructuredFxImporterWindow.Open();
         }
 
-        [UnityEditor.MenuItem("ArknightsACT/Assets/OHMS/Import staged Ch'en combat FX", false, 140)]
         private static void ImportStagedChenCombatFx()
         {
             OHMS.OhmsStructuredFxBatchCommands.ImportStagedChenCombatFx();
         }
 
-        [UnityEditor.MenuItem("ArknightsACT/Assets/OHMS/Repair Ch'en skill 3 blade textures", false, 141)]
         private static void RepairChenSkill3BladeTextures()
         {
             OHMS.OhmsStructuredFxBatchCommands.RepairChenSkill3BladeTextures();
         }
 
-        [UnityEditor.MenuItem("ArknightsACT/Assets/Import Extracted Frame FX", false, 150)]
         private static void OpenExtractedFrameFxImporter()
         {
             Effects.ExtractedFrameFxImporterWindow.Open();

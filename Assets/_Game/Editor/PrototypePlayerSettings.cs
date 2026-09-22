@@ -6,7 +6,6 @@ namespace ArknightsACT.Editor
 {
     internal static class PrototypePlayerSettings
     {
-        [MenuItem("ArknightsACT/Apply Prototype Player Settings")]
         public static void Apply()
         {
             PlayerSettings.productName = "ArknightsACT";

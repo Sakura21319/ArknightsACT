@@ -19,7 +19,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(PlayerMotor25D), typeof(PlayerAttackController), typeof(PlayerSkillController))]
-    public sealed class ChenPresentationDriver25D : MonoBehaviour
+    public sealed class ChenPresentationDriver25D : MonoBehaviour, IPlayerRunResettable
     {
         private const float AttackPlaybackSpeed = 2.0f;
         private const float Combo3PlaybackSpeed = 1.80f;
@@ -166,6 +166,17 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             _presentation?.SetExternalLocomotionActive(false);
             _billboard?.ResetDirectionalCue();
             _presentation?.PlayDie();
+        }
+
+        public void ResetForNewRun()
+        {
+            _dead = false;
+            _visualLockUntil = 0f;
+            _actionVisualWasActive = false;
+            _retarget?.SetMoving(false);
+            _presentation?.SetExternalLocomotionActive(false);
+            _billboard?.ResetDirectionalCue();
+            PlayDirectLoop("Idle");
         }
 
         private void StopLocomotionPresentation()

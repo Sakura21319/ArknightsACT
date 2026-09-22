@@ -168,6 +168,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         private void BuildWalkInCommercialUnit(Transform parent, Vector3 anchor, int seed)
         {
             var root = new GameObject("WalkInCommercialUnit").transform;
+            root.gameObject.AddComponent<EnterableBuilding25D>().Configure(new Vector3(0f, 1.5f, 0f), new Vector3(5.0f, 3.3f, 4.1f));
             root.SetParent(parent, false);
             root.localPosition = anchor;
 
@@ -176,6 +177,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             var steel = kit.steelMaterial != null ? kit.steelMaterial : wall;
             var grate = kit.grateMaterial != null ? kit.grateMaterial : inset;
 
+            ArknightsACT.Gameplay.Roguelite.Treasure.SearchableContainer25D.Create(root, new Vector3(-1.55f, 0.05f, -1.0f), steel, inset);
             const float width = 4.80f;
             const float depth = 3.85f;
             const float height = 2.85f;
@@ -196,10 +198,10 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 new Vector3(0.58f, 2.16f, thickness), 0.035f, steel);
             CreateSolidBox(root, "ShopDoorHeader", new Vector3(0f, 2.48f, frontZ),
                 new Vector3(width, 0.28f, thickness), 0.035f, steel);
-            CreateVisualBox(root, "ShopWindow_W", new Vector3(-0.78f, 1.35f, frontZ + 0.018f),
-                new Vector3(1.05f, 0.72f, 0.035f), 0.006f, inset);
-            CreateVisualBox(root, "ShopWindow_E", new Vector3(0.78f, 1.35f, frontZ + 0.018f),
-                new Vector3(1.05f, 0.72f, 0.035f), 0.006f, inset);
+            CreateVisualBox(root, "ShopWindow_W", new Vector3(-2.02f, 1.35f, frontZ + 0.018f),
+                new Vector3(0.48f, 0.72f, 0.035f), 0.006f, inset);
+            CreateVisualBox(root, "ShopWindow_E", new Vector3(2.02f, 1.35f, frontZ + 0.018f),
+                new Vector3(0.48f, 0.72f, 0.035f), 0.006f, inset);
             CreateSolidBox(root, "ShopCounter", new Vector3(0f, 0.48f, -0.55f),
                 new Vector3(2.35f, 0.96f, 0.60f), 0.055f, grate);
             CreateSolidBox(root, "ShopAwning", new Vector3(0f, height + 0.14f, frontZ + 0.36f),
@@ -220,6 +222,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         private void BuildStreetTenement(Transform parent, Vector3 anchor, float side, int seed)
         {
             var root = new GameObject("WalkInStreetTenement").transform;
+            root.gameObject.AddComponent<EnterableBuilding25D>().Configure(new Vector3(0f, 2.1f, 0f), new Vector3(4.3f, 4.4f, 3.5f));
             root.SetParent(parent, false);
             root.localPosition = anchor;
 
@@ -228,6 +231,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             var steel = kit.steelMaterial != null ? kit.steelMaterial : wall;
             var grate = kit.grateMaterial != null ? kit.grateMaterial : inset;
 
+            ArknightsACT.Gameplay.Roguelite.Treasure.SearchableContainer25D.Create(root, new Vector3(-1.05f, 0.05f, -0.95f), steel, inset);
             const float width = 4.05f;
             const float depth = 3.15f;
             const float floorHeight = 2.10f;
@@ -258,24 +262,22 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 new Vector3(width, 1.72f, thickness), 0.045f, wall);
             CreateSolidBox(root, "TenementUpperWall_W", new Vector3(-width * 0.5f, SecondFloorY + 0.86f, -0.22f),
                 new Vector3(thickness, 1.72f, depth * 0.72f), 0.045f, wall);
-            CreateSolidBox(root, "TenementUpperWall_E", new Vector3(width * 0.5f, SecondFloorY + 0.86f, -0.22f),
-                new Vector3(thickness, 1.72f, depth * 0.72f), 0.045f, wall);
             CreateSolidBox(root, "TenementUpperRail_W", new Vector3(-1.42f, SecondFloorY + 0.43f, 0.92f),
                 new Vector3(1.05f, 0.66f, 0.12f), 0.025f, steel);
             CreateSolidBox(root, "TenementUpperRail_E", new Vector3(1.42f, SecondFloorY + 0.43f, 0.92f),
                 new Vector3(1.05f, 0.66f, 0.12f), 0.025f, steel);
 
+            CreateSolidBox(root, "TenementRampLanding", new Vector3(1.7f, SecondFloorY - 0.08f, 0.65f),
+                new Vector3(3.7f, 0.16f, 0.7f), 0.02f, steel);
             // Exterior ramp approaches from the central street and ends on the second-floor slab.
             // Its shallow slope is climbable by the same CharacterController used by the player/enemies.
             CreateRamp(root, "TenementUpperRamp",
-                new Vector3(0f, 0.10f, 3.05f),
-                new Vector3(0f, SecondFloorY + 0.01f, 0.78f),
+                new Vector3(3.0f, 0.10f, 4.20f),
+                new Vector3(3.0f, SecondFloorY + 0.01f, 0.78f),
                 1.05f,
                 0.16f,
                 steel);
 
-            CreateVisualBox(root, "TenementDoorInset", new Vector3(0f, 1.02f, frontZ + 0.015f),
-                new Vector3(1.80f, 1.55f, 0.035f), 0.006f, inset);
             CreateVisualBox(root, "TenementUpperFloorBand", new Vector3(-side * (width * 0.5f + 0.035f), SecondFloorY + 0.12f, -0.22f),
                 new Vector3(0.06f, 0.14f, depth * 0.68f), 0.008f, steel);
             CreateVisualBox(root, "TenementRoofRear", new Vector3(0f, SecondFloorY + 1.82f, -0.58f),
@@ -294,6 +296,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         private void BuildWalkInServiceRoom(Transform parent, Vector3 anchor, float side, int seed)
         {
             var root = new GameObject("WalkInServiceRoom").transform;
+            root.gameObject.AddComponent<EnterableBuilding25D>().Configure(new Vector3(0f, 1.4f, 0f), new Vector3(3.3f, 3.0f, 3.0f));
             root.SetParent(parent, false);
             root.localPosition = anchor;
 
@@ -377,6 +380,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         private void BuildCoveredCheckpoint(Transform parent, Vector3 anchor, float side, int seed)
         {
             var root = new GameObject("CoveredCheckpoint").transform;
+            root.gameObject.AddComponent<EnterableBuilding25D>().Configure(new Vector3(0f, 1.4f, 0f), new Vector3(2.9f, 3.1f, 2.5f));
             root.SetParent(parent, false);
             root.localPosition = anchor;
 
@@ -397,6 +401,65 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         private static Transform FindBlockTransform(Transform stage, int index)
         {
             return RogueliteStageBlockUtility.FindBlockTransform(stage, index);
+        }
+
+        // Street frontages delegate their physical room to this existing architecture owner.
+        // Open loading bays and narrow residential doors share one collision contract.
+        public static void BuildInteriorShell(Transform root, float width, float depth, float height,
+            Material wall, Material steel, Material floor, float doorWidth = 1.8f)
+        {
+            doorWidth = Mathf.Min(doorWidth, width - 0.6f);
+            var wing = (width - doorWidth) * 0.5f;
+            CreateSolidBox(root, "InteriorFloor", new Vector3(0f, 0.08f, 0f),
+                new Vector3(width, 0.16f, depth), 0.02f, floor);
+            CreateSolidBox(root, "ShellBack", new Vector3(0f, height * 0.5f, depth * 0.5f),
+                new Vector3(width, height, 0.22f), 0.04f, wall);
+            foreach (var side in new[] { -1f, 1f })
+            {
+                CreateSolidBox(root, "ShellSide", new Vector3(side * width * 0.5f, height * 0.5f, 0f),
+                    new Vector3(0.22f, height, depth), 0.04f, wall);
+                CreateSolidBox(root, "ShellDoorWing", new Vector3(side * (doorWidth + wing) * 0.5f, height * 0.5f, -depth * 0.5f),
+                    new Vector3(wing, height, 0.22f), 0.04f, wall);
+                CreateVisualBox(root, "DoorEdge", new Vector3(side * (doorWidth * 0.5f + 0.04f), 1.1f, -depth * 0.5f - 0.13f),
+                    new Vector3(0.08f, 2.2f, 0.06f), 0.01f, steel);
+            }
+            if (height > 2.3f)
+                CreateSolidBox(root, "ShellHeader", new Vector3(0f, (height + 2.3f) * 0.5f, -depth * 0.5f),
+                    new Vector3(doorWidth, height - 2.3f, 0.22f), 0.02f, wall);
+            CreateVisualBox(root, "EntranceThreshold", new Vector3(0f, 0.10f, -depth * 0.5f - 0.45f),
+                new Vector3(doorWidth, 0.05f, 0.85f), 0.01f, steel);
+            var trim = CreateVisualBox(root, "DistrictIdentification", new Vector3(0f, 2.22f, -depth * 0.5f - 0.14f),
+                new Vector3(doorWidth + 0.18f, 0.09f, 0.06f), 0.01f, steel);
+            var color = root.name.Contains("Workshop") ? new Color(0.8f, 0.49f, 0.18f) : new Color(0.27f, 0.56f, 0.53f);
+            var tint = new MaterialPropertyBlock();
+            tint.SetColor("_BaseColor", color);
+            tint.SetColor("_Color", color);
+            trim.GetComponent<Renderer>().SetPropertyBlock(tint);
+            var label = new GameObject("BuildingStencil").AddComponent<TextMesh>();
+            label.transform.SetParent(root, false);
+            label.transform.localPosition = new Vector3(-width * 0.42f, 2.55f, -depth * 0.5f - 0.15f);
+            label.text = root.name.Contains("Apartment") ? "RES / 01" : root.name.Contains("Workshop") ? "IND / 03" :
+                root.name.Contains("Gatehouse") ? "SEC / 04" : "TRADE / 02";
+            label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            label.GetComponent<Renderer>().sharedMaterial = label.font.material;
+            label.fontSize = 40;
+            label.characterSize = 0.045f;
+            label.color = new Color(0.72f, 0.75f, 0.69f);
+            label.anchor = TextAnchor.MiddleLeft;
+            for (var i = 0; i < 3; i++)
+                CreateVisualBox(root, "WallPanelJoint", new Vector3(-width * 0.3f + i * width * 0.3f, height * 0.5f, depth * 0.5f + 0.12f),
+                    new Vector3(0.045f, height * 0.85f, 0.025f), 0.003f, steel);
+            var marker = root.gameObject.AddComponent<EnterableBuilding25D>();
+            marker.Configure(new Vector3(0f, height * 0.5f, 0f), new Vector3(width + 0.4f, height + 0.5f, depth + 0.4f));
+            marker.SetNavigationRoute(new[]
+            {
+                root.TransformPoint(new Vector3(-width * 0.5f - 1.2f, 0.18f, -depth * 0.5f - 1.4f)),
+                root.TransformPoint(new Vector3(0f, 0.18f, -depth * 0.5f - 1.4f)),
+                root.TransformPoint(new Vector3(0f, 0.18f, -depth * 0.5f)),
+                root.TransformPoint(new Vector3(0f, 0.18f, 0f))
+            });
+            ArknightsACT.Gameplay.Roguelite.Treasure.SearchableContainer25D.Create(root,
+                new Vector3(-width * 0.25f, 0.18f, depth * 0.5f - 0.65f), steel, floor);
         }
 
         private static GameObject CreateSolidBox(

@@ -20,7 +20,6 @@ namespace ArknightsACT.Editor.OHMS
         // OhmsStructuredFxImporter preserve prefab/material/mesh GUIDs during that refresh.
         private const int ChenReconstructionRevision = 4;
 
-        [UnityEditor.MenuItem("ArknightsACT/OHMS/Effect Importer")]
         private static void OpenEffectImporter()
         {
             OhmsStructuredFxImporterWindow.Open();
@@ -60,7 +59,6 @@ namespace ArknightsACT.Editor.OHMS
             }
         }
 
-        [UnityEditor.MenuItem("ArknightsACT/OHMS/Import staged Ch'en combat FX")]
         public static void ImportStagedChenCombatFx()
         {
             var sourceRoot = ResolveChenSourceRoot();
@@ -84,7 +82,6 @@ namespace ArknightsACT.Editor.OHMS
             Debug.Log($"[ArknightsACT/OHMS] Staged Ch'en combat FX import finished. {report.ToSummary()}");
         }
 
-        [UnityEditor.MenuItem("ArknightsACT/OHMS/Repair Ch'en skill 3 blade textures")]
         public static void RepairChenSkill3BladeTextures()
         {
             var packageRoot = string.Concat(OhmsStructuredFxImporter.DefaultOutputRoot, "/Chen");

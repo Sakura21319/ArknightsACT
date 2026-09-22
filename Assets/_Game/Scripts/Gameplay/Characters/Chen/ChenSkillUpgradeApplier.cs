@@ -56,5 +56,11 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                     break;
             }
         }
+
+        public void ResetRun()
+        {
+            _skill1?.ResetRunModifiers();
+            _skill2?.ResetRunModifiers();
+        }
     }
 }

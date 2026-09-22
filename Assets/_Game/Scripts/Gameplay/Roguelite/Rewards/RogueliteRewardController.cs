@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using ArknightsACT.Gameplay.Feedback;
 using ArknightsACT.Gameplay.Roguelite.Collectibles;
+using ArknightsACT.Gameplay.Roguelite.Treasure;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -31,6 +32,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Rewards
         private bool _isOpen;
         private GameplayPauseService _pause;
         private RewardSelectionCoordinator _coordinator;
+        private ScavengingInventory25D _scavenging;
         private CollectibleRarity _minimumRarity;
         private int _activeChoiceCount;
         private string _title = "选择一件收藏品";
@@ -46,13 +48,15 @@ namespace ArknightsACT.Gameplay.Roguelite.Rewards
         {
             inventory = targetInventory;
             combatProfile = profile;
-            rewardPool = pool;
+            rewardPool = pool; // Legacy fallback data only; current exploration rewards use ScavengingCatalog.
+            _scavenging = inventory != null ? inventory.GetComponent<ScavengingInventory25D>() : null;
         }
 
         private void OnEnable()
         {
             _pause = GameplayPauseService.Instance;
             _coordinator = RewardSelectionCoordinator.Instance ?? FindFirstObjectByType<RewardSelectionCoordinator>();
+            _scavenging ??= inventory != null ? inventory.GetComponent<ScavengingInventory25D>() : null;
         }
 
         private void OnDisable()
@@ -69,8 +73,12 @@ namespace ArknightsACT.Gameplay.Roguelite.Rewards
             int requestedChoiceCount,
             Action completed)
         {
-            if (inventory == null)
+            _scavenging ??= inventory != null ? inventory.GetComponent<ScavengingInventory25D>() : null;
+            if (inventory == null || _scavenging == null)
+            {
+                Debug.LogWarning("[ArknightsACT/Roguelite] Collectible reward skipped because no scavenging inventory is available; direct Acquire is disabled.", this);
                 return false;
+            }
 
             _pendingRequests.Enqueue(new RewardRequest
             {
@@ -123,6 +131,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Rewards
 
         private void Update()
         {
+            if (ArknightsACT.Gameplay.Input.GameplayInputBlocker.IsBlocked) return;
             if (!_isOpen)
             {
                 TryOpenNext();
@@ -146,14 +155,16 @@ namespace ArknightsACT.Gameplay.Roguelite.Rewards
         private void BuildChoices()
         {
             _choices.Clear();
-            if (rewardPool == null || inventory == null)
+            _scavenging ??= inventory != null ? inventory.GetComponent<ScavengingInventory25D>() : null;
+            if (_scavenging == null || inventory == null)
                 return;
 
+            var catalog = _scavenging.Catalog;
             var candidates = new List<CollectibleDefinition>();
-            for (var i = 0; i < rewardPool.Length; i++)
+            for (var i = 0; i < catalog.Count; i++)
             {
-                var definition = rewardPool[i];
-                if (definition == null || !inventory.CanAcquire(definition))
+                var definition = catalog[i];
+                if (definition == null || definition.IsSalvageCommodity || !inventory.CanAcquire(definition))
                     continue;
                 if ((int)definition.Rarity < (int)_minimumRarity)
                     continue;
@@ -197,8 +208,9 @@ namespace ArknightsACT.Gameplay.Roguelite.Rewards
             if (!_isOpen || index < 0 || index >= _choices.Count || inventory == null)
                 return;
 
+            _scavenging ??= inventory.GetComponent<ScavengingInventory25D>();
             var selected = _choices[index];
-            if (!inventory.Acquire(selected))
+            if (_scavenging == null || !_scavenging.TryAcceptReward(selected, _title))
                 return;
 
             var callback = _completed;
@@ -277,7 +289,12 @@ namespace ArknightsACT.Gameplay.Roguelite.Rewards
                 alignment = TextAnchor.MiddleCenter,
                 fontSize = 16
             };
-            GUI.Label(new Rect(0f, startY + cardHeight + 25f, width, 35f), "点击卡片，或按 1 / 2 / 3 选择", hintStyle);
+            var hint = _scavenging != null && _scavenging.FreeBackpackCells <= 0
+                ? "未结算背包已满 · 按 B 打开背包并丢弃物品或扩容后再选择"
+                : _scavenging != null
+                    ? $"点击卡片，或按 1 / 2 / 3 选择 · 背包 {_scavenging.BackpackWidth}×{_scavenging.BackpackHeight} · 空余 {_scavenging.FreeBackpackCells} 格"
+                    : "点击卡片，或按 1 / 2 / 3 选择";
+            GUI.Label(new Rect(0f, startY + cardHeight + 25f, width, 35f), hint, hintStyle);
         }
     }
 }

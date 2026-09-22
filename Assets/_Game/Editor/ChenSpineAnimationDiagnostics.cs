@@ -18,7 +18,6 @@ namespace ArknightsACT.Editor
     {
         private const string MenuPath = "ArknightsACT/Diagnostics/Dump Ch'en Animation Catalog";
 
-        [MenuItem(MenuPath)]
         private static void Dump()
         {
             var skeletonAnimation = FindChenSkeletonAnimation();

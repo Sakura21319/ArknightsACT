@@ -18,7 +18,6 @@ namespace ArknightsACT.Editor.PRTS
 
         public static bool IsRuntimeAvailable => FindType("Spine.Unity.SkeletonAnimation") != null;
 
-        [MenuItem("ArknightsACT/Assets/PRTS/1. Install Spine 3.8-Compatible Runtime")]
         public static void Install()
         {
             if (_busy)
@@ -55,10 +54,8 @@ namespace ArknightsACT.Editor.PRTS
             StartNext();
         }
 
-        [MenuItem("ArknightsACT/Assets/PRTS/1. Install Spine 3.8-Compatible Runtime", true)]
         private static bool ValidateInstall() => !_busy;
 
-        [MenuItem("ArknightsACT/Assets/PRTS/Open Runtime Fork on GitHub")]
         private static void OpenRuntimeFork()
         {
             Application.OpenURL("https://github.com/ZeroFlyFly/WaifuSpineRuntime");

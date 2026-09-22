@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using ArknightsACT.Editor.PRTS;
 using ArknightsACT.Gameplay.Audio;
+using ArknightsACT.Gameplay.Characters;
 using ArknightsACT.Gameplay.Roguelite.Rewards;
 using ArknightsACT.Gameplay.Roguelite.Routing;
 using ArknightsACT.Gameplay.Roguelite.World;
@@ -58,37 +59,7 @@ namespace ArknightsACT.Editor
                 Load("TacticalAccent"),
                 Load("HazardBand"));
 
-            // Local-only PRTS audio. 反常光谱 is used as one continuously looping gameplay track;
-            // Ch'en battle voice clips are the Japanese voice set. Missing clips are tolerated so
-            // the scene can still build before the local-only downloader has been run.
-            go.AddComponent<RoguelitePrototypeAudioController>().Configure(
-                player,
-                null,
-                LoadAudio(PrtsGameplayAudioCatalog.AbnormalSpectrum.LocalPath),
-                LoadAudio(PrtsGameplayAudioCatalog.ChenSkill1Sfx.LocalPath),
-                LoadAudio(PrtsGameplayAudioCatalog.ChenSkill2Sfx.LocalPath),
-                new[]
-                {
-                    LoadAudio(PrtsGameplayAudioCatalog.ChenVoice025.LocalPath),
-                    LoadAudio(PrtsGameplayAudioCatalog.ChenVoice026.LocalPath)
-                },
-                new[]
-                {
-                    LoadAudio(PrtsGameplayAudioCatalog.ChenVoice027.LocalPath),
-                    LoadAudio(PrtsGameplayAudioCatalog.ChenVoice028.LocalPath)
-                },
-                new[]
-                {
-                    LoadAudio(PrtsGameplayAudioCatalog.ChenAttackSwing1.LocalPath),
-                    LoadAudio(PrtsGameplayAudioCatalog.ChenAttackSwing2.LocalPath),
-                    LoadAudio(PrtsGameplayAudioCatalog.ChenAttackSwing3.LocalPath)
-                },
-                LoadAudio(PrtsGameplayAudioCatalog.ChenSwordImpact.LocalPath),
-                LoadAudio(PrtsGameplayAudioCatalog.PlayerHurt.LocalPath),
-                LoadAudio(PrtsGameplayAudioCatalog.PlayerDeath.LocalPath),
-                LoadAudio(PrtsGameplayAudioCatalog.EnemyMeleeAttack.LocalPath),
-                LoadAudio(PrtsGameplayAudioCatalog.EnemyRangedAttack.LocalPath),
-                LoadAudio(PrtsGameplayAudioCatalog.EnemyDeath.LocalPath));
+            ConfigurePrototypeAudio(go, player);
 
             // physical floor/layout -> district assignment -> modular presentation -> industrial shell ->
             // playable rooms/decks -> district-specific streets/facades -> legacy density cleanup -> dressing
@@ -133,6 +104,74 @@ namespace ArknightsACT.Editor
             return go;
         }
 
+        private static void ConfigurePrototypeAudio(GameObject stageRuntime, Transform player)
+        {
+            var audio = stageRuntime.AddComponent<RoguelitePrototypeAudioController>();
+            var identity = player != null ? player.GetComponent<PlayableOperatorIdentity>() : null;
+            var isSchwarz = identity != null && identity.OperatorId == "Schwarz";
+
+            if (isSchwarz)
+            {
+                audio.Configure(
+                    player,
+                    null,
+                    LoadAudio(PrtsGameplayAudioCatalog.AbnormalSpectrum.LocalPath),
+                    null,
+                    null,
+                    new[]
+                    {
+                        LoadAudio("Assets/_Game/Art/Audio/Schwarz/Schwarz_Voice_JP_CN_025.wav"),
+                        LoadAudio("Assets/_Game/Art/Audio/Schwarz/Schwarz_Voice_JP_CN_026.wav")
+                    },
+                    new[]
+                    {
+                        LoadAudio("Assets/_Game/Art/Audio/Schwarz/Schwarz_Voice_JP_CN_027.wav"),
+                        LoadAudio("Assets/_Game/Art/Audio/Schwarz/Schwarz_Voice_JP_CN_028.wav")
+                    },
+                    new[]
+                    {
+                        LoadAudio("Assets/_Game/Art/Audio/Schwarz/Schwarz_Attack_01.wav"),
+                        LoadAudio("Assets/_Game/Art/Audio/Schwarz/Schwarz_Attack_02.wav"),
+                        LoadAudio("Assets/_Game/Art/Audio/Schwarz/Schwarz_Attack_03.wav")
+                    },
+                    LoadAudio("Assets/_Game/Art/Audio/Schwarz/Schwarz_Impact.wav"),
+                    LoadAudio(PrtsGameplayAudioCatalog.PlayerHurt.LocalPath),
+                    LoadAudio(PrtsGameplayAudioCatalog.PlayerDeath.LocalPath),
+                    LoadAudio(PrtsGameplayAudioCatalog.EnemyMeleeAttack.LocalPath),
+                    LoadAudio(PrtsGameplayAudioCatalog.EnemyRangedAttack.LocalPath),
+                    LoadAudio(PrtsGameplayAudioCatalog.EnemyDeath.LocalPath));
+                return;
+            }
+
+            audio.Configure(
+                player,
+                null,
+                LoadAudio(PrtsGameplayAudioCatalog.AbnormalSpectrum.LocalPath),
+                LoadAudio(PrtsGameplayAudioCatalog.ChenSkill1Sfx.LocalPath),
+                LoadAudio(PrtsGameplayAudioCatalog.ChenSkill2Sfx.LocalPath),
+                new[]
+                {
+                    LoadAudio(PrtsGameplayAudioCatalog.ChenVoice025.LocalPath),
+                    LoadAudio(PrtsGameplayAudioCatalog.ChenVoice026.LocalPath)
+                },
+                new[]
+                {
+                    LoadAudio(PrtsGameplayAudioCatalog.ChenVoice027.LocalPath),
+                    LoadAudio(PrtsGameplayAudioCatalog.ChenVoice028.LocalPath)
+                },
+                new[]
+                {
+                    LoadAudio(PrtsGameplayAudioCatalog.ChenAttackSwing1.LocalPath),
+                    LoadAudio(PrtsGameplayAudioCatalog.ChenAttackSwing2.LocalPath),
+                    LoadAudio(PrtsGameplayAudioCatalog.ChenAttackSwing3.LocalPath)
+                },
+                LoadAudio(PrtsGameplayAudioCatalog.ChenSwordImpact.LocalPath),
+                LoadAudio(PrtsGameplayAudioCatalog.PlayerHurt.LocalPath),
+                LoadAudio(PrtsGameplayAudioCatalog.PlayerDeath.LocalPath),
+                LoadAudio(PrtsGameplayAudioCatalog.EnemyMeleeAttack.LocalPath),
+                LoadAudio(PrtsGameplayAudioCatalog.EnemyRangedAttack.LocalPath),
+                LoadAudio(PrtsGameplayAudioCatalog.EnemyDeath.LocalPath));
+        }
         private static Texture2D[] LoadEnvironmentBackdrops()
         {
             var references = PrtsEnvironmentReferenceCatalog.RuntimeBackdrops;

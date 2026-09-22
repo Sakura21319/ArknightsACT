@@ -7,14 +7,6 @@ namespace ArknightsACT.Editor.OHMS
 {
     public static class ChenFxHierarchyAnalyzer
     {
-        [InitializeOnLoadMethod]
-        private static void VerifyLoaded()
-        {
-            Debug.Log("[ArknightsACT/OHMS] ChenFxHierarchyAnalyzer loaded");
-        }
-
-        [UnityEditor.MenuItem("ArknightsACT/OHMS/Analyze Ch'en Skill 03 FX")]
-        [UnityEditor.MenuItem("Tools/ArknightsACT/Analyze Ch'en Skill 03 FX")]
         public static void Analyze()
         {
             const string root = "Assets/_Game/Art/FX/OriginalClient/Chen/Prefabs";

@@ -30,7 +30,7 @@ namespace ArknightsACT.Gameplay.Audio
         [SerializeField] private AudioClip skill2Sfx;
         [SerializeField, Range(0f, 1f)] private float skillSfxVolume = 0.82f;
 
-        [Header("Chen Voice")]
+        [Header("Skill Voice")]
         [SerializeField] private AudioClip[] skill1Voices;
         [SerializeField] private AudioClip[] skill2Voices;
         [SerializeField, Range(0f, 1f)] private float voiceVolume = 0.96f;
@@ -434,8 +434,14 @@ namespace ArknightsACT.Gameplay.Audio
             if (_warnedMissingAudio)
                 return;
 
+            var identity = player != null
+                ? player.GetComponent<ArknightsACT.Gameplay.Characters.PlayableOperatorIdentity>()
+                : null;
+            var isSchwarz = identity != null && identity.OperatorId == "Schwarz";
             var missingBgm = bgmIntro == null && bgmLoop == null;
-            var missingSkill = skill1Sfx == null || skill2Sfx == null;
+            // Schwarz has no verified standalone S2/S3 activation event in the extracted package.
+            // Null is intentional there; never substitute Ch'en's skill SFX.
+            var missingSkill = !isSchwarz && (skill1Sfx == null || skill2Sfx == null);
             var missingVoice = !HasAnyClip(skill1Voices) || !HasAnyClip(skill2Voices);
             var missingCombat = !HasAnyClip(playerAttackSwings) || swordImpact == null ||
                                 playerHurt == null || playerDeath == null || enemyMeleeAttack == null ||
@@ -445,8 +451,8 @@ namespace ArknightsACT.Gameplay.Audio
 
             _warnedMissingAudio = true;
             Debug.LogWarning(
-                "[ArknightsACT/Audio] PRTS prototype audio is incomplete. Run " +
-                "ArknightsACT > Assets > PRTS > Download Gameplay Audio (BGM + Chen), then rebuild Prototype Scene.",
+                "[ArknightsACT/Audio] Prototype audio is incomplete for the current operator. " +
+                "Rebuild the selected operator scene after its local audio assets are available.",
                 this);
         }
 

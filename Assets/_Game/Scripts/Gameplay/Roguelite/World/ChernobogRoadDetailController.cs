@@ -54,13 +54,16 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             _preparedStage = stage;
         }
 
-        private static void CreateDetail(Transform parent, string name, Vector3 position)
+        private void CreateDetail(Transform parent, string name, Vector3 position)
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
             go.name = name;
             go.transform.SetParent(parent, false);
             go.transform.localPosition = position;
             go.transform.localScale = new Vector3(1.2f, 0.02f, 0.6f);
+            var kit = _context.EnvironmentKit;
+            if (kit != null)
+                go.GetComponent<Renderer>().sharedMaterial = name.StartsWith("Drain") ? kit.grateMaterial : kit.insetMaterial;
             var collider = go.GetComponent<Collider>();
             if (collider != null)
                 collider.enabled = false;

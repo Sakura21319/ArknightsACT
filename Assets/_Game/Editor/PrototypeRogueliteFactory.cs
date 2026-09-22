@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using ArknightsACT.Gameplay.Characters.Chen;
+using ArknightsACT.Gameplay.Characters.Schwarz;
 using ArknightsACT.Gameplay.Roguelite;
 using ArknightsACT.Gameplay.Roguelite.Collectibles;
 using ArknightsACT.Gameplay.Roguelite.Progression;
@@ -20,6 +21,7 @@ namespace ArknightsACT.Editor
         private const string CollectibleDir = DataRoot + "/Collectibles";
         private const string UpgradeDir = DataRoot + "/LevelUpgrades";
         private const string SkillUpgradeDir = DataRoot + "/SkillUpgrades/Chen";
+        private const string SchwarzSkillUpgradeDir = DataRoot + "/SkillUpgrades/Schwarz";
 
         public static GameObject CreateExploration(Transform player)
         {
@@ -38,10 +40,9 @@ namespace ArknightsACT.Editor
 
             EnsureFolder(CollectibleDir);
             EnsureFolder(UpgradeDir);
-            EnsureFolder(SkillUpgradeDir);
             var collectiblePool = BuildCollectiblePool();
             var upgradePool = BuildLevelUpgradePool();
-            var skillUpgradePool = BuildChenSkillUpgradePool();
+            var skillUpgradePool = BuildCharacterSkillUpgradePool(player);
 
             var inventory = player.GetComponent<CollectibleInventory>();
             var upgradeInventory = player.GetComponent<LevelUpgradeInventory>();
@@ -65,6 +66,9 @@ namespace ArknightsACT.Editor
             var runState = root.AddComponent<RogueliteRunState>();
             var stageMap = root.AddComponent<RogueliteStageMapController>();
             stageMap.Configure(runState);
+            var metaState = root.AddComponent<RogueliteMetaState>();
+            var shell = root.AddComponent<RogueliteGameFlowController>();
+            shell.Configure(player, runState, stageMap, metaState);
 
             var rewards = root.AddComponent<RogueliteRewardController>();
             rewards.Configure(inventory, profile, collectiblePool);
@@ -131,6 +135,18 @@ namespace ArknightsACT.Editor
             };
         }
 
+        private static CharacterSkillUpgradeDefinition[] BuildCharacterSkillUpgradePool(Transform player)
+        {
+            if (player != null && player.GetComponent<SchwarzSkillUpgradeApplier>() != null)
+            {
+                EnsureFolder(SchwarzSkillUpgradeDir);
+                return BuildSchwarzSkillUpgradePool();
+            }
+
+            EnsureFolder(SkillUpgradeDir);
+            return BuildChenSkillUpgradePool();
+        }
+
         private static CharacterSkillUpgradeDefinition[] BuildChenSkillUpgradePool()
         {
             return new[]
@@ -141,6 +157,19 @@ namespace ArknightsACT.Editor
                 GetOrCreateSkillUpgrade("chen_s2_strikes", ChenSkillUpgradeApplier.Skill2ExtraStrikes, "绝影·九闪", "赤霄·绝影额外增加 2 次斩击。", 2f, 3),
                 GetOrCreateSkillUpgrade("chen_s2_finisher", ChenSkillUpgradeApplier.Skill2FinalDamage, "绝影·收刀", "赤霄·绝影终结斩伤害 +35%。", 0.35f, 3),
                 GetOrCreateSkillUpgrade("chen_s2_hunt", ChenSkillUpgradeApplier.Skill2Radius, "绝影·逐猎", "赤霄·绝影索敌半径 +20%。", 0.20f, 2)
+            };
+        }
+
+        private static CharacterSkillUpgradeDefinition[] BuildSchwarzSkillUpgradePool()
+        {
+            return new[]
+            {
+                GetOrCreateSchwarzSkillUpgrade("schwarz_s2_power", SchwarzSkillUpgradeApplier.OriginalSkill2Damage, "暮眼锐瞳·火力", "暮眼锐瞳期间普攻伤害倍率 +18%。", 0.18f, 3),
+                GetOrCreateSchwarzSkillUpgrade("schwarz_s2_duration", SchwarzSkillUpgradeApplier.OriginalSkill2Duration, "暮眼锐瞳·持续", "暮眼锐瞳持续时间 +15%。", 0.15f, 2),
+                GetOrCreateSchwarzSkillUpgrade("schwarz_s2_cycle", SchwarzSkillUpgradeApplier.OriginalSkill2Cycle, "暮眼锐瞳·整备", "暮眼锐瞳技力需求 -12%。", 0.12f, 2),
+                GetOrCreateSchwarzSkillUpgrade("schwarz_s3_power", SchwarzSkillUpgradeApplier.OriginalSkill3Damage, "战术终结·火力", "战术的终结期间普攻伤害倍率 +18%。", 0.18f, 3),
+                GetOrCreateSchwarzSkillUpgrade("schwarz_s3_reach", SchwarzSkillUpgradeApplier.OriginalSkill3Range, "战术终结·瞄准", "战术的终结期间额外射程 +15%。", 0.15f, 2),
+                GetOrCreateSchwarzSkillUpgrade("schwarz_s3_duration", SchwarzSkillUpgradeApplier.OriginalSkill3Duration, "战术终结·持续", "战术的终结持续时间 +18%。", 0.18f, 2)
             };
         }
 
@@ -184,6 +213,35 @@ namespace ArknightsACT.Editor
                 AssetDatabase.CreateAsset(asset, path);
             }
             asset.Configure(id, ChenSkillUpgradeApplier.CharacterKey, effectId, displayName, description, value, maxStacks, 1f);
+            asset.name = id;
+            EditorUtility.SetDirty(asset);
+            return asset;
+        }
+
+        private static CharacterSkillUpgradeDefinition GetOrCreateSchwarzSkillUpgrade(
+            string id,
+            string effectId,
+            string displayName,
+            string description,
+            float value,
+            int maxStacks)
+        {
+            var path = $"{SchwarzSkillUpgradeDir}/{id}.asset";
+            var asset = AssetDatabase.LoadAssetAtPath<CharacterSkillUpgradeDefinition>(path);
+            if (asset == null)
+            {
+                asset = ScriptableObject.CreateInstance<CharacterSkillUpgradeDefinition>();
+                AssetDatabase.CreateAsset(asset, path);
+            }
+            asset.Configure(
+                id,
+                SchwarzSkillUpgradeApplier.CharacterKey,
+                effectId,
+                displayName,
+                description,
+                value,
+                maxStacks,
+                1f);
             asset.name = id;
             EditorUtility.SetDirty(asset);
             return asset;

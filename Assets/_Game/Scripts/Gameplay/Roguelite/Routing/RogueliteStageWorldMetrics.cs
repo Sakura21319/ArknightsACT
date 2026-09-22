@@ -10,8 +10,8 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
     /// </summary>
     public static class RogueliteStageWorldMetrics
     {
-        public const float ChunkWidth = 30f;
-        public const float ChunkDepth = 24f;
+        public const float ChunkWidth = 36f;
+        public const float ChunkDepth = 30f;
         public const float MainRoadWidth = 6.10f;
         public const float SidewalkWidth = 1.55f;
     }

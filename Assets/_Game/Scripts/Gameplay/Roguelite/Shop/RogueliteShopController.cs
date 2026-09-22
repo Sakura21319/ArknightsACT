@@ -53,6 +53,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Shop
         private GameplayPauseService _pause;
         private CombatEntity _playerEntity;
         private TemporaryCombatBuffs _temporaryBuffs;
+        private ScavengingInventory25D _scavenging;
         private bool _isOpen;
         private int _stockStage;
         private int _rerolls;
@@ -105,10 +106,12 @@ namespace ArknightsACT.Gameplay.Roguelite.Shop
                 return;
             _playerEntity = player.GetComponent<CombatEntity>();
             _temporaryBuffs = player.GetComponent<TemporaryCombatBuffs>();
+            _scavenging = player.GetComponent<ScavengingInventory25D>();
         }
 
         private void Update()
         {
+            if (ArknightsACT.Gameplay.Input.GameplayInputBlocker.IsBlocked) return;
             if (_isOpen)
             {
                 HandleOpenInput();
@@ -234,12 +237,14 @@ namespace ArknightsACT.Gameplay.Roguelite.Shop
         private ShopOffer BuildCollectibleOffer()
         {
             var candidates = new List<CollectibleDefinition>();
-            if (collectiblePool != null && collectibleInventory != null)
+            _scavenging ??= player != null ? player.GetComponent<ScavengingInventory25D>() : null;
+            var catalog = _scavenging?.Catalog;
+            if (catalog != null && collectibleInventory != null)
             {
-                for (var i = 0; i < collectiblePool.Length; i++)
+                for (var i = 0; i < catalog.Count; i++)
                 {
-                    var definition = collectiblePool[i];
-                    if (definition == null || !collectibleInventory.CanAcquire(definition))
+                    var definition = catalog[i];
+                    if (definition == null || definition.IsSalvageCommodity || !collectibleInventory.CanAcquire(definition))
                         continue;
                     if (combatProfile != null && !combatProfile.Supports(definition.RequiredFeatures))
                         continue;
@@ -371,7 +376,10 @@ namespace ArknightsACT.Gameplay.Roguelite.Shop
                         return false;
                     return _playerEntity.Health.Heal(_playerEntity.Health.MaxHealth * 0.35f) > 0f;
                 case OfferKind.Collectible:
-                    return offer.Payload is CollectibleDefinition collectible && collectibleInventory != null && collectibleInventory.Acquire(collectible);
+                    _scavenging ??= player != null ? player.GetComponent<ScavengingInventory25D>() : null;
+                    return offer.Payload is CollectibleDefinition collectible &&
+                           _scavenging != null &&
+                           _scavenging.TryAcceptReward(collectible, "商店购买");
                 case OfferKind.LevelUpgrade:
                     return offer.Payload is LevelUpgradeDefinition level && levelInventory != null && levelInventory.Acquire(level);
                 case OfferKind.SkillUpgrade:

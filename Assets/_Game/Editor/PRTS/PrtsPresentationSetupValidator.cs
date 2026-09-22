@@ -9,7 +9,6 @@ namespace ArknightsACT.Editor.PRTS
 {
     internal static class PrtsPresentationSetupValidator
     {
-        [MenuItem("ArknightsACT/Assets/PRTS/4. Validate Presentation Setup")]
         public static void ValidateSetup()
         {
             var lines = new List<string>();

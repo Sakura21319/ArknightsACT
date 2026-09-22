@@ -20,7 +20,6 @@ namespace ArknightsACT.Editor
         private const float CellDepth = 11f / 5f;
         private const float SurfaceGap = 0.045f;
 
-        [MenuItem("ArknightsACT/Assets/Apply Chernobog Floor Composition Assets")]
         private static void ApplyMenu()
         {
             var kit = ChernobogEnvironmentKitBuilder.EnsureBuilt();

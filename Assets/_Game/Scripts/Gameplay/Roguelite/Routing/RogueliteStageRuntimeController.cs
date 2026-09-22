@@ -48,6 +48,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
         private readonly List<BlockRuntime> _runtimeBlocks = new(9);
         private GameObject _stageRoot;
         private GameObject _exitMarker;
+        private GameObject _extractionMarker;
         private RogueliteStageRuntimeContext _context;
         private int _currentBlockIndex = -1;
         private bool _exitReady;
@@ -73,6 +74,8 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             public int South;
             public int North;
         }
+
+        public Transform CurrentStageRoot => _stageRoot != null ? _stageRoot.transform : null;
 
         public void Configure(
             Transform playerTransform,
@@ -110,6 +113,19 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
         {
             _context ??= GetComponent<RogueliteStageRuntimeContext>();
             ResolveReferences();
+            if (player != null && player.GetComponent<ArknightsACT.Gameplay.Roguelite.Treasure.ScavengingInventory25D>() == null)
+                player.gameObject.AddComponent<ArknightsACT.Gameplay.Roguelite.Treasure.ScavengingInventory25D>();
+
+            // Existing PrototypeRun scenes may predate the shell components. Bootstrap them at runtime
+            // so the selected Scheme-B home / extraction / settlement / warehouse flow works without
+            // requiring a destructive scene rebuild just to attach two components.
+            if (runState != null)
+            {
+                var meta = runState.GetComponent<RogueliteMetaState>() ?? runState.gameObject.AddComponent<RogueliteMetaState>();
+                var shell = runState.GetComponent<RogueliteGameFlowController>() ?? runState.gameObject.AddComponent<RogueliteGameFlowController>();
+                shell.Configure(player, runState, stageMap, meta);
+            }
+
             if (!CanBuild())
             {
                 Debug.LogError("[ArknightsACT/StageRuntime] Missing player, stage map, run state or templates. Rebuild Prototype Scene.", this);
@@ -137,7 +153,11 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             }
 
             CheckEncounterClears();
-            CheckStageExitInput();
+            if (!ArknightsACT.Gameplay.Input.GameplayInputBlocker.IsBlocked)
+            {
+                CheckStageExitInput();
+                CheckExtractionInput();
+            }
         }
 
         private void ResolveReferences()
@@ -200,6 +220,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
             BuildGameplaySafetyDeck();
             BuildOuterBounds();
+            BuildExtractionPoint();
             BuildNavigationGraph();
             TeleportPlayer(GetChunkCenter(Vector2Int.zero) + new Vector3(0f, 0.08f, 0f));
             _currentBlockIndex = 0;
@@ -238,6 +259,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             Destroy(_stageRoot);
             _stageRoot = null;
             _exitMarker = null;
+            _extractionMarker = null;
         }
 
         private GameObject BuildChunk(RogueliteBlockState block, Vector3 center, Transform parent)
@@ -339,11 +361,27 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             _exitMarker.SetActive(false);
         }
 
+        private void BuildExtractionPoint()
+        {
+            var startCenter = GetChunkCenter(Vector2Int.zero);
+            _extractionMarker = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            _extractionMarker.name = "ExtractionPoint";
+            _extractionMarker.transform.SetParent(_stageRoot.transform, true);
+            _extractionMarker.transform.position = startCenter + new Vector3(0f, 0.06f, -6.2f);
+            _extractionMarker.transform.localScale = new Vector3(1.35f, 0.06f, 1.35f);
+            var collider = _extractionMarker.GetComponent<Collider>();
+            if (collider != null) collider.enabled = false;
+            var renderer = _extractionMarker.GetComponent<Renderer>();
+            if (renderer != null) renderer.sharedMaterial = accentMaterial;
+        }
+
         private void BuildFacilityChunk(Transform root)
         {
             var parent = new GameObject("TwoFloorFacility").transform;
+            parent.gameObject.AddComponent<EnterableBuilding25D>().Configure(new Vector3(2.15f, 1.5f, 1.45f), new Vector3(8.8f, 3.4f, 7.1f));
             parent.SetParent(root, false);
 
+            ArknightsACT.Gameplay.Roguelite.Treasure.SearchableContainer25D.Create(parent, new Vector3(4.3f, 0.18f, 3.8f), coverMaterial, facilityFloorMaterial);
             const float centerX = 2.15f;
             const float centerZ = 1.45f;
             const float width = 8.50f;
@@ -438,8 +476,8 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                     // Matches WalkInStreetTenement in PlayableArchitecture: the front doorway is
                     // north of the south-west lot, while the ramp returns to the main street spine.
                     var entry = AddNavNode(nodes, center + new Vector3(-7.40f, 0f, -4.23f));
-                    var rampBase = AddNavNode(nodes, center + new Vector3(-7.40f, 0f, -2.75f));
-                    var rampTop = AddNavNode(nodes, center + new Vector3(-7.40f, SecondFloorY, -5.02f));
+                    var rampBase = AddNavNode(nodes, center + new Vector3(-4.40f, 0f, -1.60f));
+                    var rampTop = AddNavNode(nodes, center + new Vector3(-4.40f, SecondFloorY, -5.02f));
                     var upper = AddNavNode(nodes, center + new Vector3(-7.40f, SecondFloorY, -5.36f));
                     AddEdge(edges, nav.Center, entry);
                     AddEdge(edges, nav.Center, rampBase);
@@ -465,8 +503,8 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                 {
                     var side = ResolvePlayableBuildingSide(i, block);
                     var entry = AddNavNode(nodes, center + new Vector3(side * 4.55f, 0f, -3.25f));
-                    var rampBase = AddNavNode(nodes, center + new Vector3(side * 4.55f, 0f, -1.80f));
-                    var rampTop = AddNavNode(nodes, center + new Vector3(side * 4.55f, SecondFloorY, -4.07f));
+                    var rampBase = AddNavNode(nodes, center + new Vector3(side * 4.55f + 3f, 0f, -0.65f));
+                    var rampTop = AddNavNode(nodes, center + new Vector3(side * 4.55f + 3f, SecondFloorY, -4.07f));
                     var upper = AddNavNode(nodes, center + new Vector3(side * 4.55f, SecondFloorY, -4.66f));
                     AddEdge(edges, nav.Center, entry);
                     AddEdge(edges, nav.Center, rampBase);
@@ -786,11 +824,10 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
         {
             if (stageMap.StageIndex >= 3)
             {
-                _runComplete = true;
                 _exitReady = false;
                 if (_exitMarker != null)
-                    _exitMarker.SetActive(true);
-                Debug.Log("[ArknightsACT/StageRuntime] Final boss defeated. Prototype run complete.", this);
+                    _exitMarker.SetActive(false);
+                Debug.Log("[ArknightsACT/StageRuntime] Final boss defeated. Return to the extraction point to secure the run.", this);
                 return;
             }
 
@@ -820,10 +857,41 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             if (stageMap.StageIndex >= 3)
                 return;
 
+            // Crossing a stage boundary is no longer a hidden extraction. Unsecured loot stays at risk
+            // until the player deliberately returns to a physical extraction point.
             var next = stageMap.StageIndex + 1;
             runState.SetStageIndex(next);
             stageMap.GenerateStage(next);
             BuildCurrentStage();
+        }
+
+        private void CheckExtractionInput()
+        {
+            if (_extractionMarker == null || player == null)
+                return;
+            var delta = player.position - _extractionMarker.transform.position;
+            delta.y = 0f;
+            if (delta.sqrMagnitude > 2.35f * 2.35f)
+                return;
+            var keyboard = Keyboard.current;
+            if (keyboard != null && keyboard.eKey.wasPressedThisFrame)
+                RogueliteGameFlowController.Instance?.OpenExtractionDecision();
+        }
+
+        public void RestartRun()
+        {
+            ResolveReferences();
+            _runComplete = false;
+            _exitReady = false;
+            if (stageMap == null || runState == null)
+                return;
+            BuildCurrentStage();
+        }
+
+        public void MarkRunEnded()
+        {
+            _runComplete = true;
+            _exitReady = false;
         }
 
         private int ResolveBlockIndex(Vector3 worldPosition)
@@ -907,6 +975,9 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
         {
             if (stageMap == null || runState == null)
                 return;
+            var flow = RogueliteGameFlowController.Instance;
+            if (flow != null && !flow.IsRunning)
+                return;
 
             var style = new GUIStyle(GUI.skin.box)
             {
@@ -930,11 +1001,16 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                 var delta = player.position - _exitMarker.transform.position;
                 delta.y = 0f;
                 if (delta.sqrMagnitude <= 2.1f * 2.1f)
-                    GUI.Box(new Rect(Screen.width * 0.5f - 155f, Screen.height - 82f, 310f, 44f), "按 E 进入下一关");
+                    GUI.Box(new Rect(Screen.width * 0.5f - 155f, Screen.height - 82f, 310f, 44f), "按 E 继续深入下一阶段");
             }
 
-            if (_runComplete)
-                GUI.Box(new Rect(Screen.width * 0.5f - 190f, 80f, 380f, 58f), "最终首领已击败 · 本次 Run 完成");
+            if (_extractionMarker != null && player != null)
+            {
+                var extractionDelta = player.position - _extractionMarker.transform.position;
+                extractionDelta.y = 0f;
+                if (extractionDelta.sqrMagnitude <= 2.35f * 2.35f)
+                    GUI.Box(new Rect(Screen.width * 0.5f - 155f, Screen.height - 132f, 310f, 44f), "撤离点 · 按 E 打开撤离决策");
+            }
         }
     }
 }

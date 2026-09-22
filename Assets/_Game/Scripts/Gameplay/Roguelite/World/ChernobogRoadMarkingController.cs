@@ -57,6 +57,11 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             if (stageMap == null)
                 return;
 
+            // Production quadrant lane markings belong to CityStreets. The legacy center cross
+            // otherwise draws a second, floating white junction through every residential lot.
+            if (stageMap.Width == 2 && stageMap.Height == 2)
+                return;
+
             var stage = _context.StageRoot != null ? _context.StageRoot.gameObject : null;
             if (stage == null || stage == _preparedStage)
                 return;

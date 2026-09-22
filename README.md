@@ -26,7 +26,14 @@ The current prototype uses a low-oblique orthographic 2.5D presentation with a t
 - K / Shift: dash
 - L: Ch'en Skill 1
 - I / Right Mouse: Ch'en Skill 2
-- E: enter the next stage after defeating the stage Boss
+- E: extract the unsecured haul and enter the next stage after defeating the stage Boss
+- F: open the nearby container window; its entries unseal one at a time while you stand still
+- 1 / 2 / 3 / 4: pick up the identified entry in that slot
+- T: take every identified entry that still fits
+- B: open the field pack (unsecured haul + collectible archive)
+- Tab: switch between the unsecured and archive tabs while the pack is open
+- X: drop the most recently picked up entry while the unsecured tab is open
+- Esc: close the container window or the field pack
 
 ## Run structure
 
@@ -35,9 +42,9 @@ The current Phase 07 exploration flow generates the physical stage at runtime:
 ```text
 Stage 1: 2x2 = 4 blocks
     -> fixed Boss endpoint
-Stage 2: 3x2 = 6 blocks
+Stage 2: 2x2 = 4 blocks
     -> fixed Boss endpoint
-Stage 3: 3x3 = 9 blocks
+Stage 3: 2x2 = 4 blocks
     -> final Boss
 ```
 
@@ -46,6 +53,14 @@ Start is fixed at the bottom-left and Boss/exit at the top-right. Intermediate b
 Entering a block for the first time activates its content. Enemies persist if the player leaves, so encounters can spill across block boundaries. Treasure can also be rolled inside combat blocks.
 
 The shop block currently has a physical safe-plaza location only. Purchase items and refresh UI are intentionally deferred until exploration pacing is validated.
+
+## City exploration update (2026-09-20)
+
+Each district is now 36 × 30 units. Foreground houses have walk-in interiors with actor-aware roof/wall fading. Nine searchable containers per stage draw from 22 Arknights-named collectibles adapted for this ACT. A four-slot unsecured bag is settled at stage exits; death loses the unsecured haul. Class-specific and future effects are explicitly labeled, and new entries can be added in `Assets/_Game/Resources/ScavengingCatalog.json`.
+
+Search is a two-step loop modelled on extraction shooters. Pressing F beside a container opens a search window whose entries are unsealed one at a time by a circular sweep; each identified entry pops its placeholder out of the case and has to be picked up deliberately. Container flavour sets the entry count (residential/service/commercial 3, industrial/checkpoint 4), standing still is required, and moving or taking damage aborts the pass while keeping everything already identified. The unsecured bag and the collectible archive now live behind B instead of a permanent on-screen strip.
+
+See [the search window handoff](Docs/SCAVENGING_SEARCH_UI_HANDOFF_2026_09_20.md) for this iteration, and [the city exploration handoff](Docs/CITY_EXPLORATION_HANDOFF_2026_09_20.md) for the district architecture, extension interfaces, validation and remaining playtest work.
 
 ## Progression
 
@@ -70,6 +85,13 @@ The legacy `PrototypeRoomLoopController` remains in the repository as a fallback
 ## Validation
 
 Repository changes are source/static edits until tested in a local Unity Editor. Rebuild the prototype scene after pulling changes that modify editor factories, generated scene composition or PRTS presentation setup.
+
+Two ways to run the exploration smoke test:
+
+- `ArknightsACT > Validate City Exploration` — interactive, for when an Editor already holds the project. Runs against the currently open `PrototypeRun.unity`, exits Play Mode when done, and reports to the Console and `Logs/CityExploration/result.txt`.
+- `-executeMethod ArknightsACT.Editor.CityExplorationValidation.Run` — batch, opens the scene itself and exits the process.
+
+While a Unity Editor already holds the project lock, a batch Unity run cannot start at all. Use `Tools/compile_check.py` for a source-level check first: it reuses the response files Unity wrote under `Library/Bee/artifacts/` (same references and defines) and rebuilds `Game.Gameplay` and `Game.Editor` with Unity's bundled Roslyn, so new files are compiled before the editor refreshes.
 
 ## Extracted effect workflow
 

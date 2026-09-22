@@ -12,7 +12,6 @@ namespace ArknightsACT.Editor.PRTS
     /// </summary>
     internal static class PrtsTextureQualityUtility
     {
-        [MenuItem("ArknightsACT/Assets/PRTS/2.5 Apply High Quality Texture Settings")]
         public static void ApplyToPrototypePack()
         {
             var changed = ApplyToPack(PrtsPrototypeAssetCatalog.GetFullPrototypePack());

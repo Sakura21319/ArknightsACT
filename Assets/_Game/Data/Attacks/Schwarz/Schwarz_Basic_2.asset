@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 671a8b5d1cb99e94b93e09b5ed78136e, type: 3}
+  m_Name: Schwarz_Basic_2
+  m_EditorClassIdentifier: 
+  startup: 0.22
+  active: 0.02
+  recovery: 0.31
+  damageMultiplier: 1.1
+  hitboxOffset: {x: 6, y: 0.04}
+  hitboxSize: {x: 11.5, y: 0.64}
+  knockback: {x: 0, y: 0}
+  dashCancelNormalizedTime: 0.44
+  hitStopSeconds: 0.02
+  cameraShakeAmplitude: 0.04

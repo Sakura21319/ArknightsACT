@@ -16,7 +16,6 @@ namespace ArknightsACT.Editor.PRTS
     /// </summary>
     internal static class PrtsEnvironmentReferenceDownloader
     {
-        [MenuItem("ArknightsACT/Assets/PRTS/Download Chernobog Environment References")]
         private static async void DownloadChernobogReferences()
         {
             var success = new List<string>();

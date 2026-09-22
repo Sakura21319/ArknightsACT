@@ -3,6 +3,7 @@ using UnityEngine;
 
 namespace ArknightsACT.Gameplay.Roguelite
 {
+    public enum OperatorProfession { Unspecified, Vanguard, Guard, Defender, Sniper, Caster, Supporter, Medic, Specialist }
     [Flags]
     public enum CombatFeature
     {
@@ -22,6 +23,9 @@ namespace ArknightsACT.Gameplay.Roguelite
     public sealed class PlayerCombatProfile : MonoBehaviour
     {
         [SerializeField] private CombatFeature features = CombatFeature.BasicAttack | CombatFeature.ActiveSkills;
+        [SerializeField] private OperatorProfession profession;
+        public OperatorProfession Profession => profession;
+        public void SetProfession(OperatorProfession value) => profession = value;
 
         public CombatFeature Features => features;
 

@@ -1,0 +1,1475 @@
+{
+  "source": "PRTS Special:Redirect/file/收藏品_<IS1原编号>.png",
+  "generated_at": "2026-09-21 10:32:04",
+  "requested": 183,
+  "cached_before": 182,
+  "downloaded": 0,
+  "failed": 1,
+  "items": [
+    {
+      "is1_order_id": 1,
+      "name": "乌萨斯列巴",
+      "relic_id": "rogue_1_relic_a35",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_001.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 2,
+      "name": "脱水仙人掌干",
+      "relic_id": "relic_2",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_002.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 3,
+      "name": "风干大蕉果",
+      "relic_id": "relic_3",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_003.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 4,
+      "name": "商队盒饭",
+      "relic_id": "relic_4",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_004.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 5,
+      "name": "半盒沙虫罐头",
+      "relic_id": "relic_5",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_005.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 6,
+      "name": "维多利亚军粮",
+      "relic_id": "relic_6",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_006.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 7,
+      "name": "废旧地图",
+      "relic_id": "relic_7",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_007.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 8,
+      "name": "单筒望远镜",
+      "relic_id": "relic_8",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_008.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 9,
+      "name": "全息粉粉沙盒",
+      "relic_id": "relic_9",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_009.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 10,
+      "name": "单人睡袋",
+      "relic_id": "relic_10",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_010.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 11,
+      "name": "破烂帐篷",
+      "relic_id": "relic_11",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_011.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 12,
+      "name": "萨米大“蜡烛”",
+      "relic_id": "relic_12",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_012.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 13,
+      "name": "兔子棚屋",
+      "relic_id": "relic_13",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_013.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 14,
+      "name": "噪音引擎",
+      "relic_id": "relic_14",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_014.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 15,
+      "name": "豌豆花盆",
+      "relic_id": "relic_15",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_015.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 16,
+      "name": "综合园艺成果",
+      "relic_id": "relic_16",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_016.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 17,
+      "name": "炭化烤肉棒",
+      "relic_id": "relic_17",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_017.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 18,
+      "name": "压缩糖砖",
+      "relic_id": "relic_18",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_018.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 19,
+      "name": "易爆建材箱",
+      "relic_id": "relic_19",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_019.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 20,
+      "name": "珠宝水果拼盘",
+      "relic_id": "relic_20",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_020.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 21,
+      "name": "赤金的远征",
+      "relic_id": "rogue_6_relic_legacy_44",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_021.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 22,
+      "name": "古旧钱币",
+      "relic_id": "rogue_5_relic_legacy_110",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_022.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 23,
+      "name": "恐魔金像",
+      "relic_id": "relic_23",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_023.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 24,
+      "name": "血钻",
+      "relic_id": "relic_24",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_024.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 25,
+      "name": "小财神雕像",
+      "relic_id": "relic_25",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_025.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 26,
+      "name": "“嘎呜”挂饰",
+      "relic_id": "relic_26",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_026.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 27,
+      "name": "米格鲁的饼干",
+      "relic_id": "relic_27",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_027.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 28,
+      "name": "一杯红茶",
+      "relic_id": "relic_28",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_028.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 29,
+      "name": "古旧铸物",
+      "relic_id": "rogue_5_relic_legacy_11",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_029.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 30,
+      "name": "地区行动方案",
+      "relic_id": "rogue_3_relic_legacy_54",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_030.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 31,
+      "name": "全局作战文件",
+      "relic_id": "rogue_3_relic_legacy_55",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_031.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 32,
+      "name": "人事部密信",
+      "relic_id": "rogue_4_relic_legacy_187",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_032.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 33,
+      "name": "一份演讲稿",
+      "relic_id": "rogue_3_relic_legacy_57",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_033.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 34,
+      "name": "突击协议扩充",
+      "relic_id": "rogue_1_relic_r37",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_034.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 35,
+      "name": "突击协议增援",
+      "relic_id": "rogue_1_relic_r38",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_035.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 36,
+      "name": "堡垒协议扩充",
+      "relic_id": "rogue_1_relic_r39",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_036.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 37,
+      "name": "堡垒协议增援",
+      "relic_id": "rogue_1_relic_r40",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_037.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 38,
+      "name": "远程协议扩充",
+      "relic_id": "rogue_1_relic_r41",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_038.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 39,
+      "name": "远程协议增援",
+      "relic_id": "rogue_1_relic_r42",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_039.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 40,
+      "name": "破坏协议扩充",
+      "relic_id": "rogue_1_relic_r43",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_040.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 41,
+      "name": "破坏协议增援",
+      "relic_id": "rogue_1_relic_r44",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_041.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 42,
+      "name": "熏黑的信号灯",
+      "relic_id": "relic_42",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_042.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 43,
+      "name": "老式电报机",
+      "relic_id": "relic_43",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_043.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 44,
+      "name": "无线通讯器",
+      "relic_id": "relic_44",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_044.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 45,
+      "name": "幸运硬币",
+      "relic_id": "rogue_4_relic_legacy_176",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_045.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 46,
+      "name": "手绘雪雉传单",
+      "relic_id": "relic_46",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_046.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 47,
+      "name": "真理的书单",
+      "relic_id": "relic_47",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_047.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 48,
+      "name": "教官的爱鞭",
+      "relic_id": "relic_48",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_048.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 49,
+      "name": "咪波·运输型",
+      "relic_id": "relic_49",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_049.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 50,
+      "name": "萨卡兹监工哨子",
+      "relic_id": "relic_50",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_050.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 51,
+      "name": "忧伤的驮兽",
+      "relic_id": "relic_51",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_051.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 52,
+      "name": "奇怪的$墨镜",
+      "relic_id": "relic_52",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_052.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 53,
+      "name": "破片地雷",
+      "relic_id": "relic_53",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_053.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 54,
+      "name": "《防身手册》",
+      "relic_id": "relic_54",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_054.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 55,
+      "name": "芙蓉的健康餐",
+      "relic_id": "relic_55",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_055.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 56,
+      "name": "牧兽的排泄物",
+      "relic_id": "relic_56",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_056.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 57,
+      "name": "奇渊面具",
+      "relic_id": "rogue_4_relic_legacy_60",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_057.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 58,
+      "name": "教母的信物",
+      "relic_id": "rogue_5_relic_return_12",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_058.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 59,
+      "name": "锉刀",
+      "relic_id": "relic_59",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_059.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 60,
+      "name": "废铁陷阱",
+      "relic_id": "relic_60",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_060.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 61,
+      "name": "酸液源石虫",
+      "relic_id": "relic_61",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_061.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 62,
+      "name": "迷迭香之拥",
+      "relic_id": "rogue_6_relic_legacy_86",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_062.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 63,
+      "name": "无名诗集",
+      "relic_id": "relic_63",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_063.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 64,
+      "name": "劣化组织",
+      "relic_id": "relic_64",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_064.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 65,
+      "name": "“黑夜呢喃”",
+      "relic_id": "rogue_6_relic_legacy_87",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_065.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 66,
+      "name": "《大静谧》",
+      "relic_id": "rogue_6_relic_legacy_88",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_066.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 67,
+      "name": "小号黄色安全帽",
+      "relic_id": "relic_67",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_067.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 68,
+      "name": "战壕沙袋",
+      "relic_id": "relic_68",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_068.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 69,
+      "name": "防割断纤维背心",
+      "relic_id": "relic_69",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_069.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 70,
+      "name": "古旧的蒸汽甲胄",
+      "relic_id": "rogue_6_relic_legacy_14",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_070.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 71,
+      "name": "《打架手册》",
+      "relic_id": "relic_71",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_071.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 72,
+      "name": "《独臂电锯》",
+      "relic_id": "relic_72",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_072.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 73,
+      "name": "齿轮式外骨骼",
+      "relic_id": "relic_73",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_073.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 74,
+      "name": "锈蚀银枪",
+      "relic_id": "relic_74",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_074.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 75,
+      "name": "液压气瓶",
+      "relic_id": "relic_75",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_075.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 76,
+      "name": "超弹力合金弹簧",
+      "relic_id": "relic_76",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_076.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 77,
+      "name": "损坏的左轮弹巢",
+      "relic_id": "rogue_6_relic_legacy_20",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_077.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 78,
+      "name": "显圣吊坠",
+      "relic_id": "rogue_6_relic_legacy_18",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_078.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 79,
+      "name": "难闻的治疗粉",
+      "relic_id": "relic_79",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_079.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 80,
+      "name": "难闻的止血剂",
+      "relic_id": "rogue_5_relic_legacy_92",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_080.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 81,
+      "name": "急救药箱",
+      "relic_id": "rogue_6_relic_legacy_89",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_081.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 82,
+      "name": "白垩色治疗针",
+      "relic_id": "relic_82",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_082.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 83,
+      "name": "便宜食用盐",
+      "relic_id": "relic_83",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_083.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 84,
+      "name": "辅助麻痹工具",
+      "relic_id": "relic_84",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_084.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 85,
+      "name": "血腥链锯",
+      "relic_id": "relic_85",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_085.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 86,
+      "name": "另一颗铆钉",
+      "relic_id": "relic_86",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_086.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 87,
+      "name": "活性粉尘",
+      "relic_id": "relic_87",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_087.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 88,
+      "name": "源石射灯",
+      "relic_id": "relic_88",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_088.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 89,
+      "name": "源石环境发生器",
+      "relic_id": "relic_89",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_089.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 90,
+      "name": "无主的萨克斯",
+      "relic_id": "relic_90",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_090.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 91,
+      "name": "“文明的存续”",
+      "relic_id": "rogue_6_relic_legacy_11",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_091.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 92,
+      "name": "手工小包",
+      "relic_id": "relic_92",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_092.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 93,
+      "name": "*一点*加班费",
+      "relic_id": "relic_93",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_093.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 94,
+      "name": "可露希尔的怜悯",
+      "relic_id": "relic_94",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_094.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 95,
+      "name": "“日光灯”",
+      "relic_id": "relic_95",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_095.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 96,
+      "name": "香草沙士汽水",
+      "relic_id": "rogue_6_relic_legacy_2",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_096.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 97,
+      "name": "丰蹄能量饮料",
+      "relic_id": "relic_97",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_097.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 98,
+      "name": "辣椒老妈",
+      "relic_id": "relic_98",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_098.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 99,
+      "name": "脑力药片",
+      "relic_id": "relic_99",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_099.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 100,
+      "name": "荒地龙舌兰",
+      "relic_id": "rogue_1_relic_q18",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_100.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 101,
+      "name": "摩根队长佳酿",
+      "relic_id": "rogue_6_relic_legacy_95",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_101.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 102,
+      "name": "生命之水",
+      "relic_id": "rogue_6_relic_legacy_96",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_102.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 103,
+      "name": "皇家利口酒",
+      "relic_id": "rogue_6_relic_legacy_97",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_103.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 104,
+      "name": "钝爪-突破",
+      "relic_id": "rogue_5_relic_legacy_98",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_104.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 105,
+      "name": "钝爪-典训",
+      "relic_id": "rogue_5_relic_legacy_1",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_105.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 106,
+      "name": "钝爪-爆发",
+      "relic_id": "rogue_5_relic_legacy_55",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_106.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 107,
+      "name": "钝爪-熟稔",
+      "relic_id": "rogue_5_relic_legacy_54",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_107.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 108,
+      "name": "钝爪-振奋",
+      "relic_id": "rogue_1_relic_p04",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_108.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 109,
+      "name": "钝爪-百战",
+      "relic_id": "rogue_6_relic_legacy_65",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_109.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 110,
+      "name": "折戟-突破",
+      "relic_id": "rogue_5_relic_legacy_100",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_110.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 111,
+      "name": "折戟-典训",
+      "relic_id": "rogue_5_relic_legacy_2",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_111.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 112,
+      "name": "折戟-锋刃",
+      "relic_id": "rogue_6_relic_legacy_66",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_112.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 113,
+      "name": "折戟-浴血",
+      "relic_id": "rogue_6_relic_legacy_67",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_113.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 114,
+      "name": "折戟-一夫当关",
+      "relic_id": "rogue_2_relic_fight_54",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_114.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 115,
+      "name": "折戟-破釜沉舟",
+      "relic_id": "rogue_5_relic_legacy_58",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_115.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 116,
+      "name": "铁卫-突破",
+      "relic_id": "rogue_5_relic_legacy_99",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_116.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 117,
+      "name": "铁卫-典训",
+      "relic_id": "rogue_5_relic_legacy_3",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_117.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 118,
+      "name": "铁卫-侵掠",
+      "relic_id": "rogue_6_relic_legacy_68",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_118.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 119,
+      "name": "铁卫-不动",
+      "relic_id": "rogue_1_relic_p13",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_119.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 120,
+      "name": "铁卫-推进",
+      "relic_id": "rogue_5_relic_return_22",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_120.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 121,
+      "name": "铁卫-无锋",
+      "relic_id": "rogue_5_relic_legacy_101",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_121.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 122,
+      "name": "残弩-突破",
+      "relic_id": "rogue_6_relic_legacy_70",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_122.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 123,
+      "name": "残弩-百步穿杨",
+      "relic_id": "rogue_5_relic_legacy_61",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_123.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 124,
+      "name": "残弩-典训",
+      "relic_id": "rogue_5_relic_legacy_4",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_124.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 125,
+      "name": "残弩-战场依存",
+      "relic_id": "rogue_1_relic_p18",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_125.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 126,
+      "name": "残弩-交叉火力",
+      "relic_id": "rogue_5_relic_legacy_108",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_126.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 127,
+      "name": "残弩-神速",
+      "relic_id": "rogue_6_relic_legacy_71",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_127.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 128,
+      "name": "断杖-突破",
+      "relic_id": "rogue_6_relic_legacy_72",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_128.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 129,
+      "name": "断杖-典训",
+      "relic_id": "rogue_5_relic_legacy_5",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_129.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 130,
+      "name": "断杖-织法者",
+      "relic_id": "rogue_5_relic_legacy_63",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_130.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 131,
+      "name": "断杖-咏唱",
+      "relic_id": "rogue_1_relic_p23",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_131.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 132,
+      "name": "断杖-凝神",
+      "relic_id": "rogue_5_relic_legacy_64",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_132.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 133,
+      "name": "断杖-苦难巫咒",
+      "relic_id": "rogue_5_relic_legacy_109",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_133.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 134,
+      "name": "支柱-突破",
+      "relic_id": "rogue_6_relic_legacy_78",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_134.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 135,
+      "name": "支柱-典训",
+      "relic_id": "rogue_5_relic_legacy_6",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_135.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 136,
+      "name": "支柱-次要战场",
+      "relic_id": "rogue_1_relic_p27",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_136.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 137,
+      "name": "支柱-勤奋",
+      "relic_id": "rogue_6_relic_legacy_80",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_137.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 138,
+      "name": "支柱-破兵",
+      "relic_id": "rogue_1_relic_p29",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_138.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 139,
+      "name": "支柱-枯法",
+      "relic_id": "rogue_5_relic_legacy_96",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_139.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 140,
+      "name": "医者-突破",
+      "relic_id": "rogue_5_relic_legacy_106",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_140.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 141,
+      "name": "医者-典训",
+      "relic_id": "rogue_5_relic_legacy_7",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_141.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 142,
+      "name": "医者-自医",
+      "relic_id": "rogue_6_relic_legacy_74",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_142.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 143,
+      "name": "医者-强效试剂",
+      "relic_id": "rogue_1_relic_p33",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_143.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 144,
+      "name": "医者-妙手",
+      "relic_id": "rogue_6_relic_legacy_75",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_144.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 145,
+      "name": "医者-理智固剂",
+      "relic_id": "rogue_1_relic_p35",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_145.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 146,
+      "name": "锈刃-突破",
+      "relic_id": "rogue_6_relic_legacy_76",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_146.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 147,
+      "name": "锈刃-典训",
+      "relic_id": "rogue_5_relic_legacy_8",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_147.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 148,
+      "name": "锈刃-处决",
+      "relic_id": "rogue_1_relic_p37",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_148.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 149,
+      "name": "锈刃-单兵",
+      "relic_id": "rogue_2_relic_fight_78",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_149.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 150,
+      "name": "锈刃-无人之境",
+      "relic_id": "rogue_1_relic_p39",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_150.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 151,
+      "name": "锈刃-神力",
+      "relic_id": "rogue_2_relic_fight_80",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_151.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 152,
+      "name": "突击协议-利刃",
+      "relic_id": "rogue_4_relic_legacy_1",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_152.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 153,
+      "name": "突击协议-散兵",
+      "relic_id": "rogue_4_relic_legacy_2",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_153.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 154,
+      "name": "堡垒协议-方阵",
+      "relic_id": "rogue_4_relic_legacy_3",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_154.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 155,
+      "name": "堡垒协议-固守",
+      "relic_id": "rogue_4_relic_legacy_4",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_155.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 156,
+      "name": "远程协议-遥击",
+      "relic_id": "rogue_4_relic_legacy_5",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_156.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 157,
+      "name": "远程协议-克敌",
+      "relic_id": "rogue_4_relic_legacy_6",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_157.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 158,
+      "name": "破坏协议-消除",
+      "relic_id": "rogue_4_relic_legacy_7",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_158.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 159,
+      "name": "破坏协议-压制",
+      "relic_id": "rogue_4_relic_legacy_8",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_159.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 160,
+      "name": "迷幻的藏宝图",
+      "relic_id": "relic_160",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_160.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 161,
+      "name": "染血的传单",
+      "relic_id": "relic_161",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_161.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 162,
+      "name": "辉煌工匠包",
+      "relic_id": "relic_162",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_162.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 163,
+      "name": "Logos的骨笔",
+      "relic_id": "relic_163",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_163.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 164,
+      "name": "无限续杯瓶",
+      "relic_id": "relic_164",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_164.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 165,
+      "name": "左半边椰子壳",
+      "relic_id": "relic_165",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_165.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 166,
+      "name": "右半边椰子壳",
+      "relic_id": "relic_166",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_166.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 167,
+      "name": "倒转的怀表",
+      "relic_id": "relic_167",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_167.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 168,
+      "name": "“手铳”",
+      "relic_id": "relic_168",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_168.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 169,
+      "name": "沉重的铁皮箱",
+      "relic_id": "relic_169",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_169.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 170,
+      "name": "漆黑的钥匙",
+      "relic_id": "relic_170",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_170.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 171,
+      "name": "鸟卜探索仪",
+      "relic_id": "relic_171",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_171.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 172,
+      "name": "超高级沙发",
+      "relic_id": "relic_172",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_172.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 173,
+      "name": "立体投影仪",
+      "relic_id": "relic_173",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_173.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 174,
+      "name": "一台旧冰箱",
+      "relic_id": "relic_174",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_174.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 175,
+      "name": "个人避难所",
+      "relic_id": "relic_175",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_175.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 176,
+      "name": "虚空发生器",
+      "relic_id": "relic_176",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_176.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 177,
+      "name": "热水壶",
+      "relic_id": "rogue_6_relic_legacy_1",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_177.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 178,
+      "name": "“坏家伙”来了！",
+      "relic_id": "relic_178",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_178.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 179,
+      "name": "鬼血",
+      "relic_id": "relic_179",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_179.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 180,
+      "name": "冰封的异爪",
+      "relic_id": "relic_180",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_180.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 181,
+      "name": "巫王旋角",
+      "relic_id": "relic_181",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_181.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 182,
+      "name": "浅海轻唱",
+      "relic_id": "relic_182",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_182.png",
+      "source": "local-cache",
+      "ok": true
+    },
+    {
+      "is1_order_id": 999,
+      "name": "集群分队",
+      "relic_id": "relic_b2",
+      "path": "Assets/_Game/Resources/RogueRelics/Icons/legacy_roguelike/is1_order_999.png",
+      "source": "https://prts.wiki/index.php?title=Special%3ARedirect%2Ffile%2F%E6%94%B6%E8%97%8F%E5%93%81_999.png",
+      "ok": false,
+      "error": "download failed: HTTP Error 404: Not Found"
+    }
+  ]
+}

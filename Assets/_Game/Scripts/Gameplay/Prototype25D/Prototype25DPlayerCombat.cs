@@ -1,4 +1,5 @@
 using ArknightsACT.Combat;
+using ArknightsACT.Gameplay.Input;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -29,6 +30,11 @@ namespace ArknightsACT.Gameplay.Prototype25D
         {
             if (_entity == null || _entity.Health == null || _entity.Health.IsDead)
                 return;
+            if (GameplayInputBlocker.IsBlocked)
+            {
+                IsAttacking = false;
+                return;
+            }
 
             var keyboard = Keyboard.current;
             var mouse = Mouse.current;
