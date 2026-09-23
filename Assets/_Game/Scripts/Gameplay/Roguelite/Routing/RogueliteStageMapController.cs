@@ -43,6 +43,8 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
         public bool HasNormalChest => hasNormalChest;
         public bool HasSpikeChest => hasSpikeChest;
         public bool HasMonsterChest => hasMonsterChest;
+        public CityZone Zone { get; private set; }
+        public void SetZone(CityZone zone) => Zone = zone;
 
         public RogueliteBlockState(
             int blockIndex,
@@ -73,10 +75,8 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
     }
 
     /// <summary>
-    /// Logical city-scale stage map. Every stage keeps the same 2x2 district skeleton; progression
-    /// changes the encounter pressure and dressing, while the physical block footprint is large
-    /// enough for recognizable roads, lots and usable buildings. Start is bottom-left and Boss/exit
-    /// is top-right so the four quadrants remain easy to read.
+    /// Seeded mobile-city sectors with continuous cardinal roads and return loops.
+    /// Start and boss occupy opposite corners; the old four-block layout is opt-in.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class RogueliteStageMapController : MonoBehaviour
@@ -84,6 +84,10 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
         [SerializeField] private RogueliteRunState runState;
         [SerializeField] private bool useRandomSeed = true;
         [SerializeField] private int fixedSeed = 21319;
+        [Header("Mobile-city sector dimensions (2-6 blocks per axis)")]
+        [SerializeField] private Vector2Int outskirtsSize = new(4, 3);
+        [SerializeField] private Vector2Int innerCitySize = new(4, 4);
+        [SerializeField] private Vector2Int coreSize = new(5, 4);
         [SerializeField, Range(0f, 1f)] private float baseShopChance = 0.45f;
         [SerializeField, Range(0f, 1f)] private float normalChestChance = 0.34f;
         [SerializeField, Range(0f, 1f)] private float spikeChestChance = 0.14f;
@@ -91,6 +95,22 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
         private readonly List<RogueliteBlockState> _blocks = new(16);
         private System.Random _random;
+        [SerializeField] private bool useLegacyFourBlocks;
+        public bool UsesCityLots => !useLegacyFourBlocks;
+        public int GenerationSeed { get; private set; }
+        /// <summary>Replay a base seed; each stage adds its own deterministic salt.</summary>
+        public void GenerateStageWithSeed(int stage, int seed)
+        {
+            useRandomSeed = false;
+            fixedSeed = seed;
+            GenerateStage(stage);
+        }
+
+        [ContextMenu("Regenerate Current Stage (Play Mode)")]
+        private void RegenerateCurrentStage()
+        {
+            if (Application.isPlaying) GenerateStage(StageIndex);
+        }
 
         public IReadOnlyList<RogueliteBlockState> Blocks => _blocks;
         public int StageIndex { get; private set; } = 1;
@@ -120,10 +140,10 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             Width = width;
             Height = height;
 
-            var seed = useRandomSeed
+            GenerationSeed = useRandomSeed
                 ? unchecked(Environment.TickCount * 397 ^ GetHashCode() ^ StageIndex * 7919)
-                : fixedSeed + StageIndex * 7919;
-            _random = new System.Random(seed);
+                : unchecked(fixedSeed + StageIndex * 7919);
+            _random = new System.Random(GenerationSeed);
 
             _blocks.Clear();
             var count = Width * Height;
@@ -146,6 +166,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             AssignSpecialCombatBlocks();
             AssignChunkThemes();
             RollTreasureContents();
+            foreach (var block in _blocks) block.SetZone(CityZoneRules.Resolve(block.Coordinate, Width, Height));
             LayoutGenerated?.Invoke(StageIndex);
             Debug.Log(BuildDebugSummary(), this);
         }
@@ -210,8 +231,14 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             var shopChance = Mathf.Clamp01(baseShopChance + (StageIndex - 1) * 0.15f);
             if (_random.NextDouble() < shopChance && candidates.Count > 0)
             {
-                var shop = RemoveRandom(candidates);
-                ReplaceBlock(shop, RogueliteBlockType.Shop, RogueliteChunkTheme.SafePlaza);
+                var shopCandidates = new List<int>();
+                foreach (var index in candidates)
+                    if (CityZoneRules.Resolve(_blocks[index].Coordinate, Width, Height) != CityZone.Core) shopCandidates.Add(index);
+                if (shopCandidates.Count > 0)
+                {
+                    var shop = RemoveRandom(shopCandidates); candidates.Remove(shop);
+                    ReplaceBlock(shop, RogueliteBlockType.Shop, RogueliteChunkTheme.SafePlaza);
+                }
             }
 
             var emergencyCount = StageIndex switch
@@ -338,7 +365,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
         {
             var lines = new List<string>
             {
-                $"[ArknightsACT/StageMap] Stage {StageIndex}: {Width}x{Height} = {_blocks.Count} blocks"
+                $"[ArknightsACT/StageMap] Stage {StageIndex}, seed {GenerationSeed}: {Width}x{Height} = {_blocks.Count} blocks"
             };
             for (var y = Height - 1; y >= 0; y--)
             {
@@ -371,10 +398,11 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             return string.Join("\n", lines);
         }
 
-        private static void ResolveDimensions(int stageIndex, out int width, out int height)
+        private void ResolveDimensions(int stageIndex, out int width, out int height)
         {
-            width = 2;
-            height = 2;
+            var size = stageIndex == 1 ? outskirtsSize : stageIndex == 2 ? innerCitySize : coreSize;
+            width = useLegacyFourBlocks ? 2 : Mathf.Clamp(size.x, 2, 6);
+            height = useLegacyFourBlocks ? 2 : Mathf.Clamp(size.y, 2, 6);
         }
     }
 }

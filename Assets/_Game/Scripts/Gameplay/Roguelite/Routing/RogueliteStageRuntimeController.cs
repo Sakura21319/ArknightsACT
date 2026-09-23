@@ -14,14 +14,14 @@ using UnityEngine.InputSystem;
 namespace ArknightsACT.Gameplay.Roguelite.Routing
 {
     /// <summary>
-    /// Runtime assembler for the exploration prototype. Scheme 1 keeps a 2x2 logical town and
+    /// Runtime assembler for the exploration prototype. A seeded sector grid
     /// materializes large, connected blocks, activates encounters when cells are first entered,
     /// and keeps all rewards/progression on the same run state.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class RogueliteStageRuntimeController : MonoBehaviour
     {
-        // Scheme 1 keeps four logical blocks but gives every block a readable town footprint.
+        // Keep physical blocks shared by collision, roads, navigation and city presentation.
         private const float ChunkWidth = RogueliteStageWorldMetrics.ChunkWidth;
         private const float ChunkDepth = RogueliteStageWorldMetrics.ChunkDepth;
         private const float CoverHeight = 0.82f;
@@ -53,6 +53,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
         private int _currentBlockIndex = -1;
         private bool _exitReady;
         private bool _runComplete;
+        private bool _playerContextSubscribed;
         private Vector3 _gridOrigin;
 
         private sealed class BlockRuntime
@@ -75,6 +76,9 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             public int North;
         }
 
+        public Transform PlayerTransform => PlayerRuntimeContext.Resolve(player);
+        public Transform ExtractionTransform => _extractionMarker != null ? _extractionMarker.transform : null;
+        public Transform NextStageTransform => _exitMarker != null ? _exitMarker.transform : null;
         public Transform CurrentStageRoot => _stageRoot != null ? _stageRoot.transform : null;
 
         public void Configure(
@@ -136,10 +140,13 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             if (stageMap.Blocks == null || stageMap.Blocks.Count == 0)
                 stageMap.GenerateStage(runState.StageIndex);
             BuildCurrentStage();
+            var minimap = GetComponent<RogueliteMinimapController>() ?? gameObject.AddComponent<RogueliteMinimapController>();
+            minimap.Configure(stageMap, this);
         }
 
         private void Update()
         {
+            ResolveReferences();
             if (_runComplete || player == null || stageMap == null)
                 return;
             if (GameplayPauseService.Instance != null && GameplayPauseService.Instance.IsPaused)
@@ -162,6 +169,12 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
         private void ResolveReferences()
         {
+            if (!_playerContextSubscribed && PlayerRuntimeContext.Instance != null)
+            {
+                PlayerRuntimeContext.Instance.ActivePlayerChanged += OnActivePlayerChanged;
+                _playerContextSubscribed = true;
+            }
+
             if (_context != null)
             {
                 runState ??= _context.RunState;
@@ -169,7 +182,12 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             }
 
             runState ??= RogueliteRunState.Instance;
-            if (player == null)
+            var activePlayer = PlayerRuntimeContext.Resolve(player);
+            if (activePlayer != null)
+            {
+                player = activePlayer;
+            }
+            else if (player == null)
             {
                 var entities = FindObjectsByType<CombatEntity>(FindObjectsSortMode.None);
                 for (var i = 0; i < entities.Length; i++)
@@ -179,6 +197,26 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                         player = entities[i].transform;
                         break;
                     }
+                }
+            }
+        }
+
+        private void OnActivePlayerChanged(Transform previousPlayer, Transform nextPlayer)
+        {
+            if (nextPlayer == null)
+                return;
+
+            player = nextPlayer;
+            for (var i = 0; i < _runtimeBlocks.Count; i++)
+            {
+                var runtime = _runtimeBlocks[i];
+                if (runtime == null)
+                    continue;
+                for (var e = 0; e < runtime.Enemies.Count; e++)
+                {
+                    var enemy = runtime.Enemies[e];
+                    if (enemy != null)
+                        IgnoreActorCollision(enemy.gameObject, player.gameObject);
                 }
             }
         }
@@ -272,7 +310,16 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             CreateBlock(root.transform, "Floor", new Vector3(0f, -0.14f, 0f), new Vector3(ChunkWidth, 0.28f, ChunkDepth), floorMaterial, true);
             CreateVisual(root.transform, "ChunkInset", new Vector3(0f, 0.012f, 0f), new Vector3(ChunkWidth - 0.24f, 0.024f, ChunkDepth - 0.24f), ResolveInsetMaterial(block));
 
-            switch (block.Theme)
+            if (stageMap.UsesCityLots)
+            {
+                if (block.Theme == RogueliteChunkTheme.Facility) BuildFacilityChunk(root.transform);
+                else if (block.Type == RogueliteBlockType.Boss) BuildBossArenaChunk(root.transform);
+                else if (block.Type == RogueliteBlockType.Shop) BuildSafePlazaChunk(root.transform, true);
+                // Street approaches belong to the lot plan. Cover sits beside, not in, those aisles.
+                CreateCover(root.transform, new Vector3(-6f, 0f, -5f), new Vector2(1.8f, 0.7f), 0f);
+                CreateCover(root.transform, new Vector3(6f, 0f, 5f), new Vector2(1.8f, 0.7f), 0f);
+            }
+            else switch (block.Theme)
             {
                 case RogueliteChunkTheme.Street:
                     BuildStreetChunk(root.transform);
@@ -344,13 +391,14 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
         private void BuildBossArenaChunk(Transform root)
         {
             CreateVisual(root, "ArenaPad", Vector3.zero, new Vector3(ChunkWidth - 0.60f, 0.035f, ChunkDepth - 0.60f), roadMaterial);
-            CreateCover(root, new Vector3(-10.2f, 0f, 7.6f), new Vector2(1.65f, 0.72f), 0f);
-            CreateCover(root, new Vector3(10.0f, 0f, -7.4f), new Vector2(1.65f, 0.72f), 0f);
+            if (!stageMap.UsesCityLots) CreateCover(root, new Vector3(-10.2f, 0f, 7.6f), new Vector2(1.65f, 0.72f), 0f);
+            if (!stageMap.UsesCityLots) CreateCover(root, new Vector3(10.0f, 0f, -7.4f), new Vector2(1.65f, 0.72f), 0f);
 
             _exitMarker = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             _exitMarker.name = "NextStageEntrance";
             _exitMarker.transform.SetParent(root, false);
-            _exitMarker.transform.localPosition = new Vector3(11.0f, 0.06f, 9.15f);
+            _exitMarker.transform.localPosition = stageMap.UsesCityLots
+                ? new Vector3(0f, 0.06f, 9.15f) : new Vector3(11.0f, 0.06f, 9.15f);
             _exitMarker.transform.localScale = new Vector3(1.15f, 0.06f, 1.15f);
             var collider = _exitMarker.GetComponent<Collider>();
             if (collider != null)
@@ -381,7 +429,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             parent.gameObject.AddComponent<EnterableBuilding25D>().Configure(new Vector3(2.15f, 1.5f, 1.45f), new Vector3(8.8f, 3.4f, 7.1f));
             parent.SetParent(root, false);
 
-            ArknightsACT.Gameplay.Roguelite.Treasure.SearchableContainer25D.Create(parent, new Vector3(4.3f, 0.18f, 3.8f), coverMaterial, facilityFloorMaterial);
+            ArknightsACT.Gameplay.Roguelite.Treasure.SearchableContainer25D.Create(parent, new Vector3(4.3f, 0.18f, 3.8f), coverMaterial, facilityFloorMaterial, stageMap.GenerationSeed, ArknightsACT.Gameplay.Roguelite.Treasure.SalvageContainerKind.EquipmentCrate);
             const float centerX = 2.15f;
             const float centerZ = 1.45f;
             const float width = 8.50f;
@@ -471,7 +519,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                     AddEdge(edges, rampTop, upper);
                 }
 
-                if (district == ChernobogDistrictType.Residential)
+                if (!stageMap.UsesCityLots && district == ChernobogDistrictType.Residential)
                 {
                     // Matches WalkInStreetTenement in PlayableArchitecture: the front doorway is
                     // north of the south-west lot, while the ramp returns to the main street spine.
@@ -485,7 +533,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                     AddEdge(edges, rampBase, rampTop);
                     AddEdge(edges, rampTop, upper);
                 }
-                else if (district == ChernobogDistrictType.Commercial)
+                else if (!stageMap.UsesCityLots && district == ChernobogDistrictType.Commercial)
                 {
                     // Matches the open-front commercial room at local (7, 0.9). The doorway and
                     // counter are both on the ground plane, so enemies can route through the room.
@@ -494,7 +542,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                     AddEdge(edges, nav.Center, entry);
                     AddEdge(edges, entry, interior);
                 }
-                else if (district == ChernobogDistrictType.Checkpoint)
+                else if (!stageMap.UsesCityLots && district == ChernobogDistrictType.Checkpoint)
                 {
                     var shelter = AddNavNode(nodes, center + new Vector3(5.90f, 0f, 2.25f));
                     AddEdge(edges, nav.Center, shelter);
@@ -643,10 +691,16 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
             var emergency = type == RogueliteBlockType.EmergencyCombat;
             var baseCount = 2 + stageMap.StageIndex;
-            var enemyCount = Mathf.Clamp(baseCount + (emergency ? 1 : 0), 3, 6);
-            var healthMultiplier = (1f + (stageMap.StageIndex - 1) * 0.22f) * (emergency ? 1.35f : 1f);
-            var experienceMultiplier = emergency ? 1.5f : 1f;
-            var offsets = ResolveSpawnOffsets(runtime.Data.Theme);
+            var enemyCount = Mathf.Clamp(baseCount + (emergency ? 1 : 0) + CityZoneRules.ExtraEnemies(runtime.Data.Zone), 3, 8);
+            var healthMultiplier = (1f + (stageMap.StageIndex - 1) * 0.22f) * (emergency ? 1.35f : 1f) * CityZoneRules.HealthMultiplier(runtime.Data.Zone);
+            var experienceMultiplier = (emergency ? 1.5f : 1f) * (runtime.Data.Zone == CityZone.Core ? 1.5f : 1f);
+            var offsets = stageMap.UsesCityLots ? new[]
+            {
+                new Vector3(-10f, 0.03f, 0f), new Vector3(0f, 0.03f, -8f),
+                new Vector3(10f, 0.03f, 0f), new Vector3(-5f, 0.03f, 0f),
+                new Vector3(0f, 0.03f, 8f), new Vector3(5f, 0.03f, 0f),
+                new Vector3(-14f, 0.03f, 0f), new Vector3(14f, 0.03f, 0f)
+            } : ResolveSpawnOffsets(runtime.Data.Theme);
 
             for (var i = 0; i < enemyCount; i++)
             {
@@ -878,6 +932,13 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                 RogueliteGameFlowController.Instance?.OpenExtractionDecision();
         }
 
+        private bool IsPlayerInteractionBlocked()
+        {
+            var active = PlayerRuntimeContext.Resolve(player);
+            var entity = active != null ? active.GetComponent<CombatEntity>() : null;
+            return entity != null && CombatActionUtility.IsBlocked(entity, CombatActionMask.Interaction);
+        }
+
         public void RestartRun()
         {
             ResolveReferences();
@@ -910,6 +971,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
         private void TeleportPlayer(Vector3 position)
         {
+            player = PlayerRuntimeContext.Resolve(player);
             if (player == null)
                 return;
             var controller = player.GetComponent<CharacterController>();
@@ -971,8 +1033,16 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                 renderer.sharedMaterial = material;
         }
 
+        private void OnDestroy()
+        {
+            if (_playerContextSubscribed && PlayerRuntimeContext.Instance != null)
+                PlayerRuntimeContext.Instance.ActivePlayerChanged -= OnActivePlayerChanged;
+            _playerContextSubscribed = false;
+        }
+
         private void OnGUI()
         {
+            player = PlayerRuntimeContext.Resolve(player);
             if (stageMap == null || runState == null)
                 return;
             var flow = RogueliteGameFlowController.Instance;
@@ -988,7 +1058,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             var blockText = _currentBlockIndex >= 0 && _currentBlockIndex < _runtimeBlocks.Count
                 ? $"区块 {_currentBlockIndex + 1}/{_runtimeBlocks.Count} · {_runtimeBlocks[_currentBlockIndex].Data.Type}"
                 : "区块外";
-            GUI.Box(new Rect(Screen.width - 285f, 18f, 265f, 58f), $"第 {stageMap.StageIndex}/3 关\n{blockText}", style);
+            if (GetComponent<RogueliteMinimapController>() == null) GUI.Box(new Rect(Screen.width - 285f, 18f, 265f, 58f), $"第 {stageMap.StageIndex}/3 关\n{blockText}", style);
 
             if (_currentBlockIndex >= 0 && _currentBlockIndex < _runtimeBlocks.Count &&
                 _runtimeBlocks[_currentBlockIndex].Data.Type == RogueliteBlockType.Shop)

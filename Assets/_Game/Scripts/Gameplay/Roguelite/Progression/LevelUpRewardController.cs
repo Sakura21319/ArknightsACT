@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using ArknightsACT.Gameplay.Feedback;
 using ArknightsACT.Gameplay.Abilities;
+using ArknightsACT.Gameplay.Characters;
 using ArknightsACT.Gameplay.Presentation;
 using ArknightsACT.Gameplay.Roguelite.Rewards;
 using ArknightsACT.Gameplay.Roguelite.Routing;
@@ -190,9 +191,22 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
 
         private void ResolvePresentationDependencies()
         {
+            var activePlayer = PlayerRuntimeContext.Resolve(player);
+            if (activePlayer != null && activePlayer != player)
+            {
+                player = activePlayer;
+                inventory = player.GetComponent<LevelUpgradeInventory>();
+                combatProfile = player.GetComponent<PlayerCombatProfile>();
+                _playerSkills = null;
+                _presentationLock = null;
+            }
+
             if (_playerSkills == null && player != null)
                 _playerSkills = player.GetComponent<PlayerSkillController>();
-            _playerSkills ??= FindFirstObjectByType<PlayerSkillController>();
+            if (inventory == null && player != null)
+                inventory = player.GetComponent<LevelUpgradeInventory>();
+            if (combatProfile == null && player != null)
+                combatProfile = player.GetComponent<PlayerCombatProfile>();
 
             if (_presentationLock == null && _playerSkills != null)
                 _presentationLock = _playerSkills.GetComponent<IGameplayPresentationLock>();

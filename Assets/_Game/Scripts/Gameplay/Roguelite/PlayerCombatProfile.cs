@@ -1,4 +1,5 @@
 using System;
+using ArknightsACT.Combat;
 using UnityEngine;
 
 namespace ArknightsACT.Gameplay.Roguelite
@@ -24,12 +25,36 @@ namespace ArknightsACT.Gameplay.Roguelite
     {
         [SerializeField] private CombatFeature features = CombatFeature.BasicAttack | CombatFeature.ActiveSkills;
         [SerializeField] private OperatorProfession profession;
+        [Header("Prototype mitigation")]
+        [SerializeField, Min(0f)] private float basePhysicalDefense = 1f;
+        [SerializeField] private float baseArtsResistance = 0f;
         public OperatorProfession Profession => profession;
         public void SetProfession(OperatorProfession value) => profession = value;
 
         public CombatFeature Features => features;
 
+        private void Awake()
+        {
+            var stats = GetComponent<CombatStats>();
+            if (stats == null)
+                stats = gameObject.AddComponent<CombatStats>();
+            stats.SetBasePhysicalDefense(basePhysicalDefense);
+            stats.SetBaseArtsResistance(baseArtsResistance);
+        }
+
         public void Configure(CombatFeature value) => features = value;
+
+        public void ConfigureMitigation(float physicalDefense, float artsResistance)
+        {
+            basePhysicalDefense = Mathf.Max(0f, physicalDefense);
+            baseArtsResistance = artsResistance;
+
+            var stats = GetComponent<CombatStats>();
+            if (stats == null)
+                stats = gameObject.AddComponent<CombatStats>();
+            stats.SetBasePhysicalDefense(basePhysicalDefense);
+            stats.SetBaseArtsResistance(baseArtsResistance);
+        }
 
         public bool Supports(CombatFeature required) =>
             required == CombatFeature.None || (features & required) == required;

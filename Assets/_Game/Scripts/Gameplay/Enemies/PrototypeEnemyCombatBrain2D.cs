@@ -13,7 +13,7 @@ namespace ArknightsACT.Gameplay.Enemies
     }
 
     [RequireComponent(typeof(CombatEntity), typeof(Rigidbody2D))]
-    public sealed class PrototypeEnemyCombatBrain2D : MonoBehaviour
+    public sealed class PrototypeEnemyCombatBrain2D : MonoBehaviour, ICombatActionInterruptHandler
     {
         [SerializeField] private PrototypeEnemyArchetype archetype = PrototypeEnemyArchetype.Melee;
         [SerializeField] private float aggroRange = 12f;
@@ -148,6 +148,8 @@ namespace ArknightsACT.Gameplay.Enemies
 
         private void TryAttack()
         {
+            if (CombatActionUtility.IsBlocked(_entity, CombatActionMask.BasicAttack))
+                return;
             if (Time.time < _nextAttackAt || _target == null || _attackRoutine != null)
                 return;
 
@@ -160,9 +162,12 @@ namespace ArknightsACT.Gameplay.Enemies
             StopHorizontal();
             AttackStarted?.Invoke(FacingSign);
 
-            yield return WaitWhileLocked(attackWindup);
+            var attackSpeed = _entity?.Stats != null ? _entity.Stats.AttackSpeedMultiplier : 1f;
+            var attackTimeMultiplier = 1f / Mathf.Max(0.05f, attackSpeed);
+            yield return WaitWhileLocked(attackWindup * attackTimeMultiplier);
 
-            if (_target != null && _target.Health != null && !_target.Health.IsDead)
+            if (!CombatActionUtility.IsBlocked(_entity, CombatActionMask.BasicAttack) &&
+                _target != null && _target.Health != null && !_target.Health.IsDead)
             {
                 var distance = Mathf.Abs(_target.transform.position.x - transform.position.x);
                 var validRange = archetype == PrototypeEnemyArchetype.Ranged
@@ -179,15 +184,15 @@ namespace ArknightsACT.Gameplay.Enemies
                         attackDamage,
                         DamageType.Physical,
                         knockback,
-                        sourceId: "PrototypeEnemy_" + archetype);
+                        sourceId: "PrototypeEnemy_" + archetype, tags: DamageTags.BasicAttack);
                     DamageSystem.Apply(context);
                 }
             }
 
-            yield return WaitWhileLocked(attackRecovery);
+            yield return WaitWhileLocked(attackRecovery * attackTimeMultiplier);
             StopHorizontal();
             _attackRoutine = null;
-            _nextAttackAt = Time.time + attackCooldown;
+            _nextAttackAt = Time.time + attackCooldown * attackTimeMultiplier;
         }
 
         private IEnumerator WaitWhileLocked(float seconds)
@@ -239,6 +244,11 @@ namespace ArknightsACT.Gameplay.Enemies
 
         private void Move(float direction)
         {
+            if (CombatActionUtility.IsBlocked(_entity, CombatActionMask.Movement))
+            {
+                StopHorizontal();
+                return;
+            }
             if (Mathf.Abs(direction) < 0.01f)
             {
                 StopHorizontal();
@@ -246,8 +256,22 @@ namespace ArknightsACT.Gameplay.Enemies
             }
 
             FacingSign = direction >= 0f ? 1 : -1;
-            _body.linearVelocity = new Vector2(FacingSign * moveSpeed, _body.linearVelocity.y);
+            var moveMultiplier = _entity?.Stats != null ? _entity.Stats.MoveSpeedMultiplier : 1f;
+            _body.linearVelocity = new Vector2(FacingSign * moveSpeed * moveMultiplier, _body.linearVelocity.y);
             IsMoving = true;
+        }
+
+        public void InterruptCombatActions(CombatActionMask actions)
+        {
+            if ((actions & CombatActionMask.BasicAttack) != 0 && _attackRoutine != null)
+            {
+                StopCoroutine(_attackRoutine);
+                _attackRoutine = null;
+                _nextAttackAt = Mathf.Max(_nextAttackAt, Time.time + attackCooldown);
+            }
+
+            if ((actions & CombatActionMask.Movement) != 0)
+                StopHorizontal();
         }
 
         private void StopHorizontal()

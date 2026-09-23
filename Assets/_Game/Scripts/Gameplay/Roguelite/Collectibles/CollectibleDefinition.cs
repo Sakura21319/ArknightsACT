@@ -44,7 +44,12 @@ namespace ArknightsACT.Gameplay.Roguelite.Collectibles
         SkillPointOnBasicHit,
         SkillPointOnSkillCast,
         IngotOnAcquire,
-        EnemyMaxHealthPercent
+        EnemyMaxHealthPercent,
+        PhysicalDefensePercent,
+        PhysicalDefenseFlat,
+        ArtsResistancePercent,
+        ArtsResistanceFlat,
+        EnemyPhysicalDefensePercent
     }
 
     [System.Serializable]
@@ -202,6 +207,11 @@ namespace ArknightsACT.Gameplay.Roguelite.Collectibles
             CollectibleEffectType.SkillPointOnSkillCast => true,
             CollectibleEffectType.IngotOnAcquire => true,
             CollectibleEffectType.EnemyMaxHealthPercent => true,
+            CollectibleEffectType.PhysicalDefensePercent => true,
+            CollectibleEffectType.PhysicalDefenseFlat => true,
+            CollectibleEffectType.ArtsResistancePercent => true,
+            CollectibleEffectType.ArtsResistanceFlat => true,
+            CollectibleEffectType.EnemyPhysicalDefensePercent => true,
             _ => false
         };
 

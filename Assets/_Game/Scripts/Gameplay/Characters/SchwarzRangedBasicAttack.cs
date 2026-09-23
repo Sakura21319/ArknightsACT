@@ -60,7 +60,8 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
                 Mathf.Max(0f, finalDamage),
                 DamageType.Physical,
                 Vector2.zero,
-                sourceId: definition != null ? definition.name : "Schwarz_BasicShot");
+                sourceId: definition != null ? definition.name : "Schwarz_BasicShot",
+                tags: DamageTags.BasicAttack);
 
             if (!DamageSystem.Apply(context).Applied)
             {

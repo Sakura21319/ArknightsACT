@@ -89,6 +89,7 @@ namespace ArknightsACT.Editor
             controller.slopeLimit = 45f;
 
             AddSharedGameplay(go, attacks);
+            go.AddComponent<ScavengingInventory25D>();
 
             var motor = go.AddComponent<PlayerMotor25D>();
             motor.SetCamera(camera);
@@ -188,35 +189,16 @@ namespace ArknightsACT.Editor
 
         private static void AddSharedGameplay(GameObject go, AttackDefinition[] attacks)
         {
-            var health = go.GetComponent<Health>() ?? go.AddComponent<Health>();
-            health.SetMaxHealth(100f);
-            if (go.GetComponent<StatusController>() == null)
-                go.AddComponent<StatusController>();
-
-            var entity = go.GetComponent<CombatEntity>() ?? go.AddComponent<CombatEntity>();
-            entity.SetTeam(Team.Player);
-
-            go.AddComponent<PlayerInputReader>();
-            go.AddComponent<PlayerDashController>();
-            go.AddComponent<PlayerAttackController>().Configure(attacks, 10f);
-            go.AddComponent<PlayerDamageGate>();
-
-            go.AddComponent<ChenSkill1>();
-            go.AddComponent<ChenSkill2>();
-            go.AddComponent<PlayerSkillController>();
-            go.AddComponent<ChenSkillUpgradeApplier>();
-
-            var profile = go.AddComponent<PlayerCombatProfile>();
-            profile.SetProfession(OperatorProfession.Guard);
-            profile.Configure(
+            PlayableOperatorPrototypeComposer.AddFoundation(
+                go,
+                attacks,
+                10f,
+                OperatorProfession.Guard,
                 CombatFeature.BasicAttack |
                 CombatFeature.ActiveSkills |
                 CombatFeature.Dash |
                 CombatFeature.PhysicalDamage |
-                CombatFeature.ArtsDamage);
-
-            var identity = go.AddComponent<PlayableOperatorIdentity>();
-            identity.Configure(
+                CombatFeature.ArtsDamage,
                 "Chen",
                 "陈",
                 "default",
@@ -224,10 +206,32 @@ namespace ArknightsACT.Editor
                 "UI/Skills/chen_badao",
                 "UI/Skills/chen_jueying");
 
-            go.AddComponent<CollectibleInventory>();
-            go.AddComponent<LevelUpgradeInventory>();
-            go.AddComponent<CharacterSkillUpgradeInventory>();
-            go.AddComponent<TemporaryCombatBuffs>();
+            go.AddComponent<ChenSkill1>();
+            go.AddComponent<ChenSkill2>();
+            go.AddComponent<ChenSkillUpgradeApplier>();
+            PlayableOperatorPrototypeComposer.CompleteGameplay(go);
+
+            var audioProfile = go.AddComponent<PlayableOperatorAudioProfile>();
+            audioProfile.Configure(
+                AssetDatabase.LoadAssetAtPath<AudioClip>(PrtsGameplayAudioCatalog.ChenSkill1Sfx.LocalPath),
+                AssetDatabase.LoadAssetAtPath<AudioClip>(PrtsGameplayAudioCatalog.ChenSkill2Sfx.LocalPath),
+                new[]
+                {
+                    AssetDatabase.LoadAssetAtPath<AudioClip>(PrtsGameplayAudioCatalog.ChenVoice025.LocalPath),
+                    AssetDatabase.LoadAssetAtPath<AudioClip>(PrtsGameplayAudioCatalog.ChenVoice026.LocalPath)
+                },
+                new[]
+                {
+                    AssetDatabase.LoadAssetAtPath<AudioClip>(PrtsGameplayAudioCatalog.ChenVoice027.LocalPath),
+                    AssetDatabase.LoadAssetAtPath<AudioClip>(PrtsGameplayAudioCatalog.ChenVoice028.LocalPath)
+                },
+                new[]
+                {
+                    AssetDatabase.LoadAssetAtPath<AudioClip>(PrtsGameplayAudioCatalog.ChenAttackSwing1.LocalPath),
+                    AssetDatabase.LoadAssetAtPath<AudioClip>(PrtsGameplayAudioCatalog.ChenAttackSwing2.LocalPath),
+                    AssetDatabase.LoadAssetAtPath<AudioClip>(PrtsGameplayAudioCatalog.ChenAttackSwing3.LocalPath)
+                },
+                AssetDatabase.LoadAssetAtPath<AudioClip>(PrtsGameplayAudioCatalog.ChenSwordImpact.LocalPath));
         }
 
         private static void CreatePlaceholder(Transform parent)

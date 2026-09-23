@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using ArknightsACT.Combat;
 using ArknightsACT.Gameplay.Abilities;
 using ArknightsACT.Gameplay.Combat;
+using ArknightsACT.Gameplay.Characters;
 using ArknightsACT.Gameplay.Enemies;
 using UnityEngine;
 
@@ -28,6 +29,8 @@ namespace ArknightsACT.Gameplay.Audio
         [Header("Skill SFX")]
         [SerializeField] private AudioClip skill1Sfx;
         [SerializeField] private AudioClip skill2Sfx;
+        [SerializeField] private AudioClip skill1LayerSfx;
+        [SerializeField] private AudioClip skill2LayerSfx;
         [SerializeField, Range(0f, 1f)] private float skillSfxVolume = 0.82f;
 
         [Header("Skill Voice")]
@@ -38,6 +41,9 @@ namespace ArknightsACT.Gameplay.Audio
         [Header("Combat SFX")]
         [SerializeField] private AudioClip[] playerAttackSwings;
         [SerializeField] private AudioClip swordImpact;
+        [SerializeField] private string manualAttackSourceId;
+        [SerializeField] private AudioClip manualAttackSfx;
+        [SerializeField] private AudioClip manualAttackImpact;
         [SerializeField] private AudioClip playerHurt;
         [SerializeField] private AudioClip playerDeath;
         [SerializeField] private AudioClip enemyMeleeAttack;
@@ -64,6 +70,8 @@ namespace ArknightsACT.Gameplay.Audio
         private bool _subscribed;
         private bool _bgmStarted;
         private bool _warnedMissingAudio;
+        private bool _skillSfxOptional;
+        private Transform _audioProfileOwner;
         private int _lastSkill1Voice = -1;
         private int _lastSkill2Voice = -1;
 
@@ -107,6 +115,7 @@ namespace ArknightsACT.Gameplay.Audio
             enemyMeleeAttack = meleeEnemyAttack;
             enemyRangedAttack = rangedEnemyAttack;
             enemyDeath = genericEnemyDeath;
+            ApplyOperatorAudioProfile(player);
         }
 
         private void Awake()
@@ -117,6 +126,8 @@ namespace ArknightsACT.Gameplay.Audio
         private void OnEnable()
         {
             EnsureSources();
+            if (PlayerRuntimeContext.Instance != null)
+                PlayerRuntimeContext.Instance.ActivePlayerChanged += OnActivePlayerChanged;
             ResolveAndSubscribePlayer();
             RefreshEnemyBindings(force: true);
             StartBackgroundMusic();
@@ -137,17 +148,45 @@ namespace ArknightsACT.Gameplay.Audio
             RefreshEnemyBindings(force: false);
         }
 
+        private void OnActivePlayerChanged(Transform previousPlayer, Transform nextPlayer)
+        {
+            ResolveAndSubscribePlayer();
+        }
+
         private void ResolveAndSubscribePlayer()
         {
-            if (player == null)
+            var resolvedPlayer = PlayerRuntimeContext.Resolve(player);
+            if (resolvedPlayer == null)
             {
                 var skill = FindFirstObjectByType<PlayerSkillController>();
                 if (skill != null)
-                    player = skill.transform;
+                    resolvedPlayer = skill.transform;
             }
 
-            if (player == null)
+            if (resolvedPlayer == null)
                 return;
+
+            if (resolvedPlayer != player)
+            {
+                UnsubscribePlayer();
+                player = resolvedPlayer;
+                _skillController = null;
+                _playerAttack = null;
+                _playerHealth = null;
+                _audioProfileOwner = null;
+                _lastSkill1Voice = -1;
+                _lastSkill2Voice = -1;
+                _warnedMissingAudio = false;
+            }
+
+            // The stage audio controller also serializes fallback clips. Do not let those stale
+            // scene values win just because its serialized player already equals the active player.
+            // Every newly-bound operator must hydrate runtime audio from its character-owned profile.
+            if (_audioProfileOwner != player)
+            {
+                ApplyOperatorAudioProfile(player, clearWhenMissing: true);
+                _audioProfileOwner = player;
+            }
 
             _skillController ??= player.GetComponent<PlayerSkillController>();
             _playerAttack ??= player.GetComponent<PlayerAttackController>();
@@ -160,7 +199,10 @@ namespace ArknightsACT.Gameplay.Audio
             if (_skillController != null)
                 _skillController.SkillCastSucceeded += HandleSkillCast;
             if (_playerAttack != null)
+            {
                 _playerAttack.AttackStarted += HandlePlayerAttackStarted;
+                _playerAttack.AttackHit += HandlePlayerAttackHit;
+            }
             if (_playerHealth != null)
             {
                 _lastPlayerHealth = _playerHealth.CurrentHealth;
@@ -169,6 +211,44 @@ namespace ArknightsACT.Gameplay.Audio
             }
 
             _subscribed = _skillController != null || _playerAttack != null || _playerHealth != null;
+            WarnIfIncomplete();
+        }
+
+        private void ApplyOperatorAudioProfile(Transform owner, bool clearWhenMissing = false)
+        {
+            var profile = owner != null ? owner.GetComponent<PlayableOperatorAudioProfile>() : null;
+            if (profile == null)
+            {
+                if (clearWhenMissing)
+                {
+                    skill1Sfx = null;
+                    skill2Sfx = null;
+                    skill1LayerSfx = null;
+                    skill2LayerSfx = null;
+                    skill1Voices = null;
+                    skill2Voices = null;
+                    playerAttackSwings = null;
+                    swordImpact = null;
+                    manualAttackSourceId = string.Empty;
+                    manualAttackSfx = null;
+                    manualAttackImpact = null;
+                    _skillSfxOptional = false;
+                }
+                return;
+            }
+
+            skill1Sfx = profile.Skill1Sfx;
+            skill2Sfx = profile.Skill2Sfx;
+            skill1LayerSfx = profile.Skill1LayerSfx;
+            skill2LayerSfx = profile.Skill2LayerSfx;
+            skill1Voices = profile.Skill1Voices;
+            skill2Voices = profile.Skill2Voices;
+            playerAttackSwings = profile.BasicAttackSwings;
+            swordImpact = profile.BasicAttackImpact;
+            manualAttackSourceId = profile.ManualAttackSourceId;
+            manualAttackSfx = profile.ManualAttackSfx;
+            manualAttackImpact = profile.ManualAttackImpact;
+            _skillSfxOptional = profile.SkillSfxOptional;
         }
 
         private void HandleSkillCast(int slot)
@@ -176,8 +256,11 @@ namespace ArknightsACT.Gameplay.Audio
             EnsureSources();
 
             var sfx = slot == 1 ? skill1Sfx : slot == 2 ? skill2Sfx : null;
+            var layeredSfx = slot == 1 ? skill1LayerSfx : slot == 2 ? skill2LayerSfx : null;
             if (sfx != null)
                 _skillSource.PlayOneShot(sfx, skillSfxVolume);
+            if (layeredSfx != null)
+                _skillSource.PlayOneShot(layeredSfx, skillSfxVolume);
 
             if (slot == 1)
                 PlayVoice(skill1Voices, ref _lastSkill1Voice);
@@ -187,6 +270,12 @@ namespace ArknightsACT.Gameplay.Audio
 
         private void HandlePlayerAttackStarted(int comboIndex)
         {
+            if (IsSpecialAttackAudioActive())
+            {
+                PlayCombat(manualAttackSfx, combatSfxVolume);
+                return;
+            }
+
             if (playerAttackSwings == null || playerAttackSwings.Length == 0)
                 return;
 
@@ -199,6 +288,46 @@ namespace ArknightsACT.Gameplay.Audio
                 PlayCombat(clip, combatSfxVolume * 0.88f);
                 return;
             }
+        }
+
+        private bool IsSpecialAttackAudioActive()
+        {
+            if (_playerAttack != null &&
+                !string.IsNullOrWhiteSpace(manualAttackSourceId) &&
+                string.Equals(
+                    _playerAttack.CurrentAttackSourceId,
+                    manualAttackSourceId,
+                    StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (player == null)
+                return false;
+
+            var behaviours = player.GetComponents<MonoBehaviour>();
+            for (var i = 0; i < behaviours.Length; i++)
+                if (behaviours[i] is IPlayerSpecialAttackAudioState state && state.UseSpecialAttackAudio)
+                    return true;
+            return false;
+        }
+
+        private void HandlePlayerAttackHit(CombatEntity target)
+        {
+            if (Time.unscaledTime - _lastImpactAt < 0.035f)
+                return;
+            _lastImpactAt = Time.unscaledTime;
+
+            if (_playerAttack != null &&
+                !string.IsNullOrWhiteSpace(manualAttackSourceId) &&
+                string.Equals(
+                    _playerAttack.LastHitSourceId,
+                    manualAttackSourceId,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                PlayCombat(manualAttackImpact, combatSfxVolume);
+                return;
+            }
+
+            PlayCombat(swordImpact, combatSfxVolume);
         }
 
         private void HandlePlayerHealthChanged(float current, float maximum)
@@ -281,16 +410,8 @@ namespace ArknightsACT.Gameplay.Audio
             if (binding == null)
                 return;
 
-            if (current < binding.LastHealth - 0.001f && current > 0f)
-            {
-                // Multi-hit skills can damage more than one enemy on the same frame. A tiny shared
-                // throttle keeps the sword impact punchy instead of stacking identical clips into clipping.
-                if (Time.unscaledTime - _lastImpactAt >= 0.035f)
-                {
-                    PlayCombat(swordImpact, combatSfxVolume);
-                    _lastImpactAt = Time.unscaledTime;
-                }
-            }
+            // Player impact audio is driven by PlayerAttackController.AttackHit so the exact
+            // attack source (normal shot vs. Schwarz S3 aimed shot) is still available here.
             binding.LastHealth = current;
         }
 
@@ -434,14 +555,8 @@ namespace ArknightsACT.Gameplay.Audio
             if (_warnedMissingAudio)
                 return;
 
-            var identity = player != null
-                ? player.GetComponent<ArknightsACT.Gameplay.Characters.PlayableOperatorIdentity>()
-                : null;
-            var isSchwarz = identity != null && identity.OperatorId == "Schwarz";
             var missingBgm = bgmIntro == null && bgmLoop == null;
-            // Schwarz has no verified standalone S2/S3 activation event in the extracted package.
-            // Null is intentional there; never substitute Ch'en's skill SFX.
-            var missingSkill = !isSchwarz && (skill1Sfx == null || skill2Sfx == null);
+            var missingSkill = !_skillSfxOptional && (skill1Sfx == null || skill2Sfx == null);
             var missingVoice = !HasAnyClip(skill1Voices) || !HasAnyClip(skill2Voices);
             var missingCombat = !HasAnyClip(playerAttackSwings) || swordImpact == null ||
                                 playerHurt == null || playerDeath == null || enemyMeleeAttack == null ||
@@ -486,17 +601,23 @@ namespace ArknightsACT.Gameplay.Audio
             if (_skillController != null)
                 _skillController.SkillCastSucceeded -= HandleSkillCast;
             if (_playerAttack != null)
+            {
                 _playerAttack.AttackStarted -= HandlePlayerAttackStarted;
+                _playerAttack.AttackHit -= HandlePlayerAttackHit;
+            }
             if (_playerHealth != null)
             {
                 _playerHealth.Changed -= HandlePlayerHealthChanged;
                 _playerHealth.Died -= HandlePlayerDied;
             }
             _subscribed = false;
+            _audioProfileOwner = null;
         }
 
         private void OnDisable()
         {
+            if (PlayerRuntimeContext.Instance != null)
+                PlayerRuntimeContext.Instance.ActivePlayerChanged -= OnActivePlayerChanged;
             UnsubscribePlayer();
             for (var i = 0; i < _enemyBindings.Count; i++)
                 UnsubscribeEnemy(_enemyBindings[i]);

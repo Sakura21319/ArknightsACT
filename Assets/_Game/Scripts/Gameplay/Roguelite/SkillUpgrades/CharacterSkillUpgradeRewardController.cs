@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using ArknightsACT.Gameplay.Feedback;
+using ArknightsACT.Gameplay.Characters;
 using ArknightsACT.Gameplay.Roguelite.Rewards;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -41,6 +42,7 @@ namespace ArknightsACT.Gameplay.Roguelite.SkillUpgrades
         {
             _pause = GameplayPauseService.Instance;
             _coordinator = RewardSelectionCoordinator.Instance ?? FindFirstObjectByType<RewardSelectionCoordinator>();
+            BindActivePlayer();
         }
 
         private void OnDisable()
@@ -53,6 +55,7 @@ namespace ArknightsACT.Gameplay.Roguelite.SkillUpgrades
 
         public bool OpenReward(string title, int requestedChoiceCount, Action completed)
         {
+            BindActivePlayer();
             if (inventory == null)
                 return false;
 
@@ -119,6 +122,7 @@ namespace ArknightsACT.Gameplay.Roguelite.SkillUpgrades
 
         private void BuildChoices(int wantedCount)
         {
+            BindActivePlayer();
             _choices.Clear();
             if (pool == null)
                 return;
@@ -150,6 +154,16 @@ namespace ArknightsACT.Gameplay.Roguelite.SkillUpgrades
                 _choices.Add(candidates[pickIndex]);
                 candidates.RemoveAt(pickIndex);
             }
+        }
+
+        private void BindActivePlayer()
+        {
+            var activePlayer = PlayerRuntimeContext.Resolve();
+            if (activePlayer == null)
+                return;
+            var nextInventory = activePlayer.GetComponent<CharacterSkillUpgradeInventory>();
+            if (nextInventory != null)
+                inventory = nextInventory;
         }
 
         private void Choose(int index)

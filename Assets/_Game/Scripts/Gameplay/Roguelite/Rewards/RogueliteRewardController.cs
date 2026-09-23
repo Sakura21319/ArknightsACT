@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using ArknightsACT.Gameplay.Feedback;
+using ArknightsACT.Gameplay.Characters;
 using ArknightsACT.Gameplay.Roguelite.Collectibles;
 using ArknightsACT.Gameplay.Roguelite.Treasure;
 using UnityEngine;
@@ -56,7 +57,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Rewards
         {
             _pause = GameplayPauseService.Instance;
             _coordinator = RewardSelectionCoordinator.Instance ?? FindFirstObjectByType<RewardSelectionCoordinator>();
-            _scavenging ??= inventory != null ? inventory.GetComponent<ScavengingInventory25D>() : null;
+            BindActivePlayer();
         }
 
         private void OnDisable()
@@ -73,7 +74,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Rewards
             int requestedChoiceCount,
             Action completed)
         {
-            _scavenging ??= inventory != null ? inventory.GetComponent<ScavengingInventory25D>() : null;
+            BindActivePlayer();
             if (inventory == null || _scavenging == null)
             {
                 Debug.LogWarning("[ArknightsACT/Roguelite] Collectible reward skipped because no scavenging inventory is available; direct Acquire is disabled.", this);
@@ -154,8 +155,8 @@ namespace ArknightsACT.Gameplay.Roguelite.Rewards
 
         private void BuildChoices()
         {
+            BindActivePlayer();
             _choices.Clear();
-            _scavenging ??= inventory != null ? inventory.GetComponent<ScavengingInventory25D>() : null;
             if (_scavenging == null || inventory == null)
                 return;
 
@@ -181,6 +182,29 @@ namespace ArknightsACT.Gameplay.Roguelite.Rewards
                     break;
                 _choices.Add(picked);
                 candidates.Remove(picked);
+            }
+        }
+
+        private void BindActivePlayer()
+        {
+            var activePlayer = PlayerRuntimeContext.Resolve();
+            if (activePlayer == null)
+                return;
+
+            var nextInventory = activePlayer.GetComponent<CollectibleInventory>();
+            if (nextInventory == null)
+                return;
+
+            if (inventory != nextInventory)
+            {
+                inventory = nextInventory;
+                combatProfile = activePlayer.GetComponent<PlayerCombatProfile>();
+                _scavenging = activePlayer.GetComponent<ScavengingInventory25D>();
+            }
+            else
+            {
+                _scavenging ??= activePlayer.GetComponent<ScavengingInventory25D>();
+                combatProfile ??= activePlayer.GetComponent<PlayerCombatProfile>();
             }
         }
 

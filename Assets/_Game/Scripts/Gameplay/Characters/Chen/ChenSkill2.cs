@@ -9,7 +9,7 @@ using UnityEngine;
 namespace ArknightsACT.Gameplay.Characters.Chen
 {
     [RequireComponent(typeof(CombatEntity))]
-    public sealed class ChenSkill2 : MonoBehaviour, IPlayerSkill, IPlayerInvulnerabilitySource
+    public sealed class ChenSkill2 : MonoBehaviour, IPlayerSkill, IPlayerInvulnerabilitySource, IPlayerSkillInterruptible
     {
         [Header("Skill points")]
         [SerializeField, Min(1f)] private float skillPointCost = 30f;
@@ -88,6 +88,11 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             _skillPoints = Mathf.Clamp(SkillPoints + amount, 0f, SkillPointCost);
         }
 
+        public void SetSkillPoints(float amount)
+        {
+            _skillPoints = Mathf.Clamp(amount, 0f, SkillPointCost);
+        }
+
         public void ReduceCooldown(float seconds)
         {
             if (seconds > 0f)
@@ -111,6 +116,15 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             _runtimeFinalDamageMultiplier = 1f;
             _runtimeRadiusMultiplier = 1f;
             _skillPoints = Mathf.Clamp(initialSkillPoints, 0f, SkillPointCost);
+            CastEnded?.Invoke();
+        }
+
+        public void InterruptCast()
+        {
+            if (!IsCasting)
+                return;
+            StopAllCoroutines();
+            IsCasting = false;
             CastEnded?.Invoke();
         }
 
@@ -147,7 +161,8 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                     damage,
                     DamageType.Physical,
                     knockback,
-                    sourceId: isFinal ? "Chen_Skill2_Final" : "Chen_Skill2_Strike");
+                    sourceId: isFinal ? "Chen_Skill2_Final" : "Chen_Skill2_Strike",
+                    tags: DamageTags.Skill);
                 if (DamageSystem.Apply(context).Applied)
                 {
                     target.GetComponentInChildren<HitFlash2D>()?.Flash();

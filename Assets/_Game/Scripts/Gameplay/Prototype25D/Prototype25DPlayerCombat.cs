@@ -78,7 +78,7 @@ namespace ArknightsACT.Gameplay.Prototype25D
                     damage,
                     DamageType.Physical,
                     Vector2.zero,
-                    sourceId: "Prototype25D_Basic"));
+                    sourceId: "Prototype25D_Basic", tags: DamageTags.BasicAttack));
             }
 
             IsAttacking = false;

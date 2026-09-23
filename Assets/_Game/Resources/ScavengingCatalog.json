@@ -895,8 +895,8 @@
       "h": 2,
       "effects": [
         {
-          "type": "PhysicalDamagePercent",
-          "value": 0.12,
+          "type": "EnemyPhysicalDefensePercent",
+          "value": -0.12,
           "profession": "",
           "duration": 0.0
         }
@@ -919,8 +919,8 @@
       "h": 1,
       "effects": [
         {
-          "type": "PhysicalDamagePercent",
-          "value": 0.15,
+          "type": "EnemyPhysicalDefensePercent",
+          "value": -0.15,
           "profession": "",
           "duration": 0.0
         }
@@ -943,8 +943,8 @@
       "h": 1,
       "effects": [
         {
-          "type": "PhysicalDamagePercent",
-          "value": 0.21,
+          "type": "EnemyPhysicalDefensePercent",
+          "value": -0.21,
           "profession": "",
           "duration": 0.0
         }
@@ -967,8 +967,8 @@
       "h": 1,
       "effects": [
         {
-          "type": "PhysicalDamagePercent",
-          "value": 0.3,
+          "type": "EnemyPhysicalDefensePercent",
+          "value": -0.3,
           "profession": "",
           "duration": 0.0
         },
@@ -1093,8 +1093,8 @@
       "h": 1,
       "effects": [
         {
-          "type": "IncomingDamagePercent",
-          "value": -0.15,
+          "type": "PhysicalDefensePercent",
+          "value": 0.15,
           "profession": "",
           "duration": 0.0
         }
@@ -1117,8 +1117,8 @@
       "h": 1,
       "effects": [
         {
-          "type": "IncomingDamagePercent",
-          "value": -0.18,
+          "type": "PhysicalDefensePercent",
+          "value": 0.18,
           "profession": "",
           "duration": 0.0
         }
@@ -1141,8 +1141,8 @@
       "h": 1,
       "effects": [
         {
-          "type": "IncomingDamagePercent",
-          "value": -0.25,
+          "type": "PhysicalDefensePercent",
+          "value": 0.25,
           "profession": "",
           "duration": 0.0
         }
@@ -1165,8 +1165,8 @@
       "h": 1,
       "effects": [
         {
-          "type": "IncomingDamagePercent",
-          "value": -0.5,
+          "type": "PhysicalDefensePercent",
+          "value": 0.5,
           "profession": "",
           "duration": 0.0
         }
@@ -2352,8 +2352,8 @@
           "duration": 0.0
         },
         {
-          "type": "IncomingDamagePercent",
-          "value": -0.08,
+          "type": "PhysicalDefensePercent",
+          "value": 0.08,
           "profession": "",
           "duration": 0.0
         },
@@ -2422,8 +2422,8 @@
           "duration": 0.0
         },
         {
-          "type": "IncomingDamagePercent",
-          "value": -0.05,
+          "type": "PhysicalDefensePercent",
+          "value": 0.05,
           "profession": "",
           "duration": 0.0
         },
@@ -2475,8 +2475,8 @@
           "duration": 0.0
         },
         {
-          "type": "IncomingDamagePercent",
-          "value": -0.03,
+          "type": "PhysicalDefensePercent",
+          "value": 0.03,
           "profession": "",
           "duration": 0.0
         },
@@ -2630,8 +2630,8 @@
           "duration": 0.0
         },
         {
-          "type": "IncomingDamagePercent",
-          "value": -0.35,
+          "type": "PhysicalDefensePercent",
+          "value": 0.35,
           "profession": "",
           "duration": 0.0
         },

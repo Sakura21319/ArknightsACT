@@ -182,7 +182,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 damage,
                 DamageType.Physical,
                 Vector2.zero,
-                sourceId: "Environment_Ballista"));
+                sourceId: "Environment_Ballista", tags: DamageTags.Environment));
         }
 
         private void ClearBolts()

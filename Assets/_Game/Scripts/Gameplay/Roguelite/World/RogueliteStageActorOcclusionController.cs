@@ -168,6 +168,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
                 // Keep the interior floor and searchable loot readable while walls/roofs fade.
                 if (renderer.name == "InteriorFloor" || renderer.name == "Floor_Ground" ||
+                    renderer.name.StartsWith("WalkSurface_") || renderer.name.StartsWith("WalkRail_") || renderer.name == "StairTreadMark" ||
                     renderer.GetComponentInParent<ArknightsACT.Gameplay.Roguelite.Treasure.SearchableContainer25D>() != null)
                     continue;
 
@@ -281,6 +282,8 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         private static Transform FindOccludableRoot(Transform start)
         {
+            var tower = start.GetComponentInParent<CityTowerLandmark>();
+            if (tower != null && tower.Structure != null && start.IsChildOf(tower.Structure)) return tower.Structure;
             var current = start;
             for (var depth = 0; current != null && depth < 8; depth++, current = current.parent)
             {

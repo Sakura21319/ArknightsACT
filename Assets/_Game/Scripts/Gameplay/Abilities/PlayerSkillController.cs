@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace ArknightsACT.Gameplay.Abilities
 {
-    public sealed class PlayerSkillController : MonoBehaviour
+    public sealed class PlayerSkillController : MonoBehaviour, ICombatActionInterruptHandler
     {
         private CombatEntity _entity;
         private IPlayerInputSource _input;
@@ -107,6 +107,17 @@ namespace ArknightsACT.Gameplay.Abilities
                 SkillCancelled?.Invoke(skill.Slot);
             else
                 SkillCastSucceeded?.Invoke(skill.Slot);
+        }
+
+        public void InterruptCombatActions(CombatActionMask actions)
+        {
+            if ((actions & CombatActionMask.Skill) == 0)
+                return;
+
+            if (_skill1 is IPlayerSkillInterruptible first && _skill1.IsCasting)
+                first.InterruptCast();
+            if (_skill2 is IPlayerSkillInterruptible second && _skill2.IsCasting)
+                second.InterruptCast();
         }
 
         private IPlayerLocomotion FindLocomotion()

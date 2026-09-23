@@ -15,7 +15,9 @@ namespace ArknightsACT.Gameplay.Combat
             DamageType damageType,
             Vector2 knockback,
             string sourceId,
-            Action<CombatEntity, DamageResult> onApplied = null)
+            Action<CombatEntity, DamageResult> onApplied = null,
+            DamageTags tags = DamageTags.None,
+            DamagePenetration penetration = default)
         {
             if (colliders == null || source == null)
                 return 0;
@@ -39,7 +41,9 @@ namespace ArknightsACT.Gameplay.Combat
                     damage,
                     damageType,
                     knockback,
-                    sourceId: sourceId);
+                    sourceId: sourceId,
+                    penetration: penetration,
+                    tags: tags);
 
                 var result = DamageSystem.Apply(context);
                 if (!result.Applied)

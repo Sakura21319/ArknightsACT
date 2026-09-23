@@ -71,6 +71,10 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
             _entity = GetComponent<CombatEntity>();
             ResolveCamera();
             BuildScopeUI();
+            // The scope textures are relatively expensive to generate. Build them while the
+            // operator initializes instead of paying that CPU/allocation cost on the S3 input frame.
+            Canvas.ForceUpdateCanvases();
+            EnsureScopeTextures();
             SetScopeVisible(false);
         }
 
@@ -196,9 +200,8 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
             Cursor.visible = false;
             SetScopeVisible(true);
 
-            Canvas.ForceUpdateCanvases();
-            EnsureScopeTextures();
-
+            // Awake already prepared the scope texture. EnsureScopeTextures stays in Update as a
+            // resolution-change fallback, but S3 activation itself must remain allocation-free.
             if (Mouse.current != null)
                 UpdateScope(Mouse.current.position.ReadValue(), false);
 
@@ -564,7 +567,9 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
             var coverSize = Mathf.Max(size.x, size.y) * 3.25f;
             var desiredRadius = Mathf.Min(size.x, size.y) * scopeRadiusScreenHeight;
 
-            const int textureSize = 1536;
+            // 768 is sufficient with bilinear filtering and cuts procedural texture work
+            // to one quarter of the previous 1536x1536 allocation/CPU cost.
+            const int textureSize = 768;
             var holeRadiusPixels = Mathf.Clamp(
                 desiredRadius / coverSize * textureSize,
                 48f,

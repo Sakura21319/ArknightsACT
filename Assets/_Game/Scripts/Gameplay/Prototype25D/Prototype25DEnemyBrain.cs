@@ -92,11 +92,16 @@ namespace ArknightsACT.Gameplay.Prototype25D
 
             if (distance > attackRange)
             {
-                _controller.Move(logicForward * moveSpeed * Time.deltaTime);
+                if (!CombatActionUtility.IsBlocked(_entity, CombatActionMask.Movement))
+                {
+                    var moveMultiplier = _entity?.Stats != null ? _entity.Stats.MoveSpeedMultiplier : 1f;
+                    _controller.Move(logicForward * moveSpeed * moveMultiplier * Time.deltaTime);
+                }
                 return;
             }
 
-            if (Time.time >= _nextAttackTime)
+            if (Time.time >= _nextAttackTime &&
+                !CombatActionUtility.IsBlocked(_entity, CombatActionMask.BasicAttack))
                 AttackTarget();
         }
 
@@ -128,7 +133,8 @@ namespace ArknightsACT.Gameplay.Prototype25D
 
         private void AttackTarget()
         {
-            _nextAttackTime = Time.time + attackCooldown;
+            var attackSpeed = _entity?.Stats != null ? _entity.Stats.AttackSpeedMultiplier : 1f;
+            _nextAttackTime = Time.time + attackCooldown / Mathf.Max(0.05f, attackSpeed);
             DamageSystem.Apply(new DamageContext(
                 _entity,
                 _entity,
@@ -136,7 +142,7 @@ namespace ArknightsACT.Gameplay.Prototype25D
                 attackDamage,
                 DamageType.Physical,
                 Vector2.zero,
-                sourceId: "Prototype25D_EnemyBasic"));
+                sourceId: "Prototype25D_EnemyBasic", tags: DamageTags.BasicAttack));
         }
 
         private void OnDied()

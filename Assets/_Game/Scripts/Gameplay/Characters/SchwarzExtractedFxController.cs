@@ -117,11 +117,13 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
             if (_skill3 != null && _skill3.IsBuffActive)
             {
                 StopSkill3PersistentVisuals();
-                _skill3Buff02Instance = SpawnPersistentOnActor(
+                _skill3Buff02Instance = ActivatePersistent(
+                    _skill3Buff02Instance,
                     skill3Buff02,
                     skill3Scale,
                     SchwarzFxSlot.Skill3Buff02);
-                _skill3Buff03Instance = SpawnPersistentOnActor(
+                _skill3Buff03Instance = ActivatePersistent(
+                    _skill3Buff03Instance,
                     skill3Buff03,
                     skill3Scale,
                     SchwarzFxSlot.Skill3Buff03);
@@ -147,6 +149,8 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
             actorMount = actorMount != null ? actorMount : transform.Find("CustomFxMountPoint");
             if (actorMount == null)
                 actorMount = transform;
+
+            PrewarmPersistentVisuals();
 
             // The prototype training target used to be attached only to Ch'en's player factory.
             // Keep it available for Schwarz FX/aim tuning as well, including already-saved scenes.
@@ -319,11 +323,13 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
         private void OnSkill2BuffStarted()
         {
             StopSkill2Visuals();
-            _skill2IgniteInstance = SpawnPersistentOnActor(
+            _skill2IgniteInstance = ActivatePersistent(
+                _skill2IgniteInstance,
                 skill2IgniteRed,
                 basicScale,
                 SchwarzFxSlot.Skill2IgniteRed);
-            _skill2CombustionInstance = SpawnPersistentOnActor(
+            _skill2CombustionInstance = ActivatePersistent(
+                _skill2CombustionInstance,
                 skill2Combustion,
                 basicScale,
                 SchwarzFxSlot.Skill2Combustion);
@@ -345,11 +351,13 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
 
             // Both skill_03_buff_02_* and skill_03_buff_03_* are sustained S3 layers.
             // They loop for the full sniper stance and are removed only when S3 ends.
-            _skill3Buff02Instance = SpawnPersistentOnActor(
+            _skill3Buff02Instance = ActivatePersistent(
+                _skill3Buff02Instance,
                 skill3Buff02,
                 skill3Scale,
                 SchwarzFxSlot.Skill3Buff02);
-            _skill3Buff03Instance = SpawnPersistentOnActor(
+            _skill3Buff03Instance = ActivatePersistent(
+                _skill3Buff03Instance,
                 skill3Buff03,
                 skill3Scale,
                 SchwarzFxSlot.Skill3Buff03);
@@ -460,43 +468,19 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
                     : basicTracerLength;
             var tracerLength = tracerLengthBase * Mathf.Max(0.35f, directionalScale);
 
-            // S3 has its own authored arrow/trail sequence. Keep the procedural line as a clean
-            // motion tracer, but restore the extracted skill_03_trail prefab as the projectile
-            // visual itself. Normal/S2 arrows remain their intentionally distinct tracer styles.
+            // skill_03_trail is the complete authored S3 projectile visual.
             GameObject authoredProjectile = null;
             if (hasAuthoredSkill3Arrow)
             {
-                authoredProjectile = Instantiate(prefab, flightRoot.transform, false);
-                authoredProjectile.name = "Schwarz_S3_AuthoredArrow";
-                authoredProjectile.transform.localPosition = Vector3.zero;
-                authoredProjectile.transform.localRotation = Quaternion.identity;
-
-                foreach (var billboard in authoredProjectile.GetComponentsInChildren<BillboardPresentation25D>(true))
-                    billboard.enabled = false;
-                foreach (var renderer in authoredProjectile.GetComponentsInChildren<SpriteRenderer>(true))
-                {
-                    renderer.sortingOrder = Mathf.Max(renderer.sortingOrder, 97);
-                    // The extracted S3 trail uses soft alpha. Boost RGB while keeping authored
-                    // alpha so the arrow reads clearly without becoming a solid rectangle.
-                    renderer.color = new Color(1.65f, 1.65f, 1.65f, 1f);
-                }
-
-                var playback = authoredProjectile.GetComponentInChildren<ExtractedFrameFxPlayback>(true);
-                if (playback != null)
-                {
-                    playback.SetPlaybackSpeed(ExtractedFrameFxPlayback.DefaultPlaybackSpeed);
-                    playback.PlayFromStart();
-                }
-
-                var spriteRenderer = authoredProjectile.GetComponentInChildren<SpriteRenderer>(true);
-                var spriteWidth = spriteRenderer != null && spriteRenderer.sprite != null
-                    ? Mathf.Max(0.01f, spriteRenderer.sprite.bounds.size.x)
-                    : 1f;
-                var visualScale = Mathf.Clamp(
-                    (tracerLength * 2.45f) / spriteWidth,
-                    0.70f,
-                    5.0f);
-                authoredProjectile.transform.localScale = Vector3.one * visualScale;
+                authoredProjectile = CreateProjectileVisualLayer(
+                    prefab,
+                    flightRoot.transform,
+                    "Schwarz_S3_PrimaryTrail",
+                    97,
+                    tracerLength,
+                    setting,
+                    facing,
+                    Vector2.zero);
             }
 
             while (flightRoot != null && elapsed < travelSeconds)
@@ -537,6 +521,51 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
                 _active.Remove(flightRoot);
                 Destroy(flightRoot);
             }
+        }
+
+        private static GameObject CreateProjectileVisualLayer(
+            GameObject prefab,
+            Transform parent,
+            string objectName,
+            int sortingOrder,
+            float visualLength,
+            SchwarzFxTuningSetting setting,
+            int facing,
+            Vector2 localOffset)
+        {
+            if (prefab == null || parent == null)
+                return null;
+
+            var instance = Instantiate(prefab, parent, false);
+            instance.name = objectName;
+            instance.transform.localPosition = new Vector3(localOffset.x, localOffset.y, 0f);
+            instance.transform.localRotation = Quaternion.identity;
+
+            foreach (var billboard in instance.GetComponentsInChildren<BillboardPresentation25D>(true))
+                billboard.enabled = false;
+            foreach (var renderer in instance.GetComponentsInChildren<SpriteRenderer>(true))
+            {
+                renderer.sortingOrder = Mathf.Max(renderer.sortingOrder, sortingOrder);
+                renderer.color = new Color(1.65f, 1.65f, 1.65f, 1f);
+            }
+
+            var playback = instance.GetComponentInChildren<ExtractedFrameFxPlayback>(true);
+            if (playback != null)
+            {
+                playback.SetPlaybackSpeed(ExtractedFrameFxPlayback.DefaultPlaybackSpeed);
+                playback.PlayFromStart();
+            }
+
+            var spriteRenderer = instance.GetComponentInChildren<SpriteRenderer>(true);
+            var spriteWidth = spriteRenderer != null && spriteRenderer.sprite != null
+                ? Mathf.Max(0.01f, spriteRenderer.sprite.bounds.size.x)
+                : 1f;
+            var visualScale = Mathf.Clamp(
+                (visualLength * 2.45f) / spriteWidth,
+                0.35f,
+                6.0f);
+            instance.transform.localScale = Vector3.one * visualScale;
+            return instance;
         }
 
         private static void OrientProjectileVisual(
@@ -641,12 +670,49 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
                 slot);
         }
 
-        private GameObject SpawnPersistentOnActor(
+        private void PrewarmPersistentVisuals()
+        {
+            _skill2IgniteInstance = PrewarmPersistent(
+                _skill2IgniteInstance, skill2IgniteRed, basicScale, SchwarzFxSlot.Skill2IgniteRed);
+            _skill2CombustionInstance = PrewarmPersistent(
+                _skill2CombustionInstance, skill2Combustion, basicScale, SchwarzFxSlot.Skill2Combustion);
+            _skill3Buff02Instance = PrewarmPersistent(
+                _skill3Buff02Instance, skill3Buff02, skill3Scale, SchwarzFxSlot.Skill3Buff02);
+            _skill3Buff03Instance = PrewarmPersistent(
+                _skill3Buff03Instance, skill3Buff03, skill3Scale, SchwarzFxSlot.Skill3Buff03);
+        }
+
+        private GameObject PrewarmPersistent(
+            GameObject instance,
             GameObject prefab,
             float baseScale,
             SchwarzFxSlot slot)
         {
-            return Spawn(prefab, actorMount, actorLocalOffset, baseScale, true, true, slot);
+            if (instance != null || prefab == null || actorMount == null)
+                return instance;
+
+            instance = Instantiate(prefab, actorMount, false);
+            ApplyActorFxTransform(instance, actorLocalOffset, baseScale, slot, true, GetFacingSign());
+            PreparePlayback(instance, prefab, persistent: true);
+            instance.SetActive(false);
+            return instance;
+        }
+
+        private GameObject ActivatePersistent(
+            GameObject instance,
+            GameObject prefab,
+            float baseScale,
+            SchwarzFxSlot slot)
+        {
+            instance = PrewarmPersistent(instance, prefab, baseScale, slot);
+            if (instance == null)
+                return null;
+
+            if (!instance.activeSelf)
+                instance.SetActive(true);
+            ApplyActorFxTransform(instance, actorLocalOffset, baseScale, slot, true, GetFacingSign());
+            PreparePlayback(instance, prefab, persistent: true);
+            return instance;
         }
 
         private GameObject Spawn(
@@ -784,14 +850,20 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
 
         private void StopSkill2Visuals()
         {
-            DestroyTracked(ref _skill2IgniteInstance);
-            DestroyTracked(ref _skill2CombustionInstance);
+            DeactivatePersistent(_skill2IgniteInstance);
+            DeactivatePersistent(_skill2CombustionInstance);
         }
 
         private void StopSkill3PersistentVisuals()
         {
-            DestroyTracked(ref _skill3Buff02Instance);
-            DestroyTracked(ref _skill3Buff03Instance);
+            DeactivatePersistent(_skill3Buff02Instance);
+            DeactivatePersistent(_skill3Buff03Instance);
+        }
+
+        private static void DeactivatePersistent(GameObject instance)
+        {
+            if (instance != null && instance.activeSelf)
+                instance.SetActive(false);
         }
 
         private void DestroyTracked(ref GameObject instance)
@@ -828,6 +900,13 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
                 if (_active[i] != null)
                     Destroy(_active[i]);
             _active.Clear();
+
+            // Persistent buff layers are pooled children. Keep them allocated across operator
+            // enable/disable cycles so entering S2/S3 never pays prefab/Animator setup cost.
+            DeactivatePersistent(_skill2IgniteInstance);
+            DeactivatePersistent(_skill2CombustionInstance);
+            DeactivatePersistent(_skill3Buff02Instance);
+            DeactivatePersistent(_skill3Buff03Instance);
         }
     }
 }

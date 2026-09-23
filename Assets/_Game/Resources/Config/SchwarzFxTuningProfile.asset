@@ -76,11 +76,11 @@ MonoBehaviour:
     leftScale: 1
     leftAngleDegrees: 0
   skill3Buff02:
-    rightOffset: {x: -1, y: -0.8}
-    rightScale: 1
+    rightOffset: {x: -0.6, y: -0.5}
+    rightScale: 3
     rightAngleDegrees: 0
-    leftOffset: {x: 0.6, y: -1.2}
-    leftScale: 1
+    leftOffset: {x: 0.1, y: -0.7}
+    leftScale: 3
     leftAngleDegrees: 0
   skill3Buff03:
     rightOffset: {x: 0.3, y: -1}

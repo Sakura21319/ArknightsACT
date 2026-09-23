@@ -1,18 +1,18 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using ArknightsACT.Combat;
+using ArknightsACT.Combat.Status;
+using ArknightsACT.Gameplay.Characters;
 using UnityEngine;
 
 namespace ArknightsACT.Gameplay.Roguelite.Progression
 {
     [DisallowMultipleComponent]
     [RequireComponent(typeof(CombatEntity))]
-    public sealed class LevelUpgradeInventory : MonoBehaviour, IDamageModifier
+    public sealed class LevelUpgradeInventory : MonoBehaviour, IDamageModifier, IPlayerSwitchStateTransfer
     {
         private readonly Dictionary<string, int> _stacks = new();
         private readonly Dictionary<string, LevelUpgradeDefinition> _definitions = new();
-        private readonly Dictionary<string, Coroutine> _burnRoutines = new();
 
         private CombatEntity _entity;
         private int _chainHitCounter;
@@ -32,12 +32,6 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
         private void OnDisable()
         {
             DamageSystem.DamageApplied -= OnDamageApplied;
-            foreach (var pair in _burnRoutines)
-            {
-                if (pair.Value != null)
-                    StopCoroutine(pair.Value);
-            }
-            _burnRoutines.Clear();
         }
 
         public int GetStackCount(LevelUpgradeDefinition definition)
@@ -70,13 +64,25 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
 
         public void ResetRun()
         {
-            foreach (var pair in _burnRoutines)
-                if (pair.Value != null)
-                    StopCoroutine(pair.Value);
-            _burnRoutines.Clear();
             _stacks.Clear();
             _definitions.Clear();
             _chainHitCounter = 0;
+        }
+
+        public void CopySwitchStateTo(Transform destination)
+        {
+            if (destination == null)
+                return;
+            var target = destination.GetComponent<LevelUpgradeInventory>();
+            if (target == null || target == this)
+                return;
+
+            target.ResetRun();
+            foreach (var pair in _stacks)
+                target._stacks[pair.Key] = pair.Value;
+            foreach (var pair in _definitions)
+                target._definitions[pair.Key] = pair.Value;
+            target._chainHitCounter = _chainHitCounter;
         }
 
         public float ModifyOutgoingDamage(in DamageContext context, float currentDamage)
@@ -118,36 +124,15 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
 
             var perTickFraction = Mathf.Max(0f, FirstValue(LevelUpgradeEffectType.BurnOnHit)) + (stacks - 1) * 0.035f;
             var perTickDamage = Mathf.Max(0.5f, context.BaseDamage * perTickFraction);
-            var id = context.Target.EntityId;
-            if (string.IsNullOrWhiteSpace(id))
-                return;
-
-            if (_burnRoutines.TryGetValue(id, out var active) && active != null)
-                StopCoroutine(active);
-            _burnRoutines[id] = StartCoroutine(BurnRoutine(id, context.Target, perTickDamage, context.ProcGeneration + 1));
-        }
-
-        private IEnumerator BurnRoutine(string id, CombatEntity target, float perTickDamage, int procGeneration)
-        {
-            const int tickCount = 3;
-            const float interval = 0.65f;
-            for (var i = 0; i < tickCount; i++)
-            {
-                yield return new WaitForSeconds(interval);
-                if (target == null || target.Health == null || target.Health.IsDead || _entity == null || _entity.Health == null || _entity.Health.IsDead)
-                    break;
-
-                DamageSystem.Apply(new DamageContext(
-                    _entity,
-                    _entity,
-                    target,
-                    perTickDamage,
-                    DamageType.Arts,
-                    Vector2.zero,
-                    procGeneration,
-                    "LevelUpgrade_Burn"));
-            }
-            _burnRoutines.Remove(id);
+            context.Target.Status?.Apply(new StatusApplicationContext(
+                CombatStatusIds.Burn,
+                _entity,
+                _entity,
+                duration: 2.05f,
+                magnitude: perTickDamage,
+                periodicDamageType: DamageType.Arts,
+                procGeneration: context.ProcGeneration,
+                sourceId: "LevelUpgrade_Burn"));
         }
 
         private void TryApplyChain(in DamageContext context)
@@ -177,7 +162,8 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
                 DamageType.Arts,
                 Vector2.zero,
                 context.ProcGeneration + 1,
-                "LevelUpgrade_Chain"));
+                "LevelUpgrade_Chain",
+                tags: DamageTags.SecondaryProc));
         }
 
         private CombatEntity FindNearestEnemy(CombatEntity primary, float radius)

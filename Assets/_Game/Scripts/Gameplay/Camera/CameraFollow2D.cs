@@ -1,3 +1,4 @@
+using ArknightsACT.Gameplay.Characters;
 using UnityEngine;
 
 namespace ArknightsACT.Gameplay.CameraSystem
@@ -20,6 +21,7 @@ namespace ArknightsACT.Gameplay.CameraSystem
 
         private void LateUpdate()
         {
+            target = PlayerRuntimeContext.Resolve(target);
             if (target == null)
                 return;
 

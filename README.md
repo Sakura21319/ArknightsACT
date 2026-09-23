@@ -22,45 +22,44 @@ The current prototype uses a low-oblique orthographic 2.5D presentation with a t
 
 - WASD / arrow keys: move
 - Space: jump
-- J / Left Mouse: basic combo
+- J / Left Mouse: basic attack
 - K / Shift: dash
-- L: Ch'en Skill 1
-- I / Right Mouse: Ch'en Skill 2
-- E: extract the unsecured haul and enter the next stage after defeating the stage Boss
-- F: open the nearby container window; its entries unseal one at a time while you stand still
-- 1 / 2 / 3 / 4: pick up the identified entry in that slot
-- T: take every identified entry that still fits
-- B: open the field pack (unsecured haul + collectible archive)
-- Tab: switch between the unsecured and archive tabs while the pack is open
-- X: drop the most recently picked up entry while the unsecured tab is open
-- Esc: close the container window or the field pack
+- L: Skill slot 1
+- I / Right Mouse: Skill slot 2
+- Tab: open/close the in-run operator switch panel; 1-9 select a registered operator
+- E: interact with the extraction point or an unlocked next-stage entrance
+- F: search a nearby container / pick up a world salvage item
+- G (hold): use the nearest city facility
+- B: open the field backpack
+- U: upgrade backpack capacity while the backpack is open
+- R: auto-arrange backpack items while the backpack is open
+- 1-9: take an identified container entry when the search window is open
+- T: take all identified entries that still fit
+- M: expand/collapse the exploration map
+- N: cycle exploration / return / next-stage guidance
+- Esc: close the active modal UI or operator switch panel
 
 ## Run structure
 
-The current Phase 07 exploration flow generates the physical stage at runtime:
+The current mobile-city generator builds one continuous seeded district per stage:
 
 ```text
-Stage 1: 2x2 = 4 blocks
-    -> fixed Boss endpoint
-Stage 2: 2x2 = 4 blocks
-    -> fixed Boss endpoint
-Stage 3: 2x2 = 4 blocks
-    -> final Boss
+Stage 1: 4x3 sectors
+Stage 2: 4x4 sectors
+Stage 3: 5x4 sectors
 ```
 
-Start is fixed at the bottom-left and Boss/exit at the top-right. Intermediate blocks are randomized between normal combat, emergency combat and a possible shop location. Physical chunk themes include open tactical ground, streets, cover lanes and exactly one walkable two-floor facility per stage.
+The safe start/extraction area remains in the south-west and the Boss/next-stage direction remains toward the north-east. The map is continuous and backtrackable rather than a sequence of isolated rooms. Encounters, buildings, searchable containers, city facilities, extraction and stage progression are assembled by the current Roguelite stage runtime.
 
-Entering a block for the first time activates its content. Enemies persist if the player leaves, so encounters can spill across block boundaries. Treasure can also be rolled inside combat blocks.
+The city is divided into outskirts, core, ruins and industrial roles. Current landmark content includes the civic emergency-command complex and the second-stage power-dispatch tower, plus medical, survey, power and risk/reward facilities.
 
-The shop block currently has a physical safe-plaza location only. Purchase items and refresh UI are intentionally deferred until exploration pacing is validated.
+## City exploration update (2026-09-23)
 
-## City exploration update (2026-09-20)
+The current runtime uses the curated 118-item scavenging database and a real 2D backpack starting at 4×5 cells. Search buildings are selected from 12 building profiles and use 28 container types across five loot tiers. Acquired collectibles apply during the current run; ordinary extracted goods can be secured into the persistent warehouse only through a real extraction.
 
-Each district is now 36 × 30 units. Foreground houses have walk-in interiors with actor-aware roof/wall fading. Nine searchable containers per stage draw from 22 Arknights-named collectibles adapted for this ACT. A four-slot unsecured bag is settled at stage exits; death loses the unsecured haul. Class-specific and future effects are explicitly labeled, and new entries can be added in `Assets/_Game/Resources/ScavengingCatalog.json`.
+Exploration tracks entered, searched, uncleared and empty buildings without revealing unknown loot. The minimap supports fog-of-war, district coloring, an expanded view and navigation guidance. City generation, container distribution and the current landmark/facility layer are documented in the current Docs index.
 
-Search is a two-step loop modelled on extraction shooters. Pressing F beside a container opens a search window whose entries are unsealed one at a time by a circular sweep; each identified entry pops its placeholder out of the case and has to be picked up deliberately. Container flavour sets the entry count (residential/service/commercial 3, industrial/checkpoint 4), standing still is required, and moving or taking damage aborts the pass while keeping everything already identified. The unsecured bag and the collectible archive now live behind B instead of a permanent on-screen strip.
-
-See [the search window handoff](Docs/SCAVENGING_SEARCH_UI_HANDOFF_2026_09_20.md) for this iteration, and [the city exploration handoff](Docs/CITY_EXPLORATION_HANDOFF_2026_09_20.md) for the district architecture, extension interfaces, validation and remaining playtest work.
+Start with [Docs/README.md](Docs/README.md) and [the project handoff](Docs/PROJECT_HANDOFF_2026_09_21.md) instead of older phase-specific handoffs.
 
 ## Progression
 

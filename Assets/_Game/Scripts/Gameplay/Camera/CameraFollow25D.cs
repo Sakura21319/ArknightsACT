@@ -1,3 +1,4 @@
+using ArknightsACT.Gameplay.Characters;
 using UnityEngine;
 
 namespace ArknightsACT.Gameplay.CameraSystem
@@ -28,6 +29,7 @@ namespace ArknightsACT.Gameplay.CameraSystem
 
         private void Snap()
         {
+            target = PlayerRuntimeContext.Resolve(target);
             if (target == null)
                 return;
             transform.position = target.position + offset + _viewOffset;

@@ -74,7 +74,7 @@ Unity 顶部菜单目前只保留主要入口：
 - 黑 · Snow
 - 黑 · Striker
 
-角色切换目前采用 Editor 重建 Player 的方式，不做局内热切换，以避免 StageRuntime / HUD / 背包 / 商店 / 奖励等系统残留旧 Player 引用。
+> 2026-09-23 更新：本段属于 9/22 历史状态。当前项目已经由 PlayerRuntimeContext + PlayableOperatorSwitchController 支持局内角色切换，并迁移血量比例、Run 状态与 Active Status。Editor 角色切换窗口仍保留用于构建/调试皮肤，但不再是唯一切换方式。
 
 “黑特效调试 / Schwarz FX Tuning”入口也位于角色切换窗口内。
 
@@ -303,7 +303,7 @@ Runtime 配置：
 
 面板入口：
 
-`ArknightsACT > 角色切换 > 黑特效调试 / Schwarz FX Tuning`
+`ArknightsACT > 角色调试 > 黑·技能特效调节`
 
 每个 FX 都支持：
 
@@ -470,7 +470,35 @@ FolderBridge 的 build 是 source validation / smoke，不等价于 Unity Editor
 1. 将 S2/S3 的 `debugInfiniteDuration` 恢复为 false；
 2. 恢复正式持续时间、初始技力和技能循环；
 3. 根据实际 Spine 动画列表锁定 S3 精确 Shot clip；
-4. 再考虑接入黑的天赋/破甲逻辑和项目正式 DEF/Armor 层。
+4. Schwarz 破甲箭头与项目正式 DEF/RES 层已于 2026-09-23 接入；后续只需 Unity 实机验证与正式数值/表现收尾，底层规则以 P1_COMBAT_STATUS_HANDOFF_2026_09_23.md 为准。
+
+---
+
+## 14.1 2026-09-23 P1 战斗底层更新
+
+9/22 文档中“项目尚无正式 DEF / Armor、Schwarz 破甲待做”的结论已经失效。
+
+当前已完成：
+
+- CombatStats：PhysicalDefense / ArtsResistance；
+- Physical / Arts / True 正式统一结算；
+- DamagePenetration 与 IDamagePenetrationModifier；
+- DefenseDown 通用 Status；
+- DamageTags.BasicAttack；
+- SchwarzArmorBreakTalent.cs；
+- 普通状态破甲触发率 20%；
+- 暮眼锐瞳激活时触发率 50%；
+- 战术的终结激活时触发率 100%；
+- 触发时本次基础攻击倍率 1.6；
+- 目标 DEF -20%，持续 5 秒；
+- 新建 Schwarz 自动挂破甲组件，旧场景由 SchwarzSkill1 做缺失 fallback；
+- 已增加 SchwarzArmorBreakTalentTests。
+
+重要：破甲不直接写进 PlayerAttackController 或 DamageSystem 特例。Schwarz 只负责决定本次是否触发，目标 DEF 修改统一走 CombatStatusIds.DefenseDown。
+
+完整规则与后续约束见：
+
+P1_COMBAT_STATUS_HANDOFF_2026_09_23.md
 
 ---
 

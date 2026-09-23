@@ -147,6 +147,19 @@ namespace ArknightsACT.Editor
             _ => 60f
         };
 
+        private static float ResolveDefense(PrototypeEnemyArchetype archetype) => archetype switch
+        {
+            PrototypeEnemyArchetype.FastMelee => 0.5f,
+            PrototypeEnemyArchetype.Ranged => 0.75f,
+            _ => 1.0f
+        };
+
+        private static float ResolveResistance(PrototypeEnemyArchetype archetype) => archetype switch
+        {
+            PrototypeEnemyArchetype.Ranged => 5f,
+            _ => 0f
+        };
+
         private static int ResolveExperience(PrototypeEnemyArchetype archetype) => archetype switch
         {
             PrototypeEnemyArchetype.FastMelee => 22,

@@ -30,6 +30,15 @@ namespace ArknightsACT.Combat
             Changed?.Invoke(CurrentHealth, maxHealth);
         }
 
+        public void SetCurrentHealth(float value)
+        {
+            var wasDead = IsDead;
+            CurrentHealth = Mathf.Clamp(value, 0f, maxHealth);
+            Changed?.Invoke(CurrentHealth, maxHealth);
+            if (!wasDead && CurrentHealth <= 0f)
+                Died?.Invoke();
+        }
+
         public float TakeDamage(float amount)
         {
             if (IsDead || amount <= 0f)

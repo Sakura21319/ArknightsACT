@@ -131,6 +131,8 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 cell.SetParent(root, false);
                 cell.position = block.position;
 
+                if (stageMap.UsesCityLots) continue;
+
                 var flip = PositiveMod(stageMap.StageIndex + i + (int)data.Theme, 2) == 1;
                 switch (data.Theme)
                 {

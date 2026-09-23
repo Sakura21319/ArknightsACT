@@ -1,3 +1,4 @@
+using ArknightsACT.Gameplay.Characters;
 using UnityEngine;
 
 namespace ArknightsACT.Gameplay.Prototype25D
@@ -22,6 +23,7 @@ namespace ArknightsACT.Gameplay.Prototype25D
 
         private void Snap()
         {
+            target = PlayerRuntimeContext.Resolve(target);
             if (target == null)
                 return;
             transform.position = target.position + offset;

@@ -24,7 +24,6 @@ namespace ArknightsACT.Gameplay.Roguelite.World
     [DisallowMultipleComponent]
     public sealed class RogueliteStageEnvironmentController : MonoBehaviour
     {
-        [SerializeField] private Transform player;
         [SerializeField] private RogueliteRunState runState;
         [SerializeField] private RogueliteStageMapController stageMap;
         [SerializeField] private bool prototypeHazardsEnabled = true;
@@ -41,10 +40,9 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
         public RogueliteCatastropheKind CurrentCatastrophe { get; private set; }
 
-        public void Configure(Transform playerTransform, RogueliteRunState state, RogueliteStageMapController map)
+        public void Configure(RogueliteRunState state, RogueliteStageMapController map)
         {
             _context ??= GetComponent<RogueliteStageRuntimeContext>();
-            player = playerTransform;
             runState = state;
             stageMap = map;
         }

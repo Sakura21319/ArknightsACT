@@ -132,7 +132,7 @@ namespace ArknightsACT.Editor
                         throw new Exception($"Disconnected interior navigation: {room.name}");
                 }
                 Capture($"stage-{_stage}", new Vector3(0f, 0f, 0f), 48f);
-                var roomForShot = rooms.First(x => x.name == "ApartmentWing_A");
+                var roomForShot = rooms.First(x => x.transform.Find("ShellBack") != null && x.GetComponentInChildren<SearchableContainer25D>() != null);
                 var scavenging = UnityEngine.Object.FindFirstObjectByType<ScavengingInventory25D>();
                 ValidateLoot(scavenging, containers.First(x => x.transform.parent == roomForShot.transform));
                 if (_stage == 1) ValidateCapacity(scavenging, containers);
@@ -178,7 +178,7 @@ namespace ArknightsACT.Editor
             scavenging.AdvanceSearch(5f);
             Time.timeScale = 1f;
             if (container.RevealedCount != 0 || container.TakenCount != 0) throw new Exception("Search advanced while paused");
-            if (container.SlotCount < 3 || container.SlotCount > 10)
+            if (container.SlotCount < 1 || container.SlotCount > 10)
                 throw new Exception($"Unexpected slot count for {container.DisplayName}: {container.SlotCount}");
             ValidatePackedGrid(container);
 

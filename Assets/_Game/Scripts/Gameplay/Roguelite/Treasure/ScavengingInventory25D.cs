@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using ArknightsACT.Combat;
 using ArknightsACT.Gameplay.Feedback;
+using ArknightsACT.Gameplay.Characters;
 using ArknightsACT.Gameplay.Input;
 using ArknightsACT.Gameplay.Roguelite.Collectibles;
 using ArknightsACT.Gameplay.Roguelite.Routing;
@@ -14,7 +15,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
     /// The backpack starts at 4x5 cells. Items occupy their real scavenging footprint and are packed
     /// row-major / first-fit. During a run the player can spend Originium Ingots to expand the grid.
     /// </summary>
-    public sealed class ScavengingInventory25D : MonoBehaviour
+    public sealed class ScavengingInventory25D : MonoBehaviour, IPlayerSwitchStateTransfer
     {
         public const int InitialBackpackWidth = 4;
         public const int InitialBackpackHeight = 5;
@@ -122,10 +123,6 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
         {
             _entity = GetComponent<CombatEntity>();
             _inventory = GetComponent<CollectibleInventory>();
-            // Migration for the already-saved Chen scene; future operators declare their own profile.
-            var profile = GetComponent<PlayerCombatProfile>();
-            if (profile != null && profile.Profession == OperatorProfession.Unspecified && GetComponent<ArknightsACT.Gameplay.Characters.Chen.ChenSkill1>() != null)
-                profile.SetProfession(OperatorProfession.Guard);
             _catalog.AddRange(ScavengingCatalog.Load());
             // The saved prototype scene already carries this component, so the window has to be attached here.
             if (GetComponent<ScavengingWindowUI>() == null) gameObject.AddComponent<ScavengingWindowUI>();
@@ -171,6 +168,39 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
             _groundCandidate = null;
             WorldSalvagePickup25D.ClearAll();
             Changed?.Invoke();
+        }
+
+        public void CopySwitchStateTo(Transform destination)
+        {
+            if (destination == null)
+                return;
+            var target = destination.GetComponent<ScavengingInventory25D>();
+            if (target == null || target == this)
+                return;
+
+            target.CloseContainerWindow();
+            target._backpackOpen = false;
+            target.UpdateGameplayInputLock();
+
+            target._pending.Clear();
+            target._pending.AddRange(_pending);
+            target._pendingPositions.Clear();
+            target._pendingPositions.AddRange(_pendingPositions);
+            target._discoveredCommodities.Clear();
+            foreach (var id in _discoveredCommodities)
+                target._discoveredCommodities.Add(id);
+
+            target._backpackLevel = _backpackLevel;
+            target._securedCollectionValue = _securedCollectionValue;
+            target._finished = _finished;
+            target._lastPosition = destination.position;
+            target._lastPickupTime = _lastPickupTime;
+            target._lastPickupIndex = _lastPickupIndex;
+            target._candidate = null;
+            target._groundCandidate = null;
+            target._openContainer = null;
+            target._notice = _notice;
+            target.Changed?.Invoke();
         }
 
         public void BeginNewRun()
@@ -241,7 +271,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
         {
             if (container == null || container.Emptied) return false;
             if ((container.transform.position - transform.position).sqrMagnitude > InteractRange * InteractRange) return false;
-            container.EnsureSlots(ResolveSlotReward);
+            container.EnsureSlots((index, seed) => ResolveContainerReward(seed, container.Tier));
             if (container.SlotCount == 0)
             {
                 // Everything it could roll is already at its stack cap; stop offering the prompt.
@@ -673,7 +703,40 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
             return null;
         }
 
-        private CollectibleDefinition ResolveSlotReward(int index, int seed) => ResolveReward(seed);
+        // Normalize within each rarity first: catalog counts cannot make garbage bins rich.
+        public CollectibleDefinition ResolveContainerReward(int seed, int tier)
+        {
+            var masses = new float[4];
+            foreach (var item in _catalog)
+                if (IsDraftable(item)) masses[(int)item.SalvageRarity] += ItemPreference(item);
+            var total = 0f;
+            for (var rarity = 0; rarity < 4; rarity++)
+                if (masses[rarity] > 0f) total += SalvageContainerProfiles.RarityWeight(tier, (SalvageRarity)rarity);
+            if (total <= 0f) return null;
+            var random = new System.Random(seed);
+            var roll = (float)random.NextDouble() * total;
+            var selected = -1;
+            for (var rarity = 0; rarity < 4; rarity++)
+            {
+                if (masses[rarity] <= 0f) continue;
+                selected = rarity;
+                roll -= SalvageContainerProfiles.RarityWeight(tier, (SalvageRarity)rarity);
+                if (roll < 0f) break;
+            }
+            roll = (float)random.NextDouble() * masses[selected];
+            CollectibleDefinition last = null;
+            foreach (var item in _catalog)
+            {
+                if (!IsDraftable(item) || (int)item.SalvageRarity != selected) continue;
+                last = item;
+                roll -= ItemPreference(item);
+                if (roll < 0f) return item;
+            }
+            return last;
+        }
+
+        private float ItemPreference(CollectibleDefinition item) => item.IsSalvageCommodity ? 1f :
+            _inventory.IsEffectActive(item) ? 0.46f : 0.34f;
 
         /// <summary>Deterministic weighted roll from a container slot seed.</summary>
         public CollectibleDefinition ResolveReward(int seed)
@@ -759,6 +822,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
             if (_entity == null || _entity.Health == null) return;
             var keyboard = Keyboard.current;
             var dead = _entity.Health.IsDead || _finished;
+            var interactionBlocked = CombatActionUtility.IsBlocked(_entity, CombatActionMask.Interaction);
 
             if (keyboard != null)
             {
@@ -780,6 +844,12 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
 
             if (_openContainer != null)
             {
+                if (interactionBlocked)
+                {
+                    CloseContainerWindow("异常状态打断了搜刮");
+                    return;
+                }
+
                 if (keyboard != null && keyboard.fKey.wasPressedThisFrame)
                 {
                     CloseContainerWindow("搜刮界面已关闭");
@@ -790,6 +860,13 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
             }
 
             if (_backpackOpen)
+            {
+                _candidate = null;
+                _groundCandidate = null;
+                return;
+            }
+
+            if (interactionBlocked)
             {
                 _candidate = null;
                 _groundCandidate = null;

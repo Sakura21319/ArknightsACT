@@ -3,9 +3,9 @@ using System;
 using System.IO;
 using ArknightsACT.Editor.Effects;
 using ArknightsACT.Editor.PRTS;
+using ArknightsACT.Gameplay.Characters;
 using ArknightsACT.Gameplay.Characters.Schwarz;
 using UnityEditor;
-using UnityEditor.Callbacks;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 
@@ -26,18 +26,6 @@ namespace ArknightsACT.Editor
         private const string SourceS2CommonFrames = SourceRoot + @"\effects\candidates\black_s2\common_buff\frames";
         private const string SourceSoundBanks = SourceRoot + @"\sound\_banks";
         private const string SourceVoice = SourceRoot + @"\voice\voice_jp";
-
-        [DidReloadScripts]
-        private static void OnScriptsReloaded()
-        {
-            EditorApplication.delayCall += () =>
-            {
-                ImportCoreAssets(false);
-                EnsureS2CompositeFx();
-                SchwarzExtractedFxSetup.TryApplyToOpenScene();
-            };
-        }
-
         private static void ImportAllFromMenu()
         {
             ImportCoreAssets(true);
@@ -55,11 +43,19 @@ namespace ArknightsACT.Editor
 
         internal static void PrepareForBuild(SchwarzSkinVariant skin)
         {
-            ImportCoreAssets(false);
+            RefreshSelectedAssets(skin, false);
+        }
+
+        internal static void RefreshSelectedAssets(
+            SchwarzSkinVariant skin,
+            bool force)
+        {
+            ImportCoreAssets(force);
             BuildPresentationPrefabs(skin);
-            if (!SchwarzExtractedFxSetup.HasVariantImported(skin) ||
+            if (force ||
+                !SchwarzExtractedFxSetup.HasVariantImported(skin) ||
                 !SchwarzExtractedFxSetup.HasS2CompositeImported())
-                ImportEffects(force: false);
+                ImportEffects(force);
         }
 
         internal static void EnsureS2CompositeFx()
@@ -135,6 +131,26 @@ namespace ArknightsACT.Editor
                 "Assets/_Game/Art/Audio/Schwarz/Schwarz_Impact.wav",
                 force);
             CopyRaw(
+                Path.Combine(SourceSoundBanks, "btl_snd_0", "b_char_atkboost.wav"),
+                "Assets/_Game/Art/Audio/Schwarz/Schwarz_Skill2_Activate.wav",
+                force);
+            CopyRaw(
+                Path.Combine(SourceSoundBanks, "btl_snd_1", "b_char_tactboost.wav"),
+                "Assets/_Game/Art/Audio/Schwarz/Schwarz_Skill3_Activate.wav",
+                force);
+            CopyRaw(
+                Path.Combine(SourceSoundBanks, "p_skill_10", "p_skill_militaryxbowchange.wav"),
+                "Assets/_Game/Art/Audio/Schwarz/Schwarz_Skill3_WeaponChange.wav",
+                force);
+            CopyRaw(
+                Path.Combine(SourceSoundBanks, "p_atk_2", "p_atk_militaryxbow_s.wav"),
+                "Assets/_Game/Art/Audio/Schwarz/Schwarz_SpecialAttack_Shot.wav",
+                force);
+            CopyRaw(
+                Path.Combine(SourceSoundBanks, "p_imp_3", "p_imp_militaryxbow_s.wav"),
+                "Assets/_Game/Art/Audio/Schwarz/Schwarz_Skill3_Impact.wav",
+                force);
+            CopyRaw(
                 Path.Combine(SourceVoice, "CN_025.wav"),
                 "Assets/_Game/Art/Audio/Schwarz/Schwarz_Voice_JP_CN_025.wav",
                 force);
@@ -153,6 +169,91 @@ namespace ArknightsACT.Editor
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+        }
+
+        internal static void ConfigureAudioProfile(GameObject owner)
+        {
+            if (owner == null)
+                return;
+
+            var profile = owner.GetComponent<PlayableOperatorAudioProfile>() ??
+                          owner.AddComponent<PlayableOperatorAudioProfile>();
+
+            // CN_025..028 are battle skill lines. They are a shared combat pool rather than a
+            // hard split where S2 can only say 025/026 and S3 can only say 027/028.
+            var battleVoices = new[]
+            {
+                AssetDatabase.LoadAssetAtPath<AudioClip>(
+                    "Assets/_Game/Art/Audio/Schwarz/Schwarz_Voice_JP_CN_025.wav"),
+                AssetDatabase.LoadAssetAtPath<AudioClip>(
+                    "Assets/_Game/Art/Audio/Schwarz/Schwarz_Voice_JP_CN_026.wav"),
+                AssetDatabase.LoadAssetAtPath<AudioClip>(
+                    "Assets/_Game/Art/Audio/Schwarz/Schwarz_Voice_JP_CN_027.wav"),
+                AssetDatabase.LoadAssetAtPath<AudioClip>(
+                    "Assets/_Game/Art/Audio/Schwarz/Schwarz_Voice_JP_CN_028.wav")
+            };
+
+            profile.Configure(
+                slot1Sfx: AssetDatabase.LoadAssetAtPath<AudioClip>(
+                    "Assets/_Game/Art/Audio/Schwarz/Schwarz_Skill2_Activate.wav"),
+                slot2Sfx: AssetDatabase.LoadAssetAtPath<AudioClip>(
+                    "Assets/_Game/Art/Audio/Schwarz/Schwarz_Skill3_Activate.wav"),
+                slot1Voices: battleVoices,
+                slot2Voices: battleVoices,
+                attackSwings: new[]
+                {
+                    AssetDatabase.LoadAssetAtPath<AudioClip>(
+                        "Assets/_Game/Art/Audio/Schwarz/Schwarz_Attack_01.wav"),
+                    AssetDatabase.LoadAssetAtPath<AudioClip>(
+                        "Assets/_Game/Art/Audio/Schwarz/Schwarz_Attack_02.wav"),
+                    AssetDatabase.LoadAssetAtPath<AudioClip>(
+                        "Assets/_Game/Art/Audio/Schwarz/Schwarz_Attack_03.wav")
+                },
+                attackImpact: AssetDatabase.LoadAssetAtPath<AudioClip>(
+                    "Assets/_Game/Art/Audio/Schwarz/Schwarz_Impact.wav"),
+                optionalSkillSfx: false,
+                specialManualAttackSourceId: "Schwarz_S3_AimedShot",
+                specialManualAttackSfx: AssetDatabase.LoadAssetAtPath<AudioClip>(
+                    "Assets/_Game/Art/Audio/Schwarz/Schwarz_SpecialAttack_Shot.wav"),
+                specialManualAttackImpact: AssetDatabase.LoadAssetAtPath<AudioClip>(
+                    "Assets/_Game/Art/Audio/Schwarz/Schwarz_Skill3_Impact.wav"),
+                slot2LayerSfx: AssetDatabase.LoadAssetAtPath<AudioClip>(
+                    "Assets/_Game/Art/Audio/Schwarz/Schwarz_Skill3_WeaponChange.wav"));
+            EditorUtility.SetDirty(profile);
+        }
+
+        internal static bool TryApplyAudioToOpenScene()
+        {
+            if (EditorApplication.isCompiling)
+                return false;
+
+            var identities = UnityEngine.Object.FindObjectsByType<PlayableOperatorIdentity>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
+            var applied = false;
+            for (var i = 0; i < identities.Length; i++)
+            {
+                var identity = identities[i];
+                if (identity == null ||
+                    !string.Equals(identity.OperatorId, "Schwarz", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                ConfigureAudioProfile(identity.gameObject);
+                EditorUtility.SetDirty(identity.gameObject);
+                applied = true;
+            }
+
+            if (applied && !EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+                if (scene.IsValid() && scene.isLoaded)
+                {
+                    EditorSceneManager.MarkSceneDirty(scene);
+                    EditorSceneManager.SaveScene(scene);
+                }
+            }
+
+            return applied;
         }
 
         private static void BuildPresentationPrefabs(SchwarzSkinVariant skin)
@@ -362,8 +463,10 @@ namespace ArknightsACT.Editor
 
         internal static bool HasVariantImported(SchwarzSkinVariant skin) =>
             Load("skill_03_start", skin) != null &&
+            Load("skill_03_trail", skin) != null &&
             Load("skill_01_hit", skin) != null &&
-            Load("shwaz_attack_01_start", skin) != null;
+            Load("shwaz_attack_01_start", skin) != null &&
+            Load("shwaz_attack_01_trail", skin) != null;
 
         internal static bool HasS2CompositeImported() =>
             LoadExact("common_064_ignite_attack_red") != null &&

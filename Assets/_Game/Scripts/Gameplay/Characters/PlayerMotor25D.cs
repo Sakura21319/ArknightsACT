@@ -12,7 +12,7 @@ namespace ArknightsACT.Gameplay.Characters
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(CharacterController), typeof(CombatEntity))]
-    public sealed class PlayerMotor25D : MonoBehaviour, IPlayerLocomotion
+    public sealed class PlayerMotor25D : MonoBehaviour, IPlayerLocomotion, ICombatActionInterruptHandler
     {
         private const float FacingHorizontalDeadzone = 0.30f;
 
@@ -86,6 +86,7 @@ namespace ArknightsACT.Gameplay.Characters
 
             var movementLocked = (_attack != null && _attack.IsMovementLocked) ||
                                  (_skills != null && _skills.IsCasting) ||
+                                 CombatActionUtility.IsBlocked(_entity, CombatActionMask.Movement) ||
                                  IsExternallyMovementLocked();
             var desired = movementLocked ? Vector3.zero : ResolveDesiredPlanarVelocity();
             var rate = desired.sqrMagnitude > _planarVelocity.sqrMagnitude ? acceleration : deceleration;
@@ -126,6 +127,12 @@ namespace ArknightsACT.Gameplay.Characters
             _verticalVelocity = 0f;
         }
 
+        public void InterruptCombatActions(CombatActionMask actions)
+        {
+            if ((actions & CombatActionMask.Movement) != 0)
+                _planarVelocity = Vector3.zero;
+        }
+
         private bool IsExternallyMovementLocked()
         {
             var behaviours = GetComponents<MonoBehaviour>();
@@ -161,7 +168,8 @@ namespace ArknightsACT.Gameplay.Characters
                     FacingSign = screenHorizontal >= 0f ? 1 : -1;
             }
 
-            return direction * moveSpeed;
+            var statMultiplier = _entity?.Stats != null ? _entity.Stats.MoveSpeedMultiplier : 1f;
+            return direction * (moveSpeed * statMultiplier);
         }
 
         private void InitializeDefaultPlanarForward()

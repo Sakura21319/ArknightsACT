@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using ArknightsACT.Combat;
 using ArknightsACT.Gameplay.Abilities;
 using ArknightsACT.Gameplay.Combat;
+using ArknightsACT.Gameplay.Characters;
 using ArknightsACT.Gameplay.Roguelite.Routing;
 using UnityEngine;
 
@@ -15,7 +16,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Collectibles
     }
     [DisallowMultipleComponent]
     [RequireComponent(typeof(CombatEntity))]
-    public sealed class CollectibleInventory : MonoBehaviour, IDamageModifier
+    public sealed class CollectibleInventory : MonoBehaviour, IDamageModifier, IPlayerSwitchStateTransfer, ICombatStatModifier, ICombatTargetStatModifier
     {
         private readonly Dictionary<string, int> _stacks = new();
         private readonly Dictionary<string, CollectibleDefinition> _definitions = new();
@@ -204,6 +205,33 @@ namespace ArknightsACT.Gameplay.Roguelite.Collectibles
             _runStartedAt = Time.time;
         }
 
+        public void CopySwitchStateTo(Transform destination)
+        {
+            if (destination == null)
+                return;
+            var target = destination.GetComponent<CollectibleInventory>();
+            if (target == null || target == this)
+                return;
+
+            target._stacks.Clear();
+            target._definitions.Clear();
+            target._enemyBaseMaxHealth.Clear();
+
+            foreach (var pair in _stacks)
+                target._stacks[pair.Key] = pair.Value;
+            foreach (var pair in _definitions)
+                target._definitions[pair.Key] = pair.Value;
+            foreach (var pair in _enemyBaseMaxHealth)
+                if (pair.Key != null)
+                    target._enemyBaseMaxHealth[pair.Key] = pair.Value;
+
+            target._runStartedAt = _runStartedAt;
+            target.RecalculateMaxHealth();
+            // Always resync: switching from a profession-specific enemy-health relic to an
+            // incompatible operator must also restore enemies to their recorded base max health.
+            target.SyncEnemyMaxHealth();
+        }
+
         public float ModifyOutgoingDamage(in DamageContext context, float currentDamage)
         {
             var percent = SumEffect(CollectibleEffectType.AllDamagePercent);
@@ -219,6 +247,37 @@ namespace ArknightsACT.Gameplay.Roguelite.Collectibles
 
         public float ModifyIncomingDamage(in DamageContext context, float currentDamage) =>
             currentDamage * Mathf.Max(0f, 1f + SumEffect(CollectibleEffectType.IncomingDamagePercent));
+
+        public void AccumulateStatModifiers(CombatStatType stat, ref float flat, ref float additivePercent)
+        {
+            switch (stat)
+            {
+                case CombatStatType.PhysicalDefense:
+                    flat += SumEffect(CollectibleEffectType.PhysicalDefenseFlat);
+                    additivePercent += SumEffect(CollectibleEffectType.PhysicalDefensePercent);
+                    break;
+                case CombatStatType.ArtsResistance:
+                    flat += SumEffect(CollectibleEffectType.ArtsResistanceFlat);
+                    additivePercent += SumEffect(CollectibleEffectType.ArtsResistancePercent);
+                    break;
+            }
+        }
+
+        public float ModifyTargetStat(in DamageContext context, CombatStatType stat, float currentValue)
+        {
+            if (_entity == null ||
+                context.Target == null ||
+                context.Target.Team == _entity.Team)
+                return currentValue;
+
+            if (stat == CombatStatType.PhysicalDefense)
+            {
+                var percent = SumEffect(CollectibleEffectType.EnemyPhysicalDefensePercent);
+                return Mathf.Max(0f, currentValue * Mathf.Max(0f, 1f + percent));
+            }
+
+            return currentValue;
+        }
 
         private void OnBasicAttackHit(CombatEntity target)
         {

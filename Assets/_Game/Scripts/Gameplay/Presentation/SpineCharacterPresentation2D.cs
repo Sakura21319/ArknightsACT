@@ -212,6 +212,45 @@ namespace ArknightsACT.Gameplay.Presentation
             SetFacing(facing);
         }
 
+        public bool TryGetAnimationDuration(string animation, out float duration)
+        {
+            duration = 0f;
+            if (string.IsNullOrWhiteSpace(animation))
+                return false;
+            if (!IsBound && !TryBind())
+                return false;
+
+            var resolved = ResolveExact(animation) ?? animation;
+            return _animationDurations.TryGetValue(resolved, out duration) && duration > 0f;
+        }
+
+        public bool SetCurrentAnimationSpeed(float speed)
+        {
+            if (!IsBound && !TryBind())
+                return false;
+
+            try
+            {
+                var getCurrent = _animationState.GetType().GetMethod(
+                    "GetCurrent",
+                    BindingFlags.Instance | BindingFlags.Public,
+                    null,
+                    new[] { typeof(int) },
+                    null);
+                var entry = getCurrent?.Invoke(_animationState, new object[] { 0 });
+                return SetFloatMember(
+                    entry,
+                    "TimeScale",
+                    "timeScale",
+                    Mathf.Max(0.01f, speed));
+            }
+            catch (Exception exception)
+            {
+                WarnOnce("Failed to set Spine animation speed: " + exception.GetBaseException().Message);
+                return false;
+            }
+        }
+
         public void PlayAttack(int comboIndex, int facing)
         {
             SetFacing(facing);
@@ -581,6 +620,37 @@ namespace ArknightsACT.Gameplay.Presentation
                 return 0f;
 
             return _animationDurations.TryGetValue(animation, out var duration) ? duration : 0f;
+        }
+
+        private static bool SetFloatMember(
+            object target,
+            string propertyName,
+            string fieldName,
+            float value)
+        {
+            if (target == null)
+                return false;
+
+            var type = target.GetType();
+            var property = type.GetProperty(
+                propertyName,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (property != null && property.CanWrite && property.PropertyType == typeof(float))
+            {
+                property.SetValue(target, value);
+                return true;
+            }
+
+            var field = type.GetField(
+                fieldName,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (field != null && field.FieldType == typeof(float))
+            {
+                field.SetValue(target, value);
+                return true;
+            }
+
+            return false;
         }
 
         private static object GetMemberValue(object target, string propertyName, string fieldName)

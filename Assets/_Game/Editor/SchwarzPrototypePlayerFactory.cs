@@ -38,6 +38,7 @@ namespace ArknightsACT.Editor
             controller.slopeLimit = 45f;
 
             AddSharedGameplay(go, attacks, skin);
+            go.AddComponent<ScavengingInventory25D>();
 
             var motor = go.AddComponent<PlayerMotor25D>();
             motor.SetCamera(camera);
@@ -90,36 +91,15 @@ namespace ArknightsACT.Editor
             AttackDefinition[] attacks,
             SchwarzSkinVariant skin)
         {
-            var health = go.GetComponent<Health>() ?? go.AddComponent<Health>();
-            health.SetMaxHealth(100f);
-            if (go.GetComponent<StatusController>() == null)
-                go.AddComponent<StatusController>();
-
-            var entity = go.GetComponent<CombatEntity>() ?? go.AddComponent<CombatEntity>();
-            entity.SetTeam(Team.Player);
-
-            go.AddComponent<PlayerInputReader>();
-            go.AddComponent<PlayerDashController>();
-            go.AddComponent<PlayerAttackController>().Configure(attacks, 18f);
-            go.AddComponent<SchwarzRangedBasicAttack>();
-            go.AddComponent<PlayerDamageGate>();
-
-            go.AddComponent<SchwarzSkill1>();
-            go.AddComponent<SchwarzSkill2>();
-            go.AddComponent<SchwarzSniperModeController>();
-            go.AddComponent<PlayerSkillController>();
-            go.AddComponent<SchwarzSkillUpgradeApplier>();
-
-            var profile = go.AddComponent<PlayerCombatProfile>();
-            profile.SetProfession(OperatorProfession.Sniper);
-            profile.Configure(
+            PlayableOperatorPrototypeComposer.AddFoundation(
+                go,
+                attacks,
+                18f,
+                OperatorProfession.Sniper,
                 CombatFeature.BasicAttack |
                 CombatFeature.ActiveSkills |
                 CombatFeature.Dash |
-                CombatFeature.PhysicalDamage);
-
-            var identity = go.AddComponent<PlayableOperatorIdentity>();
-            identity.Configure(
+                CombatFeature.PhysicalDamage,
                 "Schwarz",
                 "黑",
                 SkinId(skin),
@@ -127,10 +107,16 @@ namespace ArknightsACT.Editor
                 "UI/Skills/Schwarz/s2",
                 "UI/Skills/Schwarz/s3");
 
-            go.AddComponent<CollectibleInventory>();
-            go.AddComponent<LevelUpgradeInventory>();
-            go.AddComponent<CharacterSkillUpgradeInventory>();
-            go.AddComponent<TemporaryCombatBuffs>();
+            go.AddComponent<SchwarzRangedBasicAttack>();
+            go.AddComponent<SchwarzSkill1>();
+            go.AddComponent<SchwarzSkill2>();
+            if (go.GetComponent<SchwarzArmorBreakTalent>() == null)
+                go.AddComponent<SchwarzArmorBreakTalent>();
+            go.AddComponent<SchwarzSniperModeController>();
+            go.AddComponent<SchwarzSkillUpgradeApplier>();
+            PlayableOperatorPrototypeComposer.CompleteGameplay(go);
+
+            SchwarzLocalAssetBootstrap.ConfigureAudioProfile(go);
         }
 
         private static void AttachMotionRetarget(

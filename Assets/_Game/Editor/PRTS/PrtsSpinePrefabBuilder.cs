@@ -73,7 +73,7 @@ namespace ArknightsACT.Editor.PRTS
             GameObject root = null;
             try
             {
-                root = new GameObject("PRTS_" + descriptor.BaseName);
+                root = new GameObject("PRTS_" + descriptor.PrefabKey);
                 root.transform.localScale = Vector3.one;
 
                 var visual = new GameObject("SpineVisual");
@@ -119,14 +119,14 @@ namespace ArknightsACT.Editor.PRTS
                 if (renderer != null)
                     renderer.sortingOrder = descriptor.Role == "Player" ? 30 : 20;
 
-                var path = GetPrefabPath(descriptor.BaseName);
+                var path = GetPrefabPath(descriptor.PrefabKey);
                 PrefabUtility.SaveAsPrefabAsset(root, path);
 
                 var animationSummary = animationNames.Count > 0
                     ? string.Join(", ", animationNames)
                     : "<none discovered>";
                 Debug.Log(
-                    $"[ArknightsACT/PRTS] Built {descriptor.DisplayName} ({descriptor.BaseName}) -> {path}\n" +
+                    $"[ArknightsACT/PRTS] Built {descriptor.DisplayName} ({descriptor.BaseName}/{descriptor.PrefabKey}) -> {path}\n" +
                     $"Safe scale: {descriptor.SafeInitialScale:0.###}; target height: {descriptor.TargetWorldHeight:0.00}\n" +
                     $"Animations: {animationSummary}");
                 return true;

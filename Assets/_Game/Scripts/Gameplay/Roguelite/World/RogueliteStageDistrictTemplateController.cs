@@ -101,54 +101,27 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             if (block == null)
                 return ChernobogDistrictType.MainStreet;
 
-            // The current production layout is a fixed 2x2 town. Its coordinates are the urban
-            // grammar, not a random theme roll: residential, commercial, industrial, checkpoint.
-            // The older theme-driven fallback below remains useful if a larger experimental map is
-            // brought back later.
-            if (block.Coordinate == new Vector2Int(0, 0))
-                return ChernobogDistrictType.Residential;
-            if (block.Coordinate == new Vector2Int(1, 0))
-                return ChernobogDistrictType.Commercial;
-            if (block.Coordinate == new Vector2Int(0, 1))
-                return ChernobogDistrictType.Industrial;
-            if (block.Coordinate == new Vector2Int(1, 1))
-                return ChernobogDistrictType.Checkpoint;
-
-            if (block.Type == RogueliteBlockType.Start || block.Type == RogueliteBlockType.Shop ||
-                block.Theme == RogueliteChunkTheme.SafePlaza)
-                return ChernobogDistrictType.Plaza;
-
-            if (block.Type == RogueliteBlockType.Boss || block.Theme == RogueliteChunkTheme.BossArena)
-                return ChernobogDistrictType.Checkpoint;
-
-            if (block.Theme == RogueliteChunkTheme.Facility)
-                return ChernobogDistrictType.ServiceYard;
-
-            if (block.Type == RogueliteBlockType.EmergencyCombat)
-                return PositiveMod(blockIndex + stageIndex, 2) == 0
-                    ? ChernobogDistrictType.RuinedBlock
-                    : ChernobogDistrictType.Checkpoint;
-
-            switch (block.Theme)
+            // District roles follow the seeded logical plan, not absolute quadrant coordinates.
+            if (block.Zone == CityZone.Core) return ChernobogDistrictType.Checkpoint;
+            if (block.Zone == CityZone.Industrial) return ChernobogDistrictType.Industrial;
+            if (block.Zone == CityZone.Ruins) return ChernobogDistrictType.RuinedBlock;
+            if (stageIndex == 2)
             {
-                case RogueliteChunkTheme.Street:
-                    return PositiveMod(blockIndex + stageIndex, 3) == 0
-                        ? ChernobogDistrictType.Alley
-                        : ChernobogDistrictType.MainStreet;
-                case RogueliteChunkTheme.CoverLane:
-                    return PositiveMod(blockIndex + stageIndex, 2) == 0
-                        ? ChernobogDistrictType.ServiceYard
-                        : ChernobogDistrictType.Checkpoint;
-                default:
-                    var roll = PositiveMod(blockIndex * 7 + stageIndex * 5, 4);
-                    return roll switch
-                    {
-                        0 => ChernobogDistrictType.RuinedBlock,
-                        1 => ChernobogDistrictType.Alley,
-                        2 => ChernobogDistrictType.MainStreet,
-                        _ => ChernobogDistrictType.ServiceYard
-                    };
+                if (block.Type == RogueliteBlockType.Boss || block.Type == RogueliteBlockType.EmergencyCombat) return ChernobogDistrictType.Checkpoint;
+                if (block.Type == RogueliteBlockType.Shop) return ChernobogDistrictType.Commercial;
+                return blockIndex % 3 == 0 ? ChernobogDistrictType.ServiceYard : ChernobogDistrictType.Industrial;
             }
+            if (block.Type == RogueliteBlockType.Start) return ChernobogDistrictType.Residential;
+            if (block.Type == RogueliteBlockType.Boss) return ChernobogDistrictType.Checkpoint;
+            if (block.Type == RogueliteBlockType.Shop) return ChernobogDistrictType.Commercial;
+            if (block.Theme == RogueliteChunkTheme.Facility) return ChernobogDistrictType.Industrial;
+            if (block.Type == RogueliteBlockType.EmergencyCombat) return ChernobogDistrictType.Checkpoint;
+            return block.Theme switch
+            {
+                RogueliteChunkTheme.Street => ChernobogDistrictType.Residential,
+                RogueliteChunkTheme.CoverLane => ChernobogDistrictType.Commercial,
+                _ => ChernobogDistrictType.ServiceYard
+            };
         }
 
         private static string FormatCounts(Dictionary<ChernobogDistrictType, int> counts)

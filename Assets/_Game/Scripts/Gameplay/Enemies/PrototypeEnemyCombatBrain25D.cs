@@ -15,7 +15,7 @@ namespace ArknightsACT.Gameplay.Enemies
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(CharacterController), typeof(CombatEntity))]
-    public sealed class PrototypeEnemyCombatBrain25D : MonoBehaviour
+    public sealed class PrototypeEnemyCombatBrain25D : MonoBehaviour, ICombatActionInterruptHandler
     {
         private const float FacingHorizontalDeadzone = 0.30f;
 
@@ -94,6 +94,7 @@ namespace ArknightsACT.Gameplay.Enemies
             _entity = GetComponent<CombatEntity>();
             _navigation = PrototypeNavigationGraph25D.Instance;
             ApplyArchetypeDefaults();
+            InitializePrototypeMitigation();
             ResetForward();
         }
 
@@ -225,7 +226,7 @@ namespace ArknightsACT.Gameplay.Enemies
                     attackDamage,
                     DamageType.Physical,
                     Vector2.zero,
-                    sourceId: "PrototypeEnemy25D_" + archetype));
+                    sourceId: "PrototypeEnemy25D_" + archetype, tags: DamageTags.BasicAttack));
             }
 
             if (attackRecovery > 0f)
@@ -463,7 +464,8 @@ namespace ArknightsACT.Gameplay.Enemies
             }
             direction.Normalize();
             var before = transform.position;
-            var requestedDistance = moveSpeed * Time.deltaTime;
+            var moveMultiplier = _entity?.Stats != null ? _entity.Stats.MoveSpeedMultiplier : 1f;
+            var requestedDistance = moveSpeed * moveMultiplier * Time.deltaTime;
             var flags = _controller.Move(direction * requestedDistance);
             var movedDistance = PlanarDistance(before, transform.position);
 
@@ -514,6 +516,19 @@ namespace ArknightsACT.Gameplay.Enemies
             return Vector3.zero;
         }
 
+        public void InterruptCombatActions(CombatActionMask actions)
+        {
+            if ((actions & CombatActionMask.BasicAttack) != 0 && _attackRoutine != null)
+            {
+                StopCoroutine(_attackRoutine);
+                _attackRoutine = null;
+                _nextAttackAt = Mathf.Max(_nextAttackAt, Time.time + attackCooldown);
+            }
+
+            if ((actions & CombatActionMask.Movement) != 0)
+                IsMoving = false;
+        }
+
         private void ApplyGravity()
         {
             if (_controller == null)
@@ -562,6 +577,33 @@ namespace ArknightsACT.Gameplay.Enemies
                     viewAngle = 85f;
                     break;
             }
+        }
+
+        private void InitializePrototypeMitigation()
+        {
+            if (_entity == null)
+                return;
+
+            var stats = _entity.Stats;
+            if (stats == null ||
+                stats.BasePhysicalDefense > 0.0001f ||
+                Mathf.Abs(stats.BaseArtsResistance) > 0.0001f)
+                return;
+
+            if (_entity.Health != null && _entity.Health.MaxHealth >= 150f)
+            {
+                stats.SetBasePhysicalDefense(4f);
+                stats.SetBaseArtsResistance(10f);
+                return;
+            }
+
+            stats.SetBasePhysicalDefense(archetype switch
+            {
+                PrototypeEnemyArchetype.FastMelee => 0.5f,
+                PrototypeEnemyArchetype.Ranged => 0.75f,
+                _ => 1f
+            });
+            stats.SetBaseArtsResistance(archetype == PrototypeEnemyArchetype.Ranged ? 5f : 0f);
         }
 
         private void ResetForward()

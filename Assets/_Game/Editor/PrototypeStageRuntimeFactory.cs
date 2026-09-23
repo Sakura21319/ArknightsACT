@@ -107,71 +107,24 @@ namespace ArknightsACT.Editor
         private static void ConfigurePrototypeAudio(GameObject stageRuntime, Transform player)
         {
             var audio = stageRuntime.AddComponent<RoguelitePrototypeAudioController>();
-            var identity = player != null ? player.GetComponent<PlayableOperatorIdentity>() : null;
-            var isSchwarz = identity != null && identity.OperatorId == "Schwarz";
-
-            if (isSchwarz)
-            {
-                audio.Configure(
-                    player,
-                    null,
-                    LoadAudio(PrtsGameplayAudioCatalog.AbnormalSpectrum.LocalPath),
-                    null,
-                    null,
-                    new[]
-                    {
-                        LoadAudio("Assets/_Game/Art/Audio/Schwarz/Schwarz_Voice_JP_CN_025.wav"),
-                        LoadAudio("Assets/_Game/Art/Audio/Schwarz/Schwarz_Voice_JP_CN_026.wav")
-                    },
-                    new[]
-                    {
-                        LoadAudio("Assets/_Game/Art/Audio/Schwarz/Schwarz_Voice_JP_CN_027.wav"),
-                        LoadAudio("Assets/_Game/Art/Audio/Schwarz/Schwarz_Voice_JP_CN_028.wav")
-                    },
-                    new[]
-                    {
-                        LoadAudio("Assets/_Game/Art/Audio/Schwarz/Schwarz_Attack_01.wav"),
-                        LoadAudio("Assets/_Game/Art/Audio/Schwarz/Schwarz_Attack_02.wav"),
-                        LoadAudio("Assets/_Game/Art/Audio/Schwarz/Schwarz_Attack_03.wav")
-                    },
-                    LoadAudio("Assets/_Game/Art/Audio/Schwarz/Schwarz_Impact.wav"),
-                    LoadAudio(PrtsGameplayAudioCatalog.PlayerHurt.LocalPath),
-                    LoadAudio(PrtsGameplayAudioCatalog.PlayerDeath.LocalPath),
-                    LoadAudio(PrtsGameplayAudioCatalog.EnemyMeleeAttack.LocalPath),
-                    LoadAudio(PrtsGameplayAudioCatalog.EnemyRangedAttack.LocalPath),
-                    LoadAudio(PrtsGameplayAudioCatalog.EnemyDeath.LocalPath));
-                return;
-            }
-
+            var profile = player != null ? player.GetComponent<PlayableOperatorAudioProfile>() : null;
             audio.Configure(
                 player,
                 null,
                 LoadAudio(PrtsGameplayAudioCatalog.AbnormalSpectrum.LocalPath),
-                LoadAudio(PrtsGameplayAudioCatalog.ChenSkill1Sfx.LocalPath),
-                LoadAudio(PrtsGameplayAudioCatalog.ChenSkill2Sfx.LocalPath),
-                new[]
-                {
-                    LoadAudio(PrtsGameplayAudioCatalog.ChenVoice025.LocalPath),
-                    LoadAudio(PrtsGameplayAudioCatalog.ChenVoice026.LocalPath)
-                },
-                new[]
-                {
-                    LoadAudio(PrtsGameplayAudioCatalog.ChenVoice027.LocalPath),
-                    LoadAudio(PrtsGameplayAudioCatalog.ChenVoice028.LocalPath)
-                },
-                new[]
-                {
-                    LoadAudio(PrtsGameplayAudioCatalog.ChenAttackSwing1.LocalPath),
-                    LoadAudio(PrtsGameplayAudioCatalog.ChenAttackSwing2.LocalPath),
-                    LoadAudio(PrtsGameplayAudioCatalog.ChenAttackSwing3.LocalPath)
-                },
-                LoadAudio(PrtsGameplayAudioCatalog.ChenSwordImpact.LocalPath),
+                profile != null ? profile.Skill1Sfx : null,
+                profile != null ? profile.Skill2Sfx : null,
+                profile != null ? profile.Skill1Voices : null,
+                profile != null ? profile.Skill2Voices : null,
+                profile != null ? profile.BasicAttackSwings : null,
+                profile != null ? profile.BasicAttackImpact : null,
                 LoadAudio(PrtsGameplayAudioCatalog.PlayerHurt.LocalPath),
                 LoadAudio(PrtsGameplayAudioCatalog.PlayerDeath.LocalPath),
                 LoadAudio(PrtsGameplayAudioCatalog.EnemyMeleeAttack.LocalPath),
                 LoadAudio(PrtsGameplayAudioCatalog.EnemyRangedAttack.LocalPath),
                 LoadAudio(PrtsGameplayAudioCatalog.EnemyDeath.LocalPath));
         }
+
         private static Texture2D[] LoadEnvironmentBackdrops()
         {
             var references = PrtsEnvironmentReferenceCatalog.RuntimeBackdrops;

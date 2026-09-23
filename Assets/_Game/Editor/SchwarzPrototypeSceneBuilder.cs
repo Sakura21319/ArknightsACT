@@ -1,84 +1,20 @@
 #if UNITY_EDITOR
-using ArknightsACT.Gameplay.Characters.Schwarz;
 using ArknightsACT.Gameplay.Combat;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace ArknightsACT.Editor
 {
     public static class SchwarzPrototypeSceneBuilder
     {
         private const string DataDir = "Assets/_Game/Data/Attacks/Schwarz";
-        private const string SceneDir = "Assets/_Game/Scenes";
-        private const string ScenePath = SceneDir + "/PrototypeRun.unity";
+        public static void BuildDefault() => PrototypeRunSceneBuilder.Build("Schwarz", "default");
 
-        public static void BuildDefault() => Build(SchwarzSkinVariant.Default);
+        public static void BuildSnow() => PrototypeRunSceneBuilder.Build("Schwarz", "snow#1");
 
-        public static void BuildSnow() => Build(SchwarzSkinVariant.Snow);
+        public static void BuildStriker() => PrototypeRunSceneBuilder.Build("Schwarz", "striker#1");
 
-        public static void BuildStriker() => Build(SchwarzSkinVariant.Striker);
-
-        private static void Build(SchwarzSkinVariant skin)
-        {
-            if (EditorApplication.isPlayingOrWillChangePlaymode)
-            {
-                EditorUtility.DisplayDialog(
-                    "ArknightsACT",
-                    "不能在 Play Mode 中构建场景。请先停止运行。",
-                    "确定");
-                return;
-            }
-
-            SchwarzLocalAssetBootstrap.PrepareForBuild(skin);
-            PrototypePlayerSettings.Apply();
-            EnsureFolder(DataDir);
-            EnsureFolder(SceneDir);
-            var attacks = BuildAttackDefinitions();
-
-            Prototype25DSceneBuilder.Build();
-            RemoveDemoActor("Player_Chen_25D");
-            RemoveDemoActor("Player_Chen");
-            RemoveDemoActor("Player_Schwarz");
-            RemoveDemoActor("Enemy_Soldier");
-            RemoveDemoActor("Enemy_Hound");
-            RemoveDemoActor("Enemy_Crossbowman");
-            RemoveDemoActor("[3D Map]");
-
-            var camera = GameObject.Find("Main Camera")?.GetComponent<Camera>();
-            if (camera == null)
-            {
-                Debug.LogError("[ArknightsACT/Schwarz] Main Camera was not created by the 2.5D world builder.");
-                return;
-            }
-
-            PrototypeFactory.CreateServices();
-            var player = SchwarzPrototypePlayerFactory.Create25D(attacks, camera, skin);
-            Prototype25DProductionFactory.ConfigureCamera(camera, player.transform);
-
-            var enemyTemplates = Prototype25DProductionFactory.CreateEnemyTemplates(camera);
-            var treasureTemplates = PrototypeTreasureFactory.CreateTemplates(camera);
-            var rogueliteRoot = PrototypeRogueliteFactory.CreateExploration(player.transform);
-            PrototypeStageRuntimeFactory.Create(
-                player.transform,
-                enemyTemplates,
-                treasureTemplates,
-                rogueliteRoot);
-
-            var scene = SceneManager.GetActiveScene();
-            EditorSceneManager.SaveScene(scene, ScenePath);
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
-            Selection.activeGameObject = player;
-            EditorGUIUtility.PingObject(player);
-
-            Debug.Log(
-                $"[ArknightsACT/Schwarz] 2.5D exploration scene generated with skin={skin}: {ScenePath}. " +
-                "Skill slots: L = 暮眼锐瞳 (S2), I/RMB = 战术的终结 (S3). Schwarz basic attacks use sniper-range hitboxes.");
-        }
-
-        private static AttackDefinition[] BuildAttackDefinitions()
+        internal static AttackDefinition[] BuildAttackDefinitions()
         {
             return new[]
             {
@@ -124,25 +60,6 @@ namespace ArknightsACT.Editor
             return asset;
         }
 
-        private static void RemoveDemoActor(string objectName)
-        {
-            var go = GameObject.Find(objectName);
-            if (go != null)
-                Object.DestroyImmediate(go);
-        }
-
-        private static void EnsureFolder(string path)
-        {
-            var parts = path.Split('/');
-            var current = parts[0];
-            for (var i = 1; i < parts.Length; i++)
-            {
-                var next = $"{current}/{parts[i]}";
-                if (!AssetDatabase.IsValidFolder(next))
-                    AssetDatabase.CreateFolder(current, parts[i]);
-                current = next;
-            }
-        }
     }
 }
 #endif

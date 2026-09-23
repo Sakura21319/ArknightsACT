@@ -52,6 +52,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
         private Health _health;
         private GameplayPauseService _pause;
         private bool _healthSubscribed;
+        private PlayerRuntimeContext _subscribedPlayerRuntime;
         private float _runStartedAt;
         private bool _settlementSuccess;
         private int _settlementStage;
@@ -113,6 +114,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             runState = state;
             stageMap = map;
             metaState = meta;
+            EnsurePlayerRuntime();
         }
 
         private void Awake()
@@ -122,6 +124,8 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
         private void Start()
         {
+            EnsurePlayerRuntime();
+            SubscribePlayerRuntime();
             ResolveReferences();
             var shellUi = GetComponent<RogueliteShellUI>() ?? gameObject.AddComponent<RogueliteShellUI>();
             shellUi.Configure(this);
@@ -130,6 +134,9 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
         private void OnDestroy()
         {
+            if (_subscribedPlayerRuntime != null)
+                _subscribedPlayerRuntime.ActivePlayerChanged -= OnActivePlayerChanged;
+            _subscribedPlayerRuntime = null;
             if (_healthSubscribed && _health != null)
                 _health.Died -= OnPlayerDied;
             GameplayInputBlocker.Release(this);
@@ -138,36 +145,56 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             if (Instance == this) Instance = null;
         }
 
+        private void EnsurePlayerRuntime()
+        {
+            var runtime = PlayerRuntimeContext.Instance ?? GetComponent<PlayerRuntimeContext>();
+            if (runtime == null)
+                runtime = gameObject.AddComponent<PlayerRuntimeContext>();
+
+            if (runtime.ActivePlayer == null && player != null)
+                runtime.Configure(player);
+
+            var switcher = runtime.GetComponent<PlayableOperatorSwitchController>() ??
+                           runtime.gameObject.AddComponent<PlayableOperatorSwitchController>();
+            switcher.Configure(runtime);
+        }
+
+        private void SubscribePlayerRuntime()
+        {
+            var runtime = PlayerRuntimeContext.Instance;
+            if (runtime == null || runtime == _subscribedPlayerRuntime)
+                return;
+
+            if (_subscribedPlayerRuntime != null)
+                _subscribedPlayerRuntime.ActivePlayerChanged -= OnActivePlayerChanged;
+
+            _subscribedPlayerRuntime = runtime;
+            _subscribedPlayerRuntime.ActivePlayerChanged += OnActivePlayerChanged;
+        }
+
         private void ResolveReferences()
         {
+            EnsurePlayerRuntime();
+            SubscribePlayerRuntime();
             metaState ??= RogueliteMetaState.Instance ?? FindFirstObjectByType<RogueliteMetaState>();
             runState ??= RogueliteRunState.Instance ?? FindFirstObjectByType<RogueliteRunState>();
             stageMap ??= FindFirstObjectByType<RogueliteStageMapController>();
             _stageRuntime ??= FindFirstObjectByType<RogueliteStageRuntimeController>();
             _pause ??= GameplayPauseService.Instance ?? FindFirstObjectByType<GameplayPauseService>();
 
-            if (player == null)
+            var resolvedPlayer = PlayerRuntimeContext.Resolve(player);
+            if (resolvedPlayer == null)
             {
                 var entities = FindObjectsByType<CombatEntity>(FindObjectsSortMode.None);
                 for (var i = 0; i < entities.Length; i++)
-                    if (entities[i] != null && entities[i].Team == Team.Player)
-                    {
-                        player = entities[i].transform;
-                        break;
-                    }
-            }
-
-            if (player != null)
-            {
-                _scavenging ??= player.GetComponent<ScavengingInventory25D>();
-                _collectibles ??= player.GetComponent<CollectibleInventory>();
-                _health ??= player.GetComponent<Health>();
-                if (!_healthSubscribed && _health != null)
                 {
-                    _health.Died += OnPlayerDied;
-                    _healthSubscribed = true;
+                    if (entities[i] == null || entities[i].Team != Team.Player)
+                        continue;
+                    resolvedPlayer = entities[i].transform;
+                    break;
                 }
             }
+            BindPlayer(resolvedPlayer);
 
             if (_marketCatalog.Count == 0 && _scavenging != null)
             {
@@ -185,6 +212,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
         private void Update()
         {
+            ResolveReferences();
             if (Keyboard.current == null)
                 return;
 
@@ -192,6 +220,37 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                 SetState(RogueliteShellState.Home);
             else if (State == RogueliteShellState.ExtractionDecision && Keyboard.current.escapeKey.wasPressedThisFrame)
                 CancelExtraction();
+        }
+
+        private void OnActivePlayerChanged(Transform previousPlayer, Transform nextPlayer)
+        {
+            BindPlayer(nextPlayer);
+        }
+
+        private void BindPlayer(Transform nextPlayer)
+        {
+            if (nextPlayer == null)
+                return;
+
+            if (player != nextPlayer)
+            {
+                if (_healthSubscribed && _health != null)
+                    _health.Died -= OnPlayerDied;
+                _healthSubscribed = false;
+                player = nextPlayer;
+                _scavenging = null;
+                _collectibles = null;
+                _health = null;
+            }
+
+            _scavenging ??= player.GetComponent<ScavengingInventory25D>();
+            _collectibles ??= player.GetComponent<CollectibleInventory>();
+            _health ??= player.GetComponent<Health>();
+            if (!_healthSubscribed && _health != null)
+            {
+                _health.Died += OnPlayerDied;
+                _healthSubscribed = true;
+            }
         }
 
         public void OpenOperationPreparation()
@@ -221,22 +280,70 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                 return;
             }
 
-            _collectibles?.ClearRunCollectibles();
-            player.GetComponent<LevelUpgradeInventory>()?.ResetRun();
-            player.GetComponent<CharacterSkillUpgradeInventory>()?.ResetRun();
-            _scavenging.BeginNewRun();
+            ResetRegisteredOperatorsForNewRun();
             runState.ResetRun();
             stageMap.GenerateStage(1);
-            if (_health != null)
-                _health.SetMaxHealth(_health.MaxHealth, refill: true);
-            var playerBehaviours = player.GetComponents<MonoBehaviour>();
-            for (var i = 0; i < playerBehaviours.Length; i++)
-                if (playerBehaviours[i] is IPlayerRunResettable resettable)
-                    resettable.ResetForNewRun();
             _stageRuntime.RestartRun();
             _runStartedAt = Time.unscaledTime;
             _settlementItems.Clear();
             SetState(RogueliteShellState.Running);
+        }
+
+        private void ResetRegisteredOperatorsForNewRun()
+        {
+            var runtime = PlayerRuntimeContext.Instance;
+            if (runtime == null)
+            {
+                ResetOperatorForNewRun(player);
+                return;
+            }
+
+            var operators = runtime.RegisteredPlayers;
+            for (var i = 0; i < operators.Count; i++)
+                ResetOperatorForNewRun(operators[i]);
+
+            // Ensure the currently resolved player participates even if a legacy scene registered late.
+            if (player != null)
+            {
+                var registered = false;
+                for (var i = 0; i < operators.Count; i++)
+                {
+                    if (operators[i] == player)
+                    {
+                        registered = true;
+                        break;
+                    }
+                }
+                if (!registered)
+                {
+                    runtime.RegisterPlayer(player);
+                    ResetOperatorForNewRun(player);
+                }
+            }
+
+            ResolveReferences();
+        }
+
+        private static void ResetOperatorForNewRun(Transform operatorRoot)
+        {
+            if (operatorRoot == null)
+                return;
+
+            operatorRoot.GetComponent<CollectibleInventory>()?.ClearRunCollectibles();
+            operatorRoot.GetComponent<LevelUpgradeInventory>()?.ResetRun();
+            operatorRoot.GetComponent<CharacterSkillUpgradeInventory>()?.ResetRun();
+            operatorRoot.GetComponent<ScavengingInventory25D>()?.BeginNewRun();
+
+            var health = operatorRoot.GetComponent<Health>();
+            if (health != null)
+                health.SetMaxHealth(health.MaxHealth, refill: true);
+
+            var behaviours = operatorRoot.GetComponents<MonoBehaviour>();
+            for (var i = 0; i < behaviours.Length; i++)
+            {
+                if (behaviours[i] is IPlayerRunResettable resettable)
+                    resettable.ResetForNewRun();
+            }
         }
 
         public void OpenExtractionDecision()

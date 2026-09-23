@@ -13,6 +13,7 @@ namespace ArknightsACT.Gameplay.Abilities
         bool TryCast();
         void TickSkillPoints(float deltaTime, float recoveryMultiplier, float flatRecoveryPerSecond);
         void GainSkillPoints(float amount);
+        void SetSkillPoints(float amount);
         void ReduceCooldown(float seconds);
     }
 }

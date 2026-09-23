@@ -13,7 +13,7 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
     /// PlayerAttackController.
     /// </summary>
     [RequireComponent(typeof(CombatEntity))]
-    public sealed class SchwarzSkill2 : MonoBehaviour, IPlayerSkill, IPlayerBasicAttackModifier, IPlayerSkillActiveState, IPlayerControlLockSource
+    public sealed class SchwarzSkill2 : MonoBehaviour, IPlayerSkill, IPlayerBasicAttackModifier, IPlayerSkillActiveState, IPlayerControlLockSource, IPlayerSkillInterruptible
     {
         [SerializeField, Min(1f)] private float skillPointCost = 25f;
         [SerializeField, Min(0f)] private float initialSkillPoints = 12f;
@@ -123,6 +123,11 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
             _skillPoints = Mathf.Clamp(SkillPoints + amount, 0f, SkillPointCost);
         }
 
+        public void SetSkillPoints(float amount)
+        {
+            _skillPoints = Mathf.Clamp(amount, 0f, SkillPointCost);
+        }
+
         public void ReduceCooldown(float seconds)
         {
             if (seconds > 0f)
@@ -159,6 +164,16 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
                 : Mathf.Clamp(initialSkillPoints, 0f, SkillPointCost);
             if (wasActive)
                 BuffEnded?.Invoke();
+        }
+
+        public void InterruptCast()
+        {
+            if (!IsCasting)
+                return;
+            if (_routine != null)
+                StopCoroutine(_routine);
+            _routine = null;
+            IsCasting = false;
         }
 
         private IEnumerator BuffRoutine()

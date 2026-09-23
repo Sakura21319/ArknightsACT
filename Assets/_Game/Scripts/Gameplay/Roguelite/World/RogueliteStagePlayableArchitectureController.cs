@@ -90,6 +90,8 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                     ? marker.DistrictType
                     : RogueliteStageDistrictTemplateController.ResolveDistrict(data, i, stageMap.StageIndex);
 
+                if (stageMap.UsesCityLots) continue;
+
                 switch (district)
                 {
                     case ChernobogDistrictType.Residential:
@@ -406,7 +408,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         // Street frontages delegate their physical room to this existing architecture owner.
         // Open loading bays and narrow residential doors share one collision contract.
         public static void BuildInteriorShell(Transform root, float width, float depth, float height,
-            Material wall, Material steel, Material floor, float doorWidth = 1.8f)
+            Material wall, Material steel, Material floor, float doorWidth = 1.8f, bool spawnContainer = true)
         {
             doorWidth = Mathf.Min(doorWidth, width - 0.6f);
             var wing = (width - doorWidth) * 0.5f;
@@ -458,7 +460,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 root.TransformPoint(new Vector3(0f, 0.18f, -depth * 0.5f)),
                 root.TransformPoint(new Vector3(0f, 0.18f, 0f))
             });
-            ArknightsACT.Gameplay.Roguelite.Treasure.SearchableContainer25D.Create(root,
+            if (spawnContainer) ArknightsACT.Gameplay.Roguelite.Treasure.SearchableContainer25D.Create(root,
                 new Vector3(-width * 0.25f, 0.18f, depth * 0.5f - 0.65f), steel, floor);
         }
 

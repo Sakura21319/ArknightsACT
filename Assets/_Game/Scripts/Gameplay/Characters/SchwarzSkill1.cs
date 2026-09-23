@@ -3,18 +3,18 @@ using System.Collections;
 using ArknightsACT.Combat;
 using ArknightsACT.Gameplay.Abilities;
 using ArknightsACT.Gameplay.Combat;
+using ArknightsACT.Gameplay.Characters;
 using UnityEngine;
 
 namespace ArknightsACT.Gameplay.Characters.Schwarz
 {
     /// <summary>
     /// Gameplay slot 1 maps to Schwarz's original S2, 暮眼锐瞳.
-    /// The project does not yet have a full DEF/armor-break layer, so the current ACT adaptation
-    /// faithfully keeps the manual timed attack buff and leaves talent/armor-break integration for
-    /// the combat-defense pass instead of faking it with unrelated FX.
+    /// Its attack buff remains character-local while armor break is handled by the shared
+    /// SchwarzArmorBreakTalent + CombatStats/Status pipeline.
     /// </summary>
     [RequireComponent(typeof(CombatEntity))]
-    public sealed class SchwarzSkill1 : MonoBehaviour, IPlayerSkill, IPlayerBasicAttackModifier, IPlayerSkillActiveState
+    public sealed class SchwarzSkill1 : MonoBehaviour, IPlayerSkill, IPlayerBasicAttackModifier, IPlayerSkillActiveState, IPlayerSpecialAttackAudioState, IPlayerSkillInterruptible
     {
         [SerializeField, Min(1f)] private float skillPointCost = 30f;
         [SerializeField, Min(0f)] private float initialSkillPoints = 20f;
@@ -45,6 +45,7 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
         public bool IsCasting { get; private set; }
         public bool IsBuffActive { get; private set; }
         public bool IsActive => IsBuffActive;
+        public bool UseSpecialAttackAudio => IsBuffActive;
 
         public float BasicAttackDamageMultiplier =>
             IsBuffActive ? basicAttackDamageMultiplier * _runtimeDamageMultiplier : 1f;
@@ -59,6 +60,8 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
         {
             _entity = GetComponent<CombatEntity>();
             _skill3 = GetComponent<SchwarzSkill2>();
+            if (GetComponent<SchwarzArmorBreakTalent>() == null)
+                gameObject.AddComponent<SchwarzArmorBreakTalent>();
             _skillPoints = debugInfiniteDuration
                 ? SkillPointCost
                 : Mathf.Clamp(initialSkillPoints, 0f, SkillPointCost);
@@ -111,6 +114,11 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
                 _skillPoints = Mathf.Clamp(SkillPoints + amount, 0f, SkillPointCost);
         }
 
+        public void SetSkillPoints(float amount)
+        {
+            _skillPoints = Mathf.Clamp(amount, 0f, SkillPointCost);
+        }
+
         public void ReduceCooldown(float seconds)
         {
             if (seconds > 0f)
@@ -145,6 +153,16 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
                 : Mathf.Clamp(initialSkillPoints, 0f, SkillPointCost);
             if (wasActive)
                 BuffEnded?.Invoke();
+        }
+
+        public void InterruptCast()
+        {
+            if (!IsCasting)
+                return;
+            if (_routine != null)
+                StopCoroutine(_routine);
+            _routine = null;
+            IsCasting = false;
         }
 
         private IEnumerator BuffRoutine()

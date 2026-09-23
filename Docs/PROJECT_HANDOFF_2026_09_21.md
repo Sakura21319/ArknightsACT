@@ -1,16 +1,26 @@
 # ArknightsACT 当前项目总交接文档
 
-更新时间：2026-09-21  
+更新时间：2026-09-23  
 项目：`D:\WorkSpace\ArknightsACT`
 
-> 本文件作为当前 **搜打撤主循环 / 肉鸽成长 / 藏品 / 背包 / 真撤离 / 主页 / 结算 / 系统仓库 / 买卖 / UI** 的统一交接入口。
+> 2026-09-23 起，统一总入口已迁移到 `Docs/MASTER_HANDOFF_2026_09_23.md`。
+>
+> 本文件保留 **搜打撤主循环 / 肉鸽成长 / 藏品 / 背包 / 真撤离 / 主页 / 结算 / 系统仓库 / 买卖 / UI** 的详细历史与专项信息；若与 MASTER 冲突，以 MASTER + 当前源码为准。
 >
 > 后续接手优先阅读本文件，再按需要查：
 >
-> - `Docs/SCAVENGING_RELIC_RUNTIME_HANDOFF_2026_09_20.md`
-> - `Docs/MAIN_SHELL_EXTRACTION_HANDOFF_2026_09_21.md`
-> - `Docs/HUD_COMBAT_HANDOFF_2026_09_21.md`（正式战斗 HUD / Ready / 本地陈素材 / P3 战斗底层接续）
-> - `Docs/SCHWARZ_CHARACTER_HANDOFF_2026_09_21.md`（黑：原版 + Snow + Striker，小人 / HUD / S1+S3 / 皮肤特效接入）
+> - `Docs/FROSTNOVA_CHARACTER_HANDOFF_2026_09_23.md`（霜星 / 冬痕：四套 Presentation、Skill_1 / Skill_3、提取 FX、Buff05、调参和当前实机待验项）
+> - `Docs/CHARACTER_SYSTEM_REFACTOR_HANDOFF_2026_09_22.md`（当前角色上下文、局内角色切换、Run 状态迁移与通用系统解耦）
+> - `Docs/SCHWARZ_CHARACTER_HANDOFF_2026_09_22.md`（黑：Default / Snow / Striker、S2 + S3、狙击镜、皮肤 FX 与当前调参）
+> - `Docs/CHEN_CUSTOM_FX_HANDOFF.md` / `Docs/EXTRACTED_FX_PIPELINE.md`（陈与通用提取帧 FX 管线）
+> - `Docs/CITY_ZONES_TOWER_HANDOFF_2026_09_23.md`（最新城区分区、规则房屋、市政核心、高塔、风险设施与联机边界）
+> - `Docs/CITY_EXPLORATION_POLISH_HANDOFF_2026_09_23.md`（地图精修、入室/搜刮状态、展开地图和探索/返程指引）
+> - `Docs/CITY_INTERACTIONS_LAYER2_HANDOFF_2026_09_22.md`（三类基础互动设施与第二阶段动力维护层；其中“错落建筑”已被 9/23 规则排列取代）
+> - `Docs/CITY_VISUAL_MINIMAP_HANDOFF_2026_09_22.md`（建筑/容器质感与探索小地图）
+> - `Docs/BUILDING_CONTAINER_TIERS_HANDOFF_2026_09_22.md`（12 类建筑、28 类容器、五档珍稀度权重与空置规则）
+> - `Docs/MOBILE_CITY_GENERATOR_HANDOFF_2026_09_22.md`（4×3 / 4×4 / 5×4 种子城区生成器、参数和验证边界）
+> - `Docs/SCAVENGING_RELIC_RUNTIME_HANDOFF_2026_09_20.md`（118 件正式数据、搜刮/藏品/技力运行时规则）
+> - `Docs/MAIN_SHELL_EXTRACTION_HANDOFF_2026_09_21.md` / `Docs/HUD_COMBAT_HANDOFF_2026_09_21.md`（主页/撤离与正式战斗 HUD）
 >
 > 本文件若与旧文档有冲突，以 **本文件 + 当前源码** 为准。
 
@@ -260,7 +270,7 @@ CollectibleInventory.Acquire()
 
 ### 赤霄·绝影
 
-黑已新增为第二个可构建角色；当前黑使用 Slot 1 `暮眼锐瞳`（原版 S2）+ Slot 2 `战术的终结`（原版 S3）。黑的基础普攻使用明显长于近战的狙击判定，S3 再进一步延长射程并降低攻击频率。原版 / Snow / Striker 三套 Spine、头像与皮肤特效均从 `D:\\Ark\\_Unpacked\\shwaz` 本地接入。详见 `Docs/SCHWARZ_CHARACTER_HANDOFF_2026_09_21.md`。
+黑已新增为第二个可构建角色；当前黑使用 Slot 1 `暮眼锐瞳`（原版 S2）+ Slot 2 `战术的终结`（原版 S3）。黑的基础普攻使用明显长于近战的狙击判定，S3 再进一步延长射程并降低攻击频率。原版 / Snow / Striker 三套 Spine、头像与皮肤特效均从 `D:\\Ark\\_Unpacked\\shwaz` 本地接入。详见 `Docs/SCHWARZ_CHARACTER_HANDOFF_2026_09_22.md`。
 
 - Cost 30
 - Initial 20

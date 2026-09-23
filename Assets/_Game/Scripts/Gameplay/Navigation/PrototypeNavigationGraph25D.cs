@@ -35,7 +35,7 @@ namespace ArknightsACT.Gameplay.Navigation
         public static PrototypeNavigationGraph25D Instance { get; private set; }
         public int NodeCount => nodes?.Length ?? 0;
 
-        public void AppendRoomRoute(Vector3[] route)
+        public void AppendRoomRoute(Vector3[] route, int approachNodeCount = -1)
         {
             if (route == null || route.Length < 2) return;
             var oldCount = NodeCount;
@@ -47,7 +47,8 @@ namespace ArknightsACT.Gameplay.Navigation
                 if (i > 0) links.Add(new Edge(oldCount + i - 1, oldCount + i));
             }
             // Only join exterior approach nodes with a clear actor-width corridor.
-            for (var r = 0; r < route.Length - 2; r++)
+            var joinCount = approachNodeCount < 0 ? route.Length - 2 : Mathf.Min(approachNodeCount, route.Length);
+            for (var r = 0; r < joinCount; r++)
             {
                 var best = -1;
                 var distance = float.PositiveInfinity;

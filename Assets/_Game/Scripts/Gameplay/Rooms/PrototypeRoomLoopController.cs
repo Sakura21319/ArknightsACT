@@ -104,6 +104,7 @@ namespace ArknightsACT.Gameplay.Rooms
 
         private void Update()
         {
+            ResolveActivePlayer();
             if (CurrentRoom <= 0 || _roomClearHandled || _transitionRoutine != null)
                 return;
             if (GameplayPauseService.Instance != null && GameplayPauseService.Instance.IsPaused)
@@ -257,11 +258,31 @@ namespace ArknightsACT.Gameplay.Rooms
 
         private void CachePlayerActionState()
         {
+            ResolveActivePlayer();
             if (player == null)
                 return;
             _playerAttack = player.GetComponent<PlayerAttackController>();
             _playerSkills = player.GetComponent<PlayerSkillController>();
             _playerDash = player.GetComponent<PlayerDashController>();
+        }
+
+        private void ResolveActivePlayer()
+        {
+            var activePlayer = PlayerRuntimeContext.Resolve(player);
+            if (activePlayer == null || activePlayer == player)
+                return;
+
+            player = activePlayer;
+            _playerAttack = player.GetComponent<PlayerAttackController>();
+            _playerSkills = player.GetComponent<PlayerSkillController>();
+            _playerDash = player.GetComponent<PlayerDashController>();
+
+            for (var i = 0; i < _activeEnemies.Count; i++)
+            {
+                var enemy = _activeEnemies[i];
+                if (enemy != null)
+                    IgnoreActorCollision(enemy.gameObject, player.gameObject);
+            }
         }
 
         private bool IsPlayerActionSettled()

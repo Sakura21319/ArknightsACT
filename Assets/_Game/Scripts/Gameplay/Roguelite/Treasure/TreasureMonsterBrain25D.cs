@@ -9,7 +9,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
 {
     [DisallowMultipleComponent]
     [RequireComponent(typeof(CharacterController), typeof(CombatEntity))]
-    public sealed class TreasureMonsterBrain25D : MonoBehaviour
+    public sealed class TreasureMonsterBrain25D : MonoBehaviour, ICombatActionInterruptHandler
     {
         [SerializeField, Min(0.1f)] private float moveSpeed = 3.0f;
         [SerializeField, Min(0.1f)] private float attackRange = 1.25f;
@@ -124,7 +124,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
             {
                 FaceToward(chasePoint);
                 MoveSafely(move.normalized);
-                IsMoving = true;
+                IsMoving = !CombatActionUtility.IsBlocked(_entity, CombatActionMask.Movement);
             }
             else
             {
@@ -134,6 +134,8 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
 
         private void TryAttack()
         {
+            if (CombatActionUtility.IsBlocked(_entity, CombatActionMask.BasicAttack))
+                return;
             if (Time.time < _nextAttackAt || _attackRoutine != null)
                 return;
             _attackRoutine = StartCoroutine(AttackRoutine());
@@ -142,10 +144,13 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
         private IEnumerator AttackRoutine()
         {
             AttackStarted?.Invoke(FacingSign);
+            var attackSpeed = _entity?.Stats != null ? _entity.Stats.AttackSpeedMultiplier : 1f;
+            var attackTimeMultiplier = 1f / Mathf.Max(0.05f, attackSpeed);
             if (attackWindup > 0f)
-                yield return new WaitForSeconds(attackWindup);
+                yield return new WaitForSeconds(attackWindup * attackTimeMultiplier);
 
-            if (_target != null && _target.Health != null && !_target.Health.IsDead)
+            if (!CombatActionUtility.IsBlocked(_entity, CombatActionMask.BasicAttack) &&
+                _target != null && _target.Health != null && !_target.Health.IsDead)
             {
                 var delta = _target.transform.position - transform.position;
                 var height = Mathf.Abs(delta.y);
@@ -159,14 +164,14 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
                         attackDamage,
                         DamageType.Physical,
                         Vector2.zero,
-                        sourceId: "TreasureMonster"));
+                        sourceId: "TreasureMonster", tags: DamageTags.BasicAttack));
                 }
             }
 
             if (attackRecovery > 0f)
-                yield return new WaitForSeconds(attackRecovery);
+                yield return new WaitForSeconds(attackRecovery * attackTimeMultiplier);
             _attackRoutine = null;
-            _nextAttackAt = Time.time + attackCooldown;
+            _nextAttackAt = Time.time + attackCooldown * attackTimeMultiplier;
         }
 
         private Vector3 ResolveChasePoint(Vector3 destination)
@@ -284,13 +289,19 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
 
         private void MoveSafely(Vector3 direction)
         {
+            if (CombatActionUtility.IsBlocked(_entity, CombatActionMask.Movement))
+            {
+                IsMoving = false;
+                return;
+            }
             direction.y = 0f;
             if (direction.sqrMagnitude < 0.001f)
                 return;
             direction.Normalize();
 
             var before = transform.position;
-            var requestedDistance = moveSpeed * Time.deltaTime;
+            var moveMultiplier = _entity?.Stats != null ? _entity.Stats.MoveSpeedMultiplier : 1f;
+            var requestedDistance = moveSpeed * moveMultiplier * Time.deltaTime;
             var flags = _controller.Move(direction * requestedDistance);
             var movedDistance = PlanarDistance(before, transform.position);
             if ((flags & CollisionFlags.Sides) == 0 || movedDistance >= requestedDistance * 0.35f)
@@ -337,6 +348,19 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
                     return candidate;
             }
             return Vector3.zero;
+        }
+
+        public void InterruptCombatActions(CombatActionMask actions)
+        {
+            if ((actions & CombatActionMask.BasicAttack) != 0 && _attackRoutine != null)
+            {
+                StopCoroutine(_attackRoutine);
+                _attackRoutine = null;
+                _nextAttackAt = Mathf.Max(_nextAttackAt, Time.time + attackCooldown);
+            }
+
+            if ((actions & CombatActionMask.Movement) != 0)
+                IsMoving = false;
         }
 
         private static float PlanarDistance(Vector3 a, Vector3 b)

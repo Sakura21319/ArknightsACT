@@ -7,7 +7,7 @@ using UnityEngine;
 namespace ArknightsACT.Gameplay.Characters
 {
     [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
-    public sealed class PlayerMotor2D : MonoBehaviour, IPlayerLocomotion
+    public sealed class PlayerMotor2D : MonoBehaviour, IPlayerLocomotion, ICombatActionInterruptHandler
     {
         [Header("Movement")]
         [SerializeField] private float moveSpeed = 5.8f;
@@ -55,7 +55,8 @@ namespace ArknightsACT.Gameplay.Characters
         {
             UpdateGrounded();
 
-            if (IsDead || (_dash != null && _dash.IsDashing) || (_skills != null && _skills.IsCasting))
+            if (IsDead || (_dash != null && _dash.IsDashing) || (_skills != null && _skills.IsCasting) ||
+                CombatActionUtility.IsBlocked(_entity, CombatActionMask.Movement))
                 return;
 
             if (_attack != null && _attack.IsAttacking)
@@ -85,7 +86,9 @@ namespace ArknightsACT.Gameplay.Characters
 
             var current = _body.linearVelocity;
 
-            if ((_attack != null && _attack.IsMovementLocked) || (_skills != null && _skills.IsCasting))
+            if ((_attack != null && _attack.IsMovementLocked) ||
+                (_skills != null && _skills.IsCasting) ||
+                CombatActionUtility.IsBlocked(_entity, CombatActionMask.Movement))
             {
                 current.x = 0f;
                 _body.gravityScale = current.y > 0.05f ? riseGravityMultiplier : fallGravityMultiplier;
@@ -97,12 +100,23 @@ namespace ArknightsACT.Gameplay.Characters
             if (Mathf.Abs(inputX) > 0.01f)
                 FacingSign = inputX > 0f ? 1 : -1;
 
-            var targetX = inputX * moveSpeed;
+            var moveMultiplier = _entity?.Stats != null ? _entity.Stats.MoveSpeedMultiplier : 1f;
+            var targetX = inputX * moveSpeed * moveMultiplier;
             var rate = Mathf.Abs(targetX) > Mathf.Abs(current.x) ? acceleration : deceleration;
             current.x = Mathf.MoveTowards(current.x, targetX, rate * Time.fixedDeltaTime);
 
             _body.gravityScale = current.y > 0.05f ? riseGravityMultiplier : fallGravityMultiplier;
             _body.linearVelocity = current;
+        }
+
+        public void InterruptCombatActions(CombatActionMask actions)
+        {
+            if ((actions & CombatActionMask.Movement) == 0 || _body == null)
+                return;
+
+            var velocity = _body.linearVelocity;
+            velocity.x = 0f;
+            _body.linearVelocity = velocity;
         }
 
         private void UpdateGrounded()

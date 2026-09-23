@@ -4,7 +4,7 @@ using UnityEngine;
 namespace ArknightsACT.Gameplay.Roguelite.Routing
 {
     /// <summary>
-    /// Shared physical dimensions for the current 2x2 Chernobog town layout. Keeping these values in
+    /// Shared physical dimensions for the seeded Chernobog city sector layout. Keeping these values in
     /// one place prevents the runtime floor, presentation passes, lighting and navigation from
     /// drifting apart as the block footprint grows.
     /// </summary>

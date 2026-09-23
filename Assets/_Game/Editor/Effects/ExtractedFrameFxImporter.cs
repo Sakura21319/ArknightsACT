@@ -195,7 +195,20 @@ namespace ArknightsACT.Editor.Effects
 
         private static void CopyFrames(string sourceFolder, string destination, ImportResult result)
         {
+            var absoluteDestinationFolder = ToAbsoluteProjectPath(destination);
+            if (Directory.Exists(absoluteDestinationFolder))
+            {
+                foreach (var stale in Directory.GetFiles(absoluteDestinationFolder, "*.png"))
+                {
+                    File.Delete(stale);
+                    var meta = stale + ".meta";
+                    if (File.Exists(meta))
+                        File.Delete(meta);
+                }
+            }
+
             foreach (var source in Directory.GetFiles(sourceFolder, "*.png")
+                         .Where(IsAnimationFrameFile)
                          .OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
             {
                 var fileName = Path.GetFileName(source);
@@ -206,11 +219,32 @@ namespace ArknightsACT.Editor.Effects
             }
         }
 
+        private static bool IsAnimationFrameFile(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path) ||
+                !path.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            var name = Path.GetFileNameWithoutExtension(path);
+            if (string.IsNullOrWhiteSpace(name) ||
+                name.Length < 2 ||
+                (name[0] != 'f' && name[0] != 'F'))
+                return false;
+
+            for (var i = 1; i < name.Length; i++)
+            {
+                if (!char.IsDigit(name[i]))
+                    return false;
+            }
+
+            return true;
+        }
+
         private static Sprite[] ImportSprites(string folder)
         {
             var paths = AssetDatabase.FindAssets("t:Texture2D", new[] { folder })
                 .Select(AssetDatabase.GUIDToAssetPath)
-                .Where(path => path.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+                .Where(IsAnimationFrameFile)
                 .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
             foreach (var path in paths)

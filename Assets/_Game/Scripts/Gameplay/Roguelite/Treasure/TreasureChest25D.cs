@@ -98,7 +98,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
                 DamageType.True,
                 Vector2.zero,
                 procGeneration: context.ProcGeneration + 1,
-                sourceId: "SpikeTreasureReflect"));
+                sourceId: "SpikeTreasureReflect", tags: DamageTags.SecondaryProc));
         }
 
         private void OnDied()

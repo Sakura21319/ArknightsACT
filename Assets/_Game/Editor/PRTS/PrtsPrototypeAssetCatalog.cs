@@ -104,6 +104,62 @@ namespace ArknightsACT.Editor.PRTS
             SchwarzStrikerMotion
         };
 
+        public static readonly PrtsAssetDescriptor FrostNovaDefault = new(
+            "霜星",
+            "local",
+            string.Empty,
+            "enemy_1505_frstar",
+            "Assets/_Game/Art/Characters/FrostNova/Local/Default/Spine",
+            "Player",
+            1.72f,
+            -0.70f,
+            0.38f,
+            "frostnova_default");
+
+        public static readonly PrtsAssetDescriptor FrostNovaWinter = new(
+            "霜星·冬痕",
+            "local",
+            string.Empty,
+            "enemy_1510_frstar2",
+            "Assets/_Game/Art/Characters/FrostNova/Local/Winter/Spine",
+            "Player",
+            1.72f,
+            -0.70f,
+            0.38f,
+            "frostnova_winter");
+
+        public static readonly PrtsAssetDescriptor FrostNovaDefaultNew = new(
+            "霜星·新",
+            "local",
+            string.Empty,
+            "enemy_1505_frstar",
+            "Assets/_Game/Art/Characters/FrostNova/Local/DefaultNew/Spine",
+            "Player",
+            1.72f,
+            -0.70f,
+            0.38f,
+            "frostnova_default_new");
+
+        public static readonly PrtsAssetDescriptor FrostNovaWinterNew = new(
+            "霜星·冬痕·新",
+            "local",
+            string.Empty,
+            "enemy_1510_frstar2",
+            "Assets/_Game/Art/Characters/FrostNova/Local/WinterNew/Spine",
+            "Player",
+            1.72f,
+            -0.70f,
+            0.38f,
+            "frostnova_winter_new");
+
+        public static readonly PrtsAssetDescriptor[] FrostNovaLocalAssets =
+        {
+            FrostNovaDefault,
+            FrostNovaWinter,
+            FrostNovaDefaultNew,
+            FrostNovaWinterNew
+        };
+
         public static readonly PrtsAssetDescriptor NormalTreasureChest = new(
             "宝箱·水月",
             "https://prts.wiki/w/%E5%AE%9D%E7%AE%B1%28%E6%B0%B4%E6%9C%88%29",

@@ -1,4 +1,5 @@
 using System;
+using ArknightsACT.Gameplay.Roguelite.Treasure;
 using ArknightsACT.Gameplay.Roguelite.Routing;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -12,7 +13,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
     /// </summary>
     [DefaultExecutionOrder(23)]
     [DisallowMultipleComponent]
-    public sealed class RogueliteStageCityStreetsController : MonoBehaviour
+    public sealed partial class RogueliteStageCityStreetsController : MonoBehaviour
     {
         private const float ChunkWidth = RogueliteStageWorldMetrics.ChunkWidth;
         private const float ChunkDepth = RogueliteStageWorldMetrics.ChunkDepth;
@@ -61,9 +62,13 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         }
         private void OnDestroy()
         {
+            Font.textureRebuilt -= RefreshSectorFont;
             if (_asphalt != null) Destroy(_asphalt);
             if (_lanePaint != null) Destroy(_lanePaint);
             if (_asphaltGrain != null) Destroy(_asphaltGrain);
+            foreach (var material in _buildingMaterials) if (material != null) Destroy(material);
+            if (_concreteGrain != null) Destroy(_concreteGrain);
+            if (_sectorFont != null) Destroy(_sectorFont);
         }
 
         public void Configure(RogueliteStageMapController map, ChernobogEnvironmentKit environmentKit)
@@ -114,12 +119,15 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         private void Build(Transform stage)
         {
             PrepareStreetMaterials();
+            PrepareBuildingMaterials();
             var old = stage.Find("[Chernobog_CityStreets]");
             if (old != null)
                 Destroy(old.gameObject);
 
             var root = new GameObject("[Chernobog_CityStreets]").transform;
             root.SetParent(stage, false);
+            var facilities = root.gameObject.AddComponent<CityFacilityController>();
+            facilities.Configure(stageMap, GetComponent<RogueliteStageRuntimeController>());
 
             for (var i = 0; i < stageMap.Blocks.Count; i++)
             {
@@ -137,10 +145,165 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 cell.SetParent(root, false);
                 cell.position = block.position;
 
+                if (stageMap.UsesCityLots)
+                {
+                    BuildMainStreet(cell, data.Zone == CityZone.Industrial ? _roofMetal : _asphalt, kit.deckSecondaryMaterial != null ? kit.deckSecondaryMaterial : kit.deckMaterial,
+                        kit.steelMaterial, kit.grateMaterial);
+                    BuildStreetMarkings(cell, _lanePaint);
+                    BuildCityLots(cell, data, district);
+                    BuildStreetAmbience(cell, district, unchecked(stageMap.GenerationSeed + i * 104729));
+                    BuildSectorFeatures(cell, data, facilities);
+                    BuildZoneDetails(cell, data);
+                    continue;
+                }
                 BuildDistrictGround(cell, district, i, data.Coordinate);
                 BuildDistrictArchitecture(cell, data, district, i, data.Coordinate);
                 BuildDistrictFurniture(cell, district, i);
             }
+            if (stageMap.UsesCityLots && stageMap.StageIndex == 2) BuildCentralTower(root, facilities);
+            if (stageMap.UsesCityLots && stageMap.StageIndex == 1) BuildCivicCore(root);
+        }
+
+        private void BuildCityLots(Transform parent, RogueliteBlockState block, ChernobogDistrictType district)
+        {
+            var random = new System.Random(unchecked(stageMap.GenerationSeed * 397 ^ block.Index * 7919));
+            var wall = kit.wallMaterial != null ? kit.wallMaterial : kit.deckHeavyMaterial;
+            var steel = kit.steelMaterial != null ? kit.steelMaterial : wall;
+            var inset = kit.insetMaterial != null ? kit.insetMaterial : wall;
+            // Four reserved corner lots. Keep the cardinal cross, encounter centre and facility free.
+            for (var lot = 0; lot < 4; lot++)
+            {
+                var xSide = lot % 2 == 0 ? -1f : 1f;
+                var zSide = lot < 2 ? -1f : 1f;
+                if (IsTowerReservation(block, xSide * 11.2f, zSide * 10.2f)) continue;
+                if (block.Theme == RogueliteChunkTheme.Facility && lot == 3) continue;
+                if ((block.Type == RogueliteBlockType.Start || block.Type == RogueliteBlockType.Boss) && lot < 2) continue;
+                if (HasFacilityCourt(block) && lot == (IsTowerReservation(block, -10.5f, -9.4f) ? 1 : 0)) continue;
+                // One optional utility court breaks up repeated four-building cells.
+                if (lot == 0 && random.NextDouble() < 0.30) continue;
+                var profile = ChernobogSearchBuildingProfiles.Select(district, random);
+                var detailRandom = new System.Random(unchecked(stageMap.GenerationSeed + block.Index * 7919 + lot * 104729));
+                var lotWall = LotFacade(profile.Kind, detailRandom);
+                var building = new GameObject($"{profile.Kind}_{block.Index:00}_{lot}_Seed{stageMap.GenerationSeed}").transform;
+                building.SetParent(parent, false);
+                building.localPosition = new Vector3(xSide * 11.2f, 0f, zSide * 10.2f);
+                building.localRotation = Quaternion.Euler(0f, zSide < 0 ? 180f : 0f, 0f);
+                var width = (profile.Kind == ChernobogSearchBuildingKind.Warehouse ? 7.2f : 5.4f) + (float)random.NextDouble() * 1.2f;
+                if (stageMap.StageIndex == 2 && profile.Kind == ChernobogSearchBuildingKind.Warehouse) width += .8f;
+                var depth = 4.0f + (float)random.NextDouble() * 1.0f;
+                var height = (profile.Kind == ChernobogSearchBuildingKind.Apartment ? 5.4f : profile.Kind == ChernobogSearchBuildingKind.Warehouse ? 4.4f : 3.5f) + (float)detailRandom.NextDouble() * .5f;
+                RogueliteStagePlayableArchitectureController.BuildInteriorShell(building, width, depth, height,
+                    lotWall, steel, inset, 2.2f, false);
+                building.GetComponent<EnterableBuilding25D>().SetIdentity($"{profile.Label} {block.Index + 1:00}-{lot + 1}");
+                CreateBox(building, "Roof", new Vector3(0f, height + 0.1f, 0f),
+                    new Vector3(width + 0.2f, 0.18f, depth + 0.2f), 0.04f, steel, false);
+                CreateBox(building, "RoofVent", new Vector3(width * 0.25f, height + 0.35f, 0.5f),
+                    new Vector3(1.1f, 0.5f, 0.9f), 0.04f, inset, false);
+                for (var panel = -1; panel <= 1; panel++)
+                    CreateBox(building, "UpperWindow", new Vector3(panel * width * 0.28f, height - 0.85f, -depth * 0.5f - 0.13f),
+                        new Vector3(0.85f, 0.55f, 0.04f), 0.005f, inset, false);
+                if (profile.Kind == ChernobogSearchBuildingKind.Grocery || profile.Kind == ChernobogSearchBuildingKind.Canteen || profile.Kind == ChernobogSearchBuildingKind.Pharmacy)
+                    CreateBox(building, "MarketAwning", new Vector3(0f, 2.7f, -depth * 0.5f - 0.5f),
+                        new Vector3(width * 0.9f, 0.16f, 1.1f), 0.03f, steel, false);
+                else if (profile.Kind == ChernobogSearchBuildingKind.Apartment)
+                {
+                    CreateBox(building, "ApartmentBalcony", new Vector3(0f, 3.4f, -depth * 0.5f - 0.4f),
+                        new Vector3(width * 0.65f, 0.16f, 0.8f), 0.03f, steel, false);
+                    CreateBox(building, "BalconyRail", new Vector3(0f, 3.8f, -depth * 0.5f - 0.8f),
+                        new Vector3(width * 0.65f, 0.6f, 0.08f), 0.02f, steel, false);
+                }
+                else
+                {
+                    for (var pipe = 0; pipe < 2; pipe++)
+                        CreateBox(building, "ServicePipe", new Vector3(width * 0.5f + 0.2f, 1.6f, -0.5f + pipe * 0.6f),
+                            new Vector3(0.16f, 3.2f, 0.16f), 0.03f, steel, false);
+                    CreateBox(building, "LoadingCanopy", new Vector3(0f, 2.8f, -depth * 0.5f - 0.65f),
+                        new Vector3(3.4f, 0.2f, 1.35f), 0.03f, steel, false);
+                }
+                // The aisle from the road to the doorway also supplies the room's navigation route.
+                building.GetComponent<EnterableBuilding25D>().SetNavigationRoute(new[]
+                {
+                    parent.TransformPoint(new Vector3(building.localPosition.x, 0.18f, 0f)),
+                    building.TransformPoint(new Vector3(0f, 0.18f, -depth * 0.5f - 1.5f)),
+                    building.TransformPoint(new Vector3(0f, 0.18f, -depth * 0.5f)),
+                    building.TransformPoint(new Vector3(0f, 0.18f, 0f))
+                });
+                CreateBox(building, "BuildingApproach", new Vector3(0f, 0.125f, -depth * .5f - 1.4f),
+                    new Vector3(2.4f, 0.018f, 2.8f), 0.01f, _paving, false);
+                var loot = ChernobogSearchBuildingProfiles.RollContainers(profile, random, block.Zone == CityZone.Core);
+                var slots = new[]
+                {
+                    new Vector3(-width * .27f, .18f, depth * .5f - .7f),
+                    new Vector3(width * .27f, .18f, depth * .5f - .7f),
+                    new Vector3(-width * .5f + .7f, .18f, -.65f),
+                    new Vector3(width * .5f - .7f, .18f, -.65f)
+                };
+                for (var last = slots.Length - 1; last > 0; last--)
+                {
+                    var pick = detailRandom.Next(last + 1);
+                    (slots[pick], slots[last]) = (slots[last], slots[pick]);
+                }
+                for (var slot = 0; slot < loot.Length; slot++)
+                    SearchableContainer25D.Create(building, slots[slot], steel, inset, stageMap.GenerationSeed, loot[slot]);
+                BuildLotDetail(building, profile.Kind, width, depth, height, lotWall, steel, detailRandom);
+                BuildBuildingIdentity(building, profile.Kind, width, depth, height, wall, steel, inset);
+                var sign = building.Find("BuildingStencil").GetComponent<TextMesh>();
+                sign.text = $"{profile.Stencil} / {block.Index + 1:00}-{lot + 1}";
+                sign.gameObject.SetActive(false); // The depth-tested EntranceAddress replaces the legacy overlay stencil.
+            }
+            // Street searches are common low-grade opportunities, separate from occupied rooms.
+            var streetRandom = new System.Random(unchecked(stageMap.GenerationSeed ^ block.Index * 104729 ^ 7103));
+            for (var side = -1; side <= 1; side += 2)
+                if (streetRandom.NextDouble() < .72)
+                {
+                    var roll = streetRandom.NextDouble();
+                    var kind = roll < .70 ? SalvageContainerKind.TrashBin : roll > .94 ? SalvageContainerKind.CarTrunk :
+                        district == ChernobogDistrictType.Industrial ? SalvageContainerKind.ScrapPile : SalvageContainerKind.Suitcase;
+                    var streetPosition = kind == SalvageContainerKind.CarTrunk ? new Vector3(side * 16.4f, .05f, 3.05f) : new Vector3(side * 15.5f, .05f, 4.5f);
+                    if (IsTowerReservation(block, streetPosition.x, streetPosition.z)) continue;
+                    SearchableContainer25D.Create(parent, streetPosition, steel, inset, stageMap.GenerationSeed, kind);
+                    if (kind == SalvageContainerKind.CarTrunk)
+                    {
+                        CreateBox(parent, "AbandonedUtilityVehicle", new Vector3(side * 16.4f, .55f, 4.4f), new Vector3(1.6f, 1f, 2.2f), .12f, inset, true);
+                        CreateBox(parent, "VehicleCab", new Vector3(side * 16.4f, 1.3f, 4.6f), new Vector3(1.4f, .6f, 1.2f), .1f, steel, false);
+                    }
+                }
+        }
+
+        private void BuildBuildingIdentity(Transform building, ChernobogSearchBuildingKind kind,
+            float width, float depth, float height, Material wall, Material steel, Material inset)
+        {
+            // Distinct facade and furniture motifs; every collider stays away from the door aisle.
+            var medical = kind == ChernobogSearchBuildingKind.Clinic || kind == ChernobogSearchBuildingKind.Pharmacy;
+            if (medical)
+            {
+                CreateBox(building, "MedicalCross_V", new Vector3(0f, height - .65f, -depth * .5f - .18f), new Vector3(.16f, .7f, .09f), .01f, steel, false);
+                CreateBox(building, "MedicalCross_H", new Vector3(0f, height - .65f, -depth * .5f - .18f), new Vector3(.7f, .16f, .09f), .01f, steel, false);
+            }
+            if (kind == ChernobogSearchBuildingKind.PowerStation || kind == ChernobogSearchBuildingKind.RepairShop)
+                for (var unit = 0; unit < 3; unit++)
+                    CreateBox(building, "RoofCondenser", new Vector3(-1f + unit, height + .55f, .2f), new Vector3(.6f, .9f, 1.1f), .04f, steel, false);
+            if (kind == ChernobogSearchBuildingKind.Warehouse)
+            {
+                CreateBox(building, "LoadingLintel", new Vector3(0f, 2.6f, -depth * .5f - .2f), new Vector3(3.1f, .22f, .25f), .02f, steel, false);
+                for (var beam = -1; beam <= 1; beam += 2)
+                    CreateBox(building, "WarehouseRib", new Vector3(beam * width * .45f, height * .5f, -depth * .5f - .16f), new Vector3(.18f, height, .22f), .02f, steel, false);
+            }
+            if (kind == ChernobogSearchBuildingKind.Checkpoint || kind == ChernobogSearchBuildingKind.ArchiveOffice)
+                for (var bar = -2; bar <= 2; bar++)
+                    CreateBox(building, "SecurityGrille", new Vector3(bar * .16f, height - .85f, -depth * .5f - .2f), new Vector3(.04f, .6f, .06f), .005f, steel, false);
+            if (kind == ChernobogSearchBuildingKind.AbandonedHouse)
+                for (var board = -1; board <= 1; board += 2)
+                    CreateBox(building, "BoardedWindow", new Vector3(board * width * .28f, height - .85f, -depth * .5f - .2f), new Vector3(1f, .18f, .1f), .01f, inset, false, Quaternion.Euler(0f, 0f, board * 25f));
+            // Furniture remains even in empty buildings, so a lack of loot is not a missing room.
+            var furnishing = kind == ChernobogSearchBuildingKind.Canteen ? "ServingTable" : medical ? "MedicalDesk" :
+                kind == ChernobogSearchBuildingKind.Apartment ? "Bedframe" : "WorkSurface";
+            var bed = kind == ChernobogSearchBuildingKind.Apartment || kind == ChernobogSearchBuildingKind.Clinic;
+            var furnitureSize = bed ? new Vector3(.8f, .42f, 1.35f) :
+                kind == ChernobogSearchBuildingKind.Warehouse ? new Vector3(.75f, .22f, .8f) : new Vector3(.75f, .85f, .65f);
+            CreateBox(building, furnishing, new Vector3(0f, .18f + furnitureSize.y * .5f, depth * .5f - furnitureSize.z * .5f - .16f), furnitureSize, .025f, inset, true);
+            if (bed)
+                CreateBox(building, "Mattress", new Vector3(0f, .66f, depth * .5f - .84f), new Vector3(.72f, .15f, 1.22f), .04f, wall, false);
         }
 
         private void BuildDistrictGround(Transform parent, ChernobogDistrictType district, int seed, Vector2Int coordinate)

@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using System;
 namespace ArknightsACT.Editor.PRTS
 {
     internal sealed class PrtsAssetDescriptor
@@ -7,6 +8,7 @@ namespace ArknightsACT.Editor.PRTS
         public string SourcePage { get; }
         public string RemoteDirectory { get; }
         public string BaseName { get; }
+        public string PrefabKey { get; }
         public string TargetDirectory { get; }
         public string Role { get; }
         public float TargetWorldHeight { get; }
@@ -22,12 +24,14 @@ namespace ArknightsACT.Editor.PRTS
             string role,
             float targetWorldHeight,
             float feetLocalY,
-            float safeInitialScale)
+            float safeInitialScale,
+            string prefabKey = null)
         {
             DisplayName = displayName;
             SourcePage = sourcePage;
             RemoteDirectory = remoteDirectory;
             BaseName = baseName;
+            PrefabKey = string.IsNullOrWhiteSpace(prefabKey) ? baseName : prefabKey;
             TargetDirectory = targetDirectory;
             Role = role;
             TargetWorldHeight = targetWorldHeight;

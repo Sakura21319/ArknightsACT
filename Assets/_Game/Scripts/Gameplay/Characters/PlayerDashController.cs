@@ -9,7 +9,7 @@ using UnityEngine;
 namespace ArknightsACT.Gameplay.Characters
 {
     [RequireComponent(typeof(CombatEntity))]
-    public sealed class PlayerDashController : MonoBehaviour, IPlayerInvulnerabilitySource
+    public sealed class PlayerDashController : MonoBehaviour, IPlayerInvulnerabilitySource, ICombatActionInterruptHandler
     {
         [SerializeField] private float dashSpeed = 14f;
         [SerializeField] private float dashDuration = 0.16f;
@@ -22,7 +22,9 @@ namespace ArknightsACT.Gameplay.Characters
         private IPlayerInputSource _input;
         private PlayerAttackController _attack;
         private PlayerSkillController _skills;
+        private Coroutine _dashRoutine;
         private float _cooldownUntil;
+        private float _previousGravity2D = 1f;
 
         public bool IsDashing { get; private set; }
         public bool IsInvulnerable => IsDashing;
@@ -50,10 +52,18 @@ namespace ArknightsACT.Gameplay.Characters
                 TryDash();
         }
 
+        private void OnDisable()
+        {
+            if (IsDashing)
+                InterruptCombatActions(CombatActionMask.Dash);
+        }
+
         public bool TryDash()
         {
             if (IsDead || IsDashing || Time.time < _cooldownUntil ||
-                (_skills != null && _skills.IsCasting) || IsExternallyDashLocked())
+                (_skills != null && _skills.IsCasting) ||
+                CombatActionUtility.IsBlocked(_entity, CombatActionMask.Dash) ||
+                IsExternallyDashLocked())
                 return false;
             if (_body2D == null && _controller3D == null)
                 return false;
@@ -63,8 +73,7 @@ namespace ArknightsACT.Gameplay.Characters
 
             if (_attack != null && _attack.IsAttacking)
                 _attack.CancelCurrentAttack();
-
-            StartCoroutine(DashRoutine());
+            _dashRoutine = StartCoroutine(DashRoutine());
             return true;
         }
 
@@ -78,9 +87,7 @@ namespace ArknightsACT.Gameplay.Characters
                 yield return Dash25D();
             else
                 yield return Dash2D();
-
-            IsDashing = false;
-            DashEnded?.Invoke();
+            FinishDash();
         }
 
         private IEnumerator Dash2D()
@@ -89,19 +96,20 @@ namespace ArknightsACT.Gameplay.Characters
                 yield break;
 
             var direction = _motor != null ? _motor.FacingSign : 1;
-            var previousGravity = _body2D.gravityScale;
+            _previousGravity2D = _body2D.gravityScale;
             _body2D.gravityScale = 0f;
             _body2D.linearVelocity = new Vector2(direction * dashSpeed, 0f);
 
             var elapsed = 0f;
-            while (elapsed < dashDuration && !IsDead)
+            while (elapsed < dashDuration && !IsDead &&
+                   !CombatActionUtility.IsBlocked(_entity, CombatActionMask.Dash))
             {
                 elapsed += Time.deltaTime;
                 _body2D.linearVelocity = new Vector2(direction * dashSpeed, 0f);
                 yield return null;
             }
 
-            _body2D.gravityScale = previousGravity;
+            _body2D.gravityScale = _previousGravity2D;
             if (IsDead)
                 _body2D.linearVelocity = new Vector2(0f, _body2D.linearVelocity.y);
         }
@@ -118,13 +126,41 @@ namespace ArknightsACT.Gameplay.Characters
             direction.Normalize();
 
             var elapsed = 0f;
-            while (elapsed < dashDuration && !IsDead)
+            while (elapsed < dashDuration && !IsDead &&
+                   !CombatActionUtility.IsBlocked(_entity, CombatActionMask.Dash))
             {
                 var dt = Time.deltaTime;
                 elapsed += dt;
                 _controller3D.Move(direction * (dashSpeed * dt));
                 yield return null;
             }
+        }
+
+        public void InterruptCombatActions(CombatActionMask actions)
+        {
+            if ((actions & CombatActionMask.Dash) == 0 || !IsDashing)
+                return;
+
+            if (_dashRoutine != null)
+                StopCoroutine(_dashRoutine);
+
+            if (_body2D != null)
+            {
+                _body2D.gravityScale = _previousGravity2D;
+                _body2D.linearVelocity = new Vector2(0f, _body2D.linearVelocity.y);
+            }
+
+            FinishDash();
+        }
+
+        private void FinishDash()
+        {
+            if (!IsDashing && _dashRoutine == null)
+                return;
+
+            IsDashing = false;
+            _dashRoutine = null;
+            DashEnded?.Invoke();
         }
 
         private bool IsExternallyDashLocked()

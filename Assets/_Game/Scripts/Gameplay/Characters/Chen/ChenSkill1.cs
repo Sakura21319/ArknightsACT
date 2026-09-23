@@ -10,7 +10,7 @@ using UnityEngine;
 namespace ArknightsACT.Gameplay.Characters.Chen
 {
     [RequireComponent(typeof(CombatEntity))]
-    public sealed class ChenSkill1 : MonoBehaviour, IPlayerSkill
+    public sealed class ChenSkill1 : MonoBehaviour, IPlayerSkill, IPlayerSkillInterruptible
     {
         [Header("Skill points")]
         [SerializeField, Min(1f)] private float skillPointCost = 20f;
@@ -88,6 +88,11 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             _skillPoints = Mathf.Clamp(SkillPoints + amount, 0f, SkillPointCost);
         }
 
+        public void SetSkillPoints(float amount)
+        {
+            _skillPoints = Mathf.Clamp(amount, 0f, SkillPointCost);
+        }
+
         public void ReduceCooldown(float seconds)
         {
             if (seconds > 0f)
@@ -112,6 +117,14 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             _runtimeDamageMultiplier = 1f;
             _runtimeSkillPointCostMultiplier = 1f;
             _skillPoints = Mathf.Clamp(initialSkillPoints, 0f, SkillPointCost);
+        }
+
+        public void InterruptCast()
+        {
+            if (!IsCasting)
+                return;
+            StopAllCoroutines();
+            IsCasting = false;
         }
 
         private IEnumerator CastRoutine()
@@ -256,7 +269,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             var hitAny = false;
             var physical = new DamageContext(
                 _entity, _entity, target, physicalDamage * _runtimeDamageMultiplier, DamageType.Physical, knockback,
-                sourceId: "Chen_Skill1_Physical");
+                sourceId: "Chen_Skill1_Physical", tags: DamageTags.Skill);
             var physicalResult = DamageSystem.Apply(physical);
             if (physicalResult.Applied)
                 hitAny = true;
@@ -265,7 +278,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             {
                 var arts = new DamageContext(
                     _entity, _entity, target, artsDamage * _runtimeDamageMultiplier, DamageType.Arts, Vector2.zero,
-                    sourceId: "Chen_Skill1_Arts");
+                    sourceId: "Chen_Skill1_Arts", tags: DamageTags.Skill);
                 if (DamageSystem.Apply(arts).Applied)
                     hitAny = true;
             }

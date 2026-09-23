@@ -20,8 +20,9 @@ namespace ArknightsACT.Editor
         private const string DataRoot = "Assets/_Game/Data/Roguelite";
         private const string CollectibleDir = DataRoot + "/Collectibles";
         private const string UpgradeDir = DataRoot + "/LevelUpgrades";
-        private const string SkillUpgradeDir = DataRoot + "/SkillUpgrades/Chen";
-        private const string SchwarzSkillUpgradeDir = DataRoot + "/SkillUpgrades/Schwarz";
+        private const string SkillUpgradeRoot = DataRoot + "/SkillUpgrades";
+        private const string SkillUpgradeDir = SkillUpgradeRoot + "/Chen";
+        private const string SchwarzSkillUpgradeDir = SkillUpgradeRoot + "/Schwarz";
 
         public static GameObject CreateExploration(Transform player)
         {
@@ -42,7 +43,7 @@ namespace ArknightsACT.Editor
             EnsureFolder(UpgradeDir);
             var collectiblePool = BuildCollectiblePool();
             var upgradePool = BuildLevelUpgradePool();
-            var skillUpgradePool = BuildCharacterSkillUpgradePool(player);
+            var skillUpgradePool = BuildCharacterSkillUpgradePool();
 
             var inventory = player.GetComponent<CollectibleInventory>();
             var upgradeInventory = player.GetComponent<LevelUpgradeInventory>();
@@ -62,6 +63,11 @@ namespace ArknightsACT.Editor
             var root = new GameObject("[Roguelite]");
             root.SetActive(false);
 
+            var playerContext = root.AddComponent<ArknightsACT.Gameplay.Characters.PlayerRuntimeContext>();
+            playerContext.Configure(player);
+            var switchController = root.AddComponent<ArknightsACT.Gameplay.Characters.PlayableOperatorSwitchController>();
+            switchController.Configure(playerContext);
+            root.AddComponent<ArknightsACT.Gameplay.Characters.PrototypeOperatorSwitchInput>().Configure(switchController);
             root.AddComponent<RewardSelectionCoordinator>();
             var runState = root.AddComponent<RogueliteRunState>();
             var stageMap = root.AddComponent<RogueliteStageMapController>();
@@ -93,7 +99,7 @@ namespace ArknightsACT.Editor
                 skillUpgradePool);
 
             var environment = root.AddComponent<RogueliteStageEnvironmentController>();
-            environment.Configure(player, runState, stageMap);
+            environment.Configure(runState, stageMap);
 
             var hud = root.AddComponent<RogueliteProgressHUD>();
             hud.Configure(runState);
@@ -135,16 +141,32 @@ namespace ArknightsACT.Editor
             };
         }
 
-        private static CharacterSkillUpgradeDefinition[] BuildCharacterSkillUpgradePool(Transform player)
+        private static CharacterSkillUpgradeDefinition[] BuildCharacterSkillUpgradePool()
         {
-            if (player != null && player.GetComponent<SchwarzSkillUpgradeApplier>() != null)
+            EnsureFolder(SkillUpgradeRoot);
+            EnsureFolder(SkillUpgradeDir);
+            EnsureFolder(SchwarzSkillUpgradeDir);
+
+            // Keep the current authored prototype definitions up to date, then discover the catalog
+            // generically. Future operators only need CharacterSkillUpgradeDefinition assets under
+            // SkillUpgrades; no central switch/if branch is required here.
+            BuildChenSkillUpgradePool();
+            BuildSchwarzSkillUpgradePool();
+
+            var guids = AssetDatabase.FindAssets(
+                "t:CharacterSkillUpgradeDefinition",
+                new[] { SkillUpgradeRoot });
+            var result = new System.Collections.Generic.List<CharacterSkillUpgradeDefinition>(guids.Length);
+            for (var i = 0; i < guids.Length; i++)
             {
-                EnsureFolder(SchwarzSkillUpgradeDir);
-                return BuildSchwarzSkillUpgradePool();
+                var assetPath = AssetDatabase.GUIDToAssetPath(guids[i]);
+                var definition = AssetDatabase.LoadAssetAtPath<CharacterSkillUpgradeDefinition>(assetPath);
+                if (definition != null)
+                    result.Add(definition);
             }
 
-            EnsureFolder(SkillUpgradeDir);
-            return BuildChenSkillUpgradePool();
+            result.Sort((a, b) => string.CompareOrdinal(a.Id, b.Id));
+            return result.ToArray();
         }
 
         private static CharacterSkillUpgradeDefinition[] BuildChenSkillUpgradePool()

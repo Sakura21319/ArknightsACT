@@ -1,7 +1,6 @@
 #if UNITY_EDITOR
 using System.IO;
 using UnityEditor;
-using UnityEditor.Callbacks;
 using UnityEngine;
 
 namespace ArknightsACT.EditorTools
@@ -29,14 +28,7 @@ namespace ArknightsACT.EditorTools
         private const string ReadyMarkTarget = "Assets/_Game/Resources/UI/HUD/BattleSkillReady/sprite_skill_ready.png";
         private const string ReadyPulseTarget = "Assets/_Game/Resources/UI/HUD/BattleSkillReady/sprite_skill_bg.png";
         private const string ReadyCircleTarget = "Assets/_Game/Resources/UI/HUD/BattleSkillReady/sprite_circle.png";
-
-        [DidReloadScripts]
-        private static void OnScriptsReloaded()
-        {
-            EditorApplication.delayCall += () => ImportAll(false);
-        }
-
-        private static void ImportFromMenu() => ImportAll(true);
+        public static void RefreshAssets(bool force) => ImportAll(force);
 
         private static void ImportAll(bool force)
         {

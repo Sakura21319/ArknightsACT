@@ -73,7 +73,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                 if (block == null)
                     continue;
 
-                BuildSegmentedFloor(block);
+                BuildSegmentedFloor(block, !stageMap.UsesCityLots);
                 ApplyBlockVariant(block, data);
             }
 
@@ -82,7 +82,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                 this);
         }
 
-        private static void BuildSegmentedFloor(Transform block)
+        private static void BuildSegmentedFloor(Transform block, bool allowPits)
         {
             if (block.Find("[FloorSockets]") != null)
                 return;
@@ -136,7 +136,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
                 // Keep a clear physical cross through every block. Pits may consume side/corner
                 // modules, but cannot sever the four cardinal connections used by the shared nav graph.
-                var pitEligible = z != FloorRows / 2 && x != FloorColumns / 2 && x != FloorColumns / 2 - 1;
+                var pitEligible = allowPits && z != FloorRows / 2 && x != FloorColumns / 2 && x != FloorColumns / 2 - 1;
                 floor.AddComponent<RogueliteFloorSocket25D>().Configure(
                     new Vector2(cellWidth, cellDepth),
                     pitEligible,
@@ -152,6 +152,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
         private void ApplyBlockVariant(Transform block, RogueliteBlockState data)
         {
+            if (stageMap.UsesCityLots) return;
             var variant = PositiveMod(stageMap.StageIndex * 17 + data.Index * 7 + (int)data.Theme * 11, 3);
             RepositionExistingCover(block, data.Theme, variant);
             AdjustStreetGeometry(block, data.Theme, variant);

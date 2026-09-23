@@ -12,7 +12,6 @@ namespace ArknightsACT.Editor
 
         private SchwarzFxTuningProfile _profile;
         private Vector2 _scroll;
-
         public static void Open()
         {
             var window = GetWindow<SchwarzFxTuningWindow>("黑特效调试");
@@ -59,7 +58,7 @@ namespace ArknightsACT.Editor
                 DrawGroup("三技能 / 战术的终结", new[]
                 {
                     (SchwarzFxSlot.Skill3Start, "S3 Shot FX / skill_03_start（点击才播放）"),
-                    (SchwarzFxSlot.Skill3Trail, "S3 专用箭矢 / Tracer"),
+                    (SchwarzFxSlot.Skill3Trail, "S3 专用箭矢 / skill_03_trail"),
                     (SchwarzFxSlot.Skill3Hit, "S3 Hit / skill_01_hit（按皮肤）"),
                     (SchwarzFxSlot.Skill3Buff02, "S3 Buff 02 / 全程持续"),
                     (SchwarzFxSlot.Skill3Buff03, "S3 Buff 03 / 全程持续")

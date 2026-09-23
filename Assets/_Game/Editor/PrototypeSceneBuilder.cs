@@ -1,82 +1,19 @@
 #if UNITY_EDITOR
 using ArknightsACT.Gameplay.Combat;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace ArknightsACT.Editor
 {
     public static class PrototypeSceneBuilder
     {
         private const string DataDir = "Assets/_Game/Data/Attacks/Chen";
-        private const string SceneDir = "Assets/_Game/Scenes";
-        private const string ScenePath = SceneDir + "/PrototypeRun.unity";
-
         public static void Build()
         {
-            if (EditorApplication.isPlayingOrWillChangePlaymode)
-            {
-                EditorUtility.DisplayDialog(
-                    "ArknightsACT",
-                    "不能在 Play Mode 中构建场景。请先点击 Unity 顶部的停止按钮，再重新执行构建。",
-                    "确定");
-                Debug.LogWarning("[ArknightsACT/25D] 已阻止 Play Mode 内的场景构建。请先退出 Play Mode。");
-                return;
-            }
-
-            PrototypePlayerSettings.Apply();
-            EnsureFolder(DataDir);
-            EnsureFolder(SceneDir);
-            var attacks = BuildChenAttackDefinitions();
-
-            // Reuse the validated 2.5D shell to create lighting, camera and material assets, then
-            // remove its fixed demo arena. PrototypeRun now materializes a fixed 2x2 town at runtime
-            // instead of playing inside one editor-authored room.
-            Prototype25DSceneBuilder.Build();
-            RemoveDemoActor("Player_Chen_25D");
-            RemoveDemoActor("Enemy_Soldier");
-            RemoveDemoActor("Enemy_Hound");
-            RemoveDemoActor("Enemy_Crossbowman");
-            RemoveDemoActor("[3D Map]");
-
-            var camera = GameObject.Find("Main Camera")?.GetComponent<Camera>();
-            if (camera == null)
-            {
-                Debug.LogError("[ArknightsACT/25D] Main Camera was not created by the 2.5D world builder.");
-                return;
-            }
-
-            PrototypeFactory.CreateServices();
-            var player = ChenPrototypePlayerFactory.Create25D(attacks, camera);
-            Prototype25DProductionFactory.ConfigureCamera(camera, player.transform);
-
-            var enemyTemplates = Prototype25DProductionFactory.CreateEnemyTemplates(camera);
-            var treasureTemplates = PrototypeTreasureFactory.CreateTemplates(camera);
-            var rogueliteRoot = PrototypeRogueliteFactory.CreateExploration(player.transform);
-            PrototypeStageRuntimeFactory.Create(player.transform, enemyTemplates, treasureTemplates, rogueliteRoot);
-
-            var scene = SceneManager.GetActiveScene();
-            EditorSceneManager.SaveScene(scene, ScenePath);
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
-            Selection.activeGameObject = player;
-            EditorGUIUtility.PingObject(player);
-
-            Debug.Log(
-                $"ArknightsACT Chen 2.5D exploration roguelite generated: {ScenePath}. " +
-                "Controls: WASD/Stick move on XZ, Space jump, J/LMB combo, K/Shift dash, L skill1, I/RMB skill2. " +
-                "Runtime flow: every stage uses the same 2x2 town: residential -> commercial -> industrial -> checkpoint/boss.");
+            PrototypeRunSceneBuilder.Build("Chen", "default");
         }
 
-        private static void RemoveDemoActor(string objectName)
-        {
-            var go = GameObject.Find(objectName);
-            if (go != null)
-                Object.DestroyImmediate(go);
-        }
-
-        private static AttackDefinition[] BuildChenAttackDefinitions()
+        internal static AttackDefinition[] BuildChenAttackDefinitions()
         {
             return new[]
             {
@@ -155,18 +92,6 @@ namespace ArknightsACT.Editor
             return asset;
         }
 
-        private static void EnsureFolder(string path)
-        {
-            var parts = path.Split('/');
-            var current = parts[0];
-            for (var i = 1; i < parts.Length; i++)
-            {
-                var next = $"{current}/{parts[i]}";
-                if (!AssetDatabase.IsValidFolder(next))
-                    AssetDatabase.CreateFolder(current, parts[i]);
-                current = next;
-            }
-        }
     }
 }
 #endif

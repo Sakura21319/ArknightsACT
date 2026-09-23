@@ -1,0 +1,233 @@
+==== Assets/_Game/Art/FX/OriginalClient/Chen/Prefabs/chen_skill_03_hit_01.prefab ====
+chen_skill_03_hit_01 active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+  static_offset active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+    PS awake=True loop=False duration=0.1 max=1000 bursts=0
+    rotation_y active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+      PS awake=True loop=False duration=3 max=1000 bursts=0
+      1 active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+        PS awake=True loop=False duration=3 max=1000 bursts=0
+        baoci_01 active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+          PS awake=True loop=False duration=0.1 max=1 bursts=1
+        baoci_02 active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+          PS awake=True loop=False duration=0.1 max=1 bursts=1
+        smoke active=True pos=(0.33, -0.45, 0.00) rot=(337.39, 270.00, 0.00)
+          PS awake=True loop=False duration=0.5 max=6 bursts=1
+        daoguang active=True pos=(0.12, -0.01, 0.00) rot=(0.00, 180.00, 9.53)
+        daoguang_liang active=True pos=(0.12, -0.01, 0.00) rot=(0.00, 180.00, 9.53)
+        chen_01_1 active=True pos=(0.18, 0.05, 0.00) rot=(0.00, 180.00, 0.00)
+        chen_01 active=True pos=(1.24, 0.05, 0.00) rot=(0.00, 180.00, 0.00)
+        huoxing active=True pos=(0.01, -0.03, 0.00) rot=(0.00, 0.00, 336.63)
+          PS awake=True loop=False duration=0.5 max=15 bursts=1
+        baoshan active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+          PS awake=True loop=False duration=0.5 max=1 bursts=1
+==== Assets/_Game/Art/FX/OriginalClient/Chen/Prefabs/chen_skill_03_hit_02.prefab ====
+chen_skill_03_hit_02 active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+  static_offset active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+    PS awake=True loop=False duration=0.1 max=1000 bursts=0
+    rotation_y active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+      PS awake=True loop=False duration=2.5 max=1000 bursts=0
+      2 active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 180.00, 0.00)
+        PS awake=True loop=False duration=3 max=1000 bursts=0
+        baoci active=True pos=(-0.13, 0.10, 0.00) rot=(0.00, 180.00, 330.28)
+          PS awake=True loop=False duration=0.1 max=1 bursts=1
+        baoci_02 active=True pos=(-0.13, 0.10, 0.00) rot=(0.00, 180.00, 330.28)
+          PS awake=True loop=False duration=0.1 max=1 bursts=1
+        baoshan active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 180.00, 0.00)
+          PS awake=True loop=False duration=0.5 max=1 bursts=1
+        huoxing active=True pos=(0.01, -0.03, 0.00) rot=(0.00, 0.00, 336.63)
+          PS awake=True loop=False duration=0.5 max=15 bursts=1
+        smoke active=True pos=(0.33, -0.45, 0.00) rot=(337.39, 270.00, 0.00)
+          PS awake=True loop=False duration=0.5 max=6 bursts=1
+        daoguang active=True pos=(-0.61, -0.08, 0.00) rot=(0.00, 180.00, 176.29)
+        daoguang_liang active=True pos=(-0.61, -0.08, 0.00) rot=(0.00, 180.00, 176.29)
+        chen_01_1 active=True pos=(0.18, 0.05, 0.00) rot=(0.00, 180.00, 0.00)
+        chen_04 active=True pos=(-0.15, 0.05, 0.00) rot=(0.00, 0.00, 0.00)
+==== Assets/_Game/Art/FX/OriginalClient/Chen/Prefabs/chen_skill_03_hit_03.prefab ====
+chen_skill_03_hit_03 active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+  static_offset active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+    PS awake=True loop=False duration=0.1 max=1000 bursts=0
+    rotation_y active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+      PS awake=True loop=False duration=2.5 max=1000 bursts=0
+      3 active=True pos=(-0.30, 0.07, 0.00) rot=(0.00, 0.00, 19.93)
+        PS awake=True loop=False duration=3 max=1000 bursts=0
+        baoci active=True pos=(0.26, -0.17, 0.00) rot=(0.00, 0.00, 3.19)
+          PS awake=True loop=False duration=0.1 max=1 bursts=1
+        baoci_02 active=True pos=(0.26, -0.17, 0.00) rot=(0.00, 0.00, 3.19)
+          PS awake=True loop=False duration=0.1 max=1 bursts=1
+        baoshan active=True pos=(0.26, -0.17, 0.00) rot=(0.00, 0.00, 340.07)
+          PS awake=True loop=False duration=0.5 max=1 bursts=1
+        huoxing active=True pos=(0.40, -0.18, 0.03) rot=(356.75, 352.44, 336.85)
+          PS awake=True loop=False duration=0.5 max=15 bursts=1
+        smoke active=True pos=(0.33, -0.45, 0.00) rot=(337.39, 270.00, 0.00)
+          PS awake=True loop=False duration=0.5 max=6 bursts=1
+        daoguang active=True pos=(0.36, 0.07, 0.00) rot=(0.00, 180.00, 25.98)
+        daoguang_liang active=True pos=(0.36, 0.07, 0.00) rot=(0.00, 180.00, 25.98)
+        chen_01_1 active=True pos=(0.18, 0.05, 0.00) rot=(0.00, 180.00, 0.00)
+        chen_03 active=True pos=(1.63, -0.31, 0.00) rot=(0.00, 180.00, 19.13)
+==== Assets/_Game/Art/FX/OriginalClient/Chen/Prefabs/chen_skill_03_hit_04.prefab ====
+chen_skill_03_hit_04 active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+  static_offset active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+    PS awake=True loop=False duration=0.1 max=1000 bursts=0
+    rotation_y active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+      PS awake=True loop=False duration=2 max=1000 bursts=0
+      4 active=True pos=(0.46, 0.26, 0.00) rot=(0.00, 180.00, 319.54)
+        PS awake=True loop=False duration=3 max=1000 bursts=0
+        baoci active=True pos=(0.47, 0.28, 0.00) rot=(0.00, 180.00, 11.33)
+          PS awake=True loop=False duration=0.1 max=1 bursts=1
+        baoci_02 active=True pos=(0.47, 0.28, 0.00) rot=(0.00, 180.00, 11.33)
+          PS awake=True loop=False duration=0.1 max=1 bursts=1
+        smoke active=True pos=(0.33, -0.45, 0.00) rot=(337.39, 270.00, 0.00)
+          PS awake=True loop=False duration=0.5 max=6 bursts=1
+        daoguang active=True pos=(0.27, -0.03, 0.00) rot=(0.00, 0.00, 43.50)
+        daoguang_liang active=True pos=(0.27, -0.03, 0.00) rot=(0.00, 0.00, 43.50)
+        chen_01_1 active=True pos=(0.18, 0.05, 0.00) rot=(0.00, 180.00, 0.00)
+        chen_02 active=True pos=(1.72, 0.45, 0.00) rot=(0.00, 180.00, 329.24)
+        huoxing active=True pos=(0.57, 0.38, 0.03) rot=(356.75, 352.44, 336.85)
+          PS awake=True loop=False duration=0.5 max=15 bursts=1
+        baoshan active=True pos=(0.68, 0.27, 0.01) rot=(0.00, 180.00, 319.54)
+          PS awake=True loop=False duration=0.5 max=1 bursts=1
+==== Assets/_Game/Art/FX/OriginalClient/Chen/Prefabs/chen_skill_03_hit_05.prefab ====
+chen_skill_03_hit_05 active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+  static_offset active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+    PS awake=True loop=False duration=0.1 max=1000 bursts=0
+    rotation_y active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+      PS awake=True loop=False duration=2 max=1000 bursts=0
+      5 active=True pos=(-0.11, -0.27, 0.00) rot=(0.00, 0.00, 18.72)
+        PS awake=True loop=False duration=3 max=1000 bursts=0
+        baoci active=True pos=(0.14, 0.13, 0.00) rot=(0.00, 0.00, 356.19)
+          PS awake=True loop=False duration=0.1 max=1 bursts=1
+        baoci_02 active=True pos=(0.13, 0.13, 0.00) rot=(0.00, 0.00, 356.19)
+          PS awake=True loop=False duration=0.1 max=1 bursts=1
+        smoke active=True pos=(0.33, -0.45, 0.00) rot=(337.39, 270.00, 0.00)
+          PS awake=True loop=False duration=0.5 max=6 bursts=1
+        daoguang active=True pos=(0.91, -0.02, 0.01) rot=(5.87, 177.57, 55.68)
+        daoguang_liang active=True pos=(0.91, -0.02, 0.01) rot=(5.87, 177.57, 55.68)
+        chen_01_1 active=True pos=(0.18, 0.05, 0.00) rot=(0.00, 180.00, 0.00)
+        chen_05 active=True pos=(1.43, -0.14, 0.00) rot=(0.00, 180.00, 23.76)
+        huoxing active=True pos=(0.20, 0.11, 0.03) rot=(356.75, 352.44, 308.07)
+          PS awake=True loop=False duration=0.5 max=15 bursts=1
+        baoshan active=True pos=(0.23, 0.10, 0.00) rot=(0.00, 180.00, 290.77)
+          PS awake=True loop=False duration=0.5 max=1 bursts=1
+==== Assets/_Game/Art/FX/OriginalClient/Chen/Prefabs/chen_skill_03_hit_06.prefab ====
+chen_skill_03_hit_06 active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+  static_offset active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+    PS awake=True loop=False duration=0.1 max=1000 bursts=0
+    rotation_y active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+      PS awake=True loop=False duration=2 max=1000 bursts=0
+      6 active=True pos=(0.01, 0.18, 0.00) rot=(0.00, 180.00, 12.57)
+        PS awake=True loop=False duration=3 max=1000 bursts=0
+        baoci active=True pos=(-0.10, -0.15, 0.00) rot=(0.00, 180.00, 10.27)
+          PS awake=True loop=False duration=0.1 max=1 bursts=1
+        baoci_02 active=True pos=(-0.10, -0.15, 0.00) rot=(0.00, 180.00, 10.27)
+          PS awake=True loop=False duration=0.1 max=1 bursts=1
+        smoke active=True pos=(0.33, -0.45, 0.00) rot=(337.39, 270.00, 0.00)
+          PS awake=True loop=False duration=0.5 max=6 bursts=1
+        daoguang active=True pos=(0.36, -0.08, 0.00) rot=(0.00, 180.00, 18.20)
+        daoguang_liang active=True pos=(0.36, -0.08, 0.00) rot=(0.00, 180.00, 18.20)
+        chen_01_1 active=True pos=(0.18, 0.05, 0.00) rot=(0.00, 180.00, 0.00)
+        chen_03 active=True pos=(1.63, -0.31, 0.00) rot=(0.00, 180.00, 19.13)
+        huoxing active=True pos=(-0.16, -0.17, -0.05) rot=(356.75, 352.44, 336.85)
+          PS awake=True loop=False duration=0.5 max=15 bursts=1
+        baoshan active=True pos=(0.26, -0.17, 0.00) rot=(0.00, 0.00, 340.07)
+          PS awake=True loop=False duration=0.5 max=1 bursts=1
+==== Assets/_Game/Art/FX/OriginalClient/Chen/Prefabs/chen_skill_03_hit_07.prefab ====
+chen_skill_03_hit_07 active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+  static_offset active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+    PS awake=True loop=False duration=0.1 max=1000 bursts=0
+    rotation_y active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+      PS awake=True loop=False duration=1.5 max=1000 bursts=0
+      7 active=True pos=(-0.38, 0.16, 0.00) rot=(0.00, 0.00, 337.21)
+        PS awake=True loop=False duration=3 max=1000 bursts=0
+        baoci active=True pos=(0.62, 0.29, 0.00) rot=(0.00, 0.00, 5.91)
+          PS awake=True loop=False duration=0.1 max=1 bursts=1
+        baoci_02 active=True pos=(0.62, 0.29, 0.00) rot=(0.00, 0.00, 5.91)
+          PS awake=True loop=False duration=0.1 max=1 bursts=1
+        smoke active=True pos=(0.33, -0.45, 0.00) rot=(337.39, 270.00, 0.00)
+          PS awake=True loop=False duration=0.5 max=6 bursts=1
+        daoguang active=True pos=(0.27, -0.03, 0.00) rot=(0.00, 0.00, 43.50)
+        daoguang_liang active=True pos=(0.27, -0.03, 0.00) rot=(0.00, 0.00, 43.50)
+        chen_01_1 active=True pos=(0.18, 0.05, 0.00) rot=(0.00, 180.00, 0.00)
+        chen_02 active=True pos=(1.72, 0.45, 0.00) rot=(0.00, 180.00, 329.24)
+        huoxing active=True pos=(0.46, 0.23, 0.03) rot=(356.75, 352.44, 336.85)
+          PS awake=True loop=False duration=0.5 max=15 bursts=1
+        baoshan active=True pos=(0.57, 0.12, 0.00) rot=(0.00, 180.00, 319.54)
+          PS awake=True loop=False duration=0.5 max=1 bursts=1
+==== Assets/_Game/Art/FX/OriginalClient/Chen/Prefabs/chen_skill_03_hit_08.prefab ====
+chen_skill_03_hit_08 active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+  static_offset active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+    PS awake=True loop=False duration=0.1 max=1000 bursts=0
+    rotation_y active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+      PS awake=True loop=False duration=1.5 max=1000 bursts=0
+      8 active=True pos=(0.10, -0.23, 0.00) rot=(0.00, 180.00, 8.15)
+        PS awake=True loop=False duration=3 max=1000 bursts=0
+        baoci active=True pos=(0.07, 0.02, 0.00) rot=(0.00, 180.00, 14.97)
+          PS awake=True loop=False duration=0.1 max=1 bursts=1
+        baoci_02 active=True pos=(0.07, 0.02, 0.00) rot=(0.00, 180.00, 14.97)
+          PS awake=True loop=False duration=0.1 max=1 bursts=1
+        smoke active=True pos=(0.33, -0.45, 0.00) rot=(337.39, 270.00, 0.00)
+          PS awake=True loop=False duration=0.5 max=8 bursts=1
+        daoguang active=True pos=(0.20, 0.13, 0.00) rot=(0.00, 180.00, 0.00)
+        daoguang_liang active=True pos=(0.20, 0.13, 0.00) rot=(0.00, 180.00, 0.00)
+        chen_01_1 active=True pos=(0.18, 0.05, 0.00) rot=(0.00, 180.00, 0.00)
+        chen_01 active=True pos=(1.24, 0.05, 0.00) rot=(0.00, 180.00, 0.00)
+        huoxing active=True pos=(0.01, -0.03, 0.00) rot=(0.00, 0.00, 336.63)
+          PS awake=True loop=False duration=0.5 max=15 bursts=1
+        baoshan active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+          PS awake=True loop=False duration=0.5 max=1 bursts=1
+==== Assets/_Game/Art/FX/OriginalClient/Chen/Prefabs/chen_skill_03_hit_09.prefab ====
+chen_skill_03_hit_09 active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+  static_offset active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+    PS awake=True loop=False duration=0.1 max=1000 bursts=0
+    rotation_y active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+      PS awake=True loop=False duration=1 max=1000 bursts=0
+      9 active=True pos=(-0.81, -0.08, 0.00) rot=(0.00, 0.00, 31.14)
+        PS awake=True loop=False duration=3 max=1000 bursts=0
+        baoci active=True pos=(1.02, -0.42, 0.00) rot=(0.00, 0.00, 356.26)
+          PS awake=True loop=False duration=0.1 max=1 bursts=1
+        baoci_02 active=True pos=(1.02, -0.42, 0.00) rot=(0.00, 0.00, 356.26)
+          PS awake=True loop=False duration=0.1 max=1 bursts=1
+        smoke active=True pos=(0.33, -0.45, 0.00) rot=(337.39, 270.00, 0.00)
+          PS awake=True loop=False duration=0.5 max=5 bursts=1
+        daoguang active=True pos=(0.63, -0.10, 0.00) rot=(0.00, 180.00, 21.99)
+        daoguang_liang active=True pos=(0.63, -0.10, 0.00) rot=(0.00, 180.00, 21.99)
+        chen_01_1 active=True pos=(0.18, 0.05, 0.00) rot=(0.00, 180.00, 0.00)
+        chen_03 active=True pos=(1.63, -0.31, 0.00) rot=(0.00, 180.00, 19.13)
+        huoxing active=True pos=(0.96, -0.45, 0.09) rot=(356.75, 352.44, 344.44)
+          PS awake=True loop=False duration=0.5 max=15 bursts=1
+        baoshan active=True pos=(1.16, -0.52, 0.06) rot=(0.00, 0.00, 347.66)
+          PS awake=True loop=False duration=0.5 max=1 bursts=1
+==== Assets/_Game/Art/FX/OriginalClient/Chen/Prefabs/chen_skill_03_hit_10.prefab ====
+chen_skill_03_hit_10 active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+  static_offset active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+    PS awake=True loop=False duration=0.1 max=1000 bursts=0
+    rotation_y active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+      PS awake=True loop=False duration=3 max=1000 bursts=0
+      10_02 active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 0.00, 0.00)
+        PS awake=True loop=False duration=1.5 max=1000 bursts=0
+        smoke active=True pos=(0.33, -0.45, 0.00) rot=(337.39, 270.00, 0.00)
+          PS awake=True loop=False duration=0.5 max=1000 bursts=1
+        daoguang active=True pos=(-0.61, -0.08, 0.00) rot=(0.00, 180.00, 176.29)
+        daoguang_liang_02 active=True pos=(-0.61, -0.08, 0.00) rot=(0.00, 180.00, 176.29)
+        chen_01_1 active=True pos=(0.18, 0.05, 0.00) rot=(0.00, 180.00, 0.00)
+        chen_07 active=True pos=(-0.15, 0.05, 0.00) rot=(0.00, 0.00, 0.00)
+        lizi active=True pos=(1.00, 0.00, 0.00) rot=(0.00, 270.00, 180.00)
+          PS awake=True loop=False duration=0.2 max=1000 bursts=1
+      10_01 active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 180.00, 0.00)
+        PS awake=True loop=False duration=3 max=1000 bursts=0
+        baoci active=True pos=(-0.01, 0.03, 0.00) rot=(0.00, 180.00, 0.00)
+          PS awake=True loop=False duration=0.1 max=1000 bursts=1
+        baoci_02 active=True pos=(-0.01, 0.03, 0.00) rot=(0.00, 180.00, 0.00)
+          PS awake=True loop=False duration=0.1 max=1000 bursts=1
+        manyue active=True pos=(0.01, 0.12, 0.00) rot=(0.00, 0.00, 139.60)
+        daoguang active=True pos=(-0.61, -0.08, 0.00) rot=(0.00, 180.00, 176.29)
+        daoguang_liang_02 active=True pos=(-0.61, -0.08, 0.00) rot=(0.00, 180.00, 176.29)
+        chen_01_1 active=True pos=(0.18, 0.05, 0.00) rot=(0.00, 180.00, 0.00)
+        chen_06 active=True pos=(-0.15, 0.05, 0.00) rot=(0.00, 0.00, 0.00)
+        huoxing active=True pos=(-0.01, 0.03, 0.00) rot=(0.00, 0.00, 336.63)
+          PS awake=True loop=False duration=0.5 max=1000 bursts=1
+        baoshan active=True pos=(0.00, 0.00, 0.00) rot=(0.00, 180.00, 0.00)
+          PS awake=True loop=False duration=0.5 max=1000 bursts=1
+        baoci_03 active=True pos=(-0.01, 0.03, 0.00) rot=(0.00, 0.00, 336.63)
+          PS awake=True loop=False duration=0.5 max=1000 bursts=1
+        lizi active=True pos=(0.00, 0.07, 0.00) rot=(272.64, 1.54, 180.00)
+          PS awake=True loop=False duration=1.2 max=1000 bursts=1

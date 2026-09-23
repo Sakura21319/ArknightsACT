@@ -1,11 +1,12 @@
 using System.Collections.Generic;
 using ArknightsACT.Combat;
+using ArknightsACT.Gameplay.Characters;
 using UnityEngine;
 
 namespace ArknightsACT.Gameplay.Roguelite.Treasure
 {
     [DisallowMultipleComponent]
-    public sealed class TemporaryCombatBuffs : MonoBehaviour, IDamageModifier
+    public sealed class TemporaryCombatBuffs : MonoBehaviour, IDamageModifier, IPlayerSwitchStateTransfer
     {
         private readonly List<BuffEntry> _damageBuffs = new();
 
@@ -14,6 +15,24 @@ namespace ArknightsACT.Gameplay.Roguelite.Treasure
             if (percent <= 0f || durationSeconds <= 0f)
                 return;
             _damageBuffs.Add(new BuffEntry(Mathf.Max(0f, percent), Time.time + durationSeconds));
+        }
+
+        public void CopySwitchStateTo(Transform destination)
+        {
+            if (destination == null)
+                return;
+            var target = destination.GetComponent<TemporaryCombatBuffs>();
+            if (target == null || target == this)
+                return;
+
+            CleanupExpired();
+            target._damageBuffs.Clear();
+            for (var i = 0; i < _damageBuffs.Count; i++)
+            {
+                var remaining = _damageBuffs[i].ExpiresAt - Time.time;
+                if (remaining > 0f)
+                    target._damageBuffs.Add(new BuffEntry(_damageBuffs[i].Percent, Time.time + remaining));
+            }
         }
 
         public float ModifyOutgoingDamage(in DamageContext context, float currentDamage)

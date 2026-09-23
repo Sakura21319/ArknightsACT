@@ -8,6 +8,26 @@ namespace ArknightsACT.Gameplay.Roguelite.World
     {
         public static readonly HashSet<EnterableBuilding25D> Active = new();
         public Bounds Interior { get; private set; }
+        public string DisplayName { get; private set; } = "可进入建筑";
+        public bool Visited { get; private set; }
+        public int ContainerCount { get; private set; }
+        public int RemainingContainers { get; private set; }
+        public int UnsearchedContainers { get; private set; }
+        private readonly List<ArknightsACT.Gameplay.Roguelite.Treasure.SearchableContainer25D> _containers = new();
+        public void SetIdentity(string label) => DisplayName = label;
+        public void Visit()
+        {
+            Visited = true;
+            GetComponentsInChildren(false, _containers);
+            ContainerCount = _containers.Count; RemainingContainers = 0; UnsearchedContainers = 0;
+            foreach (var container in _containers)
+            {
+                if (!container.Emptied) RemainingContainers++;
+                if (!container.Initialized || container.HasUnsearched) UnsearchedContainers++;
+            }
+        }
+        public string SearchStatus => !Visited ? "尚未进入" : ContainerCount == 0 ? "空置房间" : RemainingContainers == 0 ? "物资已清空" :
+            UnsearchedContainers == 0 ? "检索完成 · 尚有未取物资" : $"待检索 {UnsearchedContainers} / 未清空 {RemainingContainers}";
         private Vector3[] _route;
         public void SetNavigationRoute(Vector3[] route) => _route = route;
         private void Start()

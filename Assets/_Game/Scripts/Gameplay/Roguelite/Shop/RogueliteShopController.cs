@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using ArknightsACT.Combat;
 using ArknightsACT.Gameplay.Feedback;
+using ArknightsACT.Gameplay.Characters;
 using ArknightsACT.Gameplay.Roguelite.Collectibles;
 using ArknightsACT.Gameplay.Roguelite.Progression;
 using ArknightsACT.Gameplay.Roguelite.Rewards;
@@ -92,25 +93,45 @@ namespace ArknightsACT.Gameplay.Roguelite.Shop
         {
             _coordinator = RewardSelectionCoordinator.Instance ?? FindFirstObjectByType<RewardSelectionCoordinator>();
             _pause = GameplayPauseService.Instance;
+            if (PlayerRuntimeContext.Instance != null)
+                PlayerRuntimeContext.Instance.ActivePlayerChanged += OnActivePlayerChanged;
+            CachePlayer();
         }
 
         private void OnDisable()
         {
+            if (PlayerRuntimeContext.Instance != null)
+                PlayerRuntimeContext.Instance.ActivePlayerChanged -= OnActivePlayerChanged;
             Close();
             _coordinator?.Release(this);
         }
 
+        private void OnActivePlayerChanged(Transform previousPlayer, Transform nextPlayer)
+        {
+            CachePlayer();
+            if (_isOpen)
+                BuildStock();
+        }
+
         private void CachePlayer()
         {
-            if (player == null)
+            var activePlayer = PlayerRuntimeContext.Resolve(player);
+            if (activePlayer == null)
                 return;
+
+            player = activePlayer;
             _playerEntity = player.GetComponent<CombatEntity>();
             _temporaryBuffs = player.GetComponent<TemporaryCombatBuffs>();
             _scavenging = player.GetComponent<ScavengingInventory25D>();
+            collectibleInventory = player.GetComponent<CollectibleInventory>();
+            levelInventory = player.GetComponent<LevelUpgradeInventory>();
+            skillInventory = player.GetComponent<CharacterSkillUpgradeInventory>();
+            combatProfile = player.GetComponent<PlayerCombatProfile>();
         }
 
         private void Update()
         {
+            CachePlayer();
             if (ArknightsACT.Gameplay.Input.GameplayInputBlocker.IsBlocked) return;
             if (_isOpen)
             {

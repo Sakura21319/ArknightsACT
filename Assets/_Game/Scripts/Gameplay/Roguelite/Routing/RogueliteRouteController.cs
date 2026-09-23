@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using ArknightsACT.Combat;
 using ArknightsACT.Gameplay.Feedback;
+using ArknightsACT.Gameplay.Characters;
 using ArknightsACT.Gameplay.Roguelite.Collectibles;
 using ArknightsACT.Gameplay.Roguelite.Rewards;
 using ArknightsACT.Gameplay.Rooms;
@@ -71,6 +72,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
         private void Update()
         {
+            player = PlayerRuntimeContext.Resolve(player);
             if (ArknightsACT.Gameplay.Input.GameplayInputBlocker.IsBlocked) return;
             if (_mode == OverlayMode.None || Time.frameCount < _inputUnlockFrame)
                 return;
@@ -406,6 +408,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
 
         private float HealPlayer(float fraction)
         {
+            player = PlayerRuntimeContext.Resolve(player);
             if (player == null || fraction <= 0f)
                 return 0f;
 

@@ -1,4 +1,6 @@
 #if UNITY_EDITOR
+using System;
+using System.Collections.Generic;
 using ArknightsACT.Gameplay.Characters;
 using UnityEditor;
 using UnityEngine;
@@ -6,158 +8,220 @@ using UnityEngine;
 namespace ArknightsACT.Editor
 {
     /// <summary>
-    /// Minimal, safe operator switcher for the current prototype architecture.
-    /// Switching rebuilds PrototypeRun.unity through the existing character factories so every
-    /// serialized player reference (roguelite flow, stage runtime, rewards, inventory, HUD, etc.)
-    /// stays consistent. This intentionally avoids fragile runtime hot-swapping.
+    /// Data-driven PrototypeRun generator. The window does not know concrete operators or skins;
+    /// it renders whatever PlayableOperatorDefinition assets the registry discovers.
     /// </summary>
     public sealed class OperatorSwitcherWindow : EditorWindow
     {
-        private const float CardWidth = 220f;
-        private const float CardHeight = 300f;
+        private const float SkinCardWidth = 210f;
+        private const float SkinCardHeight = 270f;
 
         private Vector2 _scroll;
-
-        [UnityEditor.MenuItem("ArknightsACT/角色切换")]
+        private readonly Dictionary<string, Vector2> _skinScroll = new Dictionary<string, Vector2>(StringComparer.OrdinalIgnoreCase);
         public static void Open()
         {
-            var window = GetWindow<OperatorSwitcherWindow>("Operator Switcher");
-            window.minSize = new Vector2(760f, 480f);
+            var window = GetWindow<OperatorSwitcherWindow>("PrototypeRun");
+            window.minSize = new Vector2(760f, 520f);
             window.Show();
         }
 
         private void OnGUI()
         {
             EditorGUILayout.Space(12);
-            EditorGUILayout.LabelField("干员切换 / OPERATOR SWITCHER", EditorStyles.boldLabel);
-            EditorGUILayout.Space(4);
+            EditorGUILayout.LabelField("PrototypeRun 生成器", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(
+                "角色与皮肤来自 PlayableOperatorDefinition；新增角色无需修改此窗口。",
+                EditorStyles.wordWrappedMiniLabel);
+            EditorGUILayout.Space(8);
 
             var current = FindFirstObjectByType<PlayableOperatorIdentity>();
             using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
             {
                 EditorGUILayout.LabelField(
                     current != null
-                        ? $"当前场景：{current.DisplayName}   [{current.OperatorId}]   Skin={current.SkinId}"
-                        : "当前场景：未检测到 Player 干员",
+                        ? $"当前起始干员：{current.DisplayName}  [{current.OperatorId}]  " +
+                          $"皮肤：{current.SkinDisplayName} ({current.SkinId})"
+                        : "当前场景：未检测到激活的 Player 干员",
                     EditorStyles.boldLabel);
-                EditorGUILayout.LabelField(
-                    "点击下方“切换”会使用对应角色 Factory 重建 PrototypeRun.unity。"
-                    + " 这是当前项目最安全的换人方式，不会留下旧 Player 引用。",
-                    EditorStyles.wordWrappedMiniLabel);
-            }
-
-            EditorGUILayout.Space(10);
-            using (var scroll = new EditorGUILayout.ScrollViewScope(_scroll))
-            {
-                _scroll = scroll.scrollPosition;
-                using (new EditorGUILayout.HorizontalScope())
-                {
-                    DrawOperatorCard(
-                        "陈",
-                        "CH'EN",
-                        "默认",
-                        "Assets/_Game/Resources/UI/HUD/chen_avatar.png",
-                        current != null && current.OperatorId == "Chen",
-                        () => PrototypeSceneBuilder.Build());
-
-                    DrawOperatorCard(
-                        "黑",
-                        "SCHWARZ",
-                        "原版",
-                        "Assets/_Game/Resources/UI/HUD/Operators/schwarz_default.png",
-                        IsCurrent(current, "Schwarz", "default"),
-                        () => SchwarzPrototypeSceneBuilder.BuildDefault());
-
-                    DrawOperatorCard(
-                        "黑",
-                        "SCHWARZ",
-                        "Snow",
-                        "Assets/_Game/Resources/UI/HUD/Operators/schwarz_snow.png",
-                        IsCurrent(current, "Schwarz", "snow#1"),
-                        () => SchwarzPrototypeSceneBuilder.BuildSnow());
-
-                    DrawOperatorCard(
-                        "黑",
-                        "SCHWARZ",
-                        "Striker",
-                        "Assets/_Game/Resources/UI/HUD/Operators/schwarz_striker.png",
-                        IsCurrent(current, "Schwarz", "striker#1"),
-                        () => SchwarzPrototypeSceneBuilder.BuildStriker());
-                }
             }
 
             EditorGUILayout.Space(8);
-            if (GUILayout.Button("黑特效调试 / Schwarz FX Tuning", GUILayout.Height(32)))
-                SchwarzFxTuningWindow.Open();
+            var definitions = PrototypeOperatorRegistry.GetDefinitions();
+            if (definitions.Count == 0)
+            {
+                EditorGUILayout.HelpBox(
+                    "没有发现可用的 PlayableOperatorDefinition / IPrototypeOperatorBuilder。",
+                    MessageType.Warning);
+                return;
+            }
+
+            using (var scroll = new EditorGUILayout.ScrollViewScope(_scroll))
+            {
+                _scroll = scroll.scrollPosition;
+
+                for (var i = 0; i < definitions.Count; i++)
+                {
+                    var definition = definitions[i];
+                    if (definition == null)
+                        continue;
+
+                    DrawOperatorSection(definition, current);
+                    EditorGUILayout.Space(10);
+                }
+            }
 
             EditorGUILayout.Space(6);
             EditorGUILayout.HelpBox(
-                "当前版本只允许在非 Play Mode 下切换。"
-                + " 如果正在运行，请先停止 Play Mode，再点击切换。",
+                "Editor 这里只决定 PrototypeRun 的起始干员/皮肤；运行时按 Tab 可切换到场景内已生成的其他角色和皮肤。",
                 MessageType.Info);
         }
 
-        private static bool IsCurrent(PlayableOperatorIdentity current, string operatorId, string skinId)
+        private void DrawOperatorSection(
+            PlayableOperatorDefinition definition,
+            PlayableOperatorIdentity current)
         {
-            return current != null &&
-                   current.OperatorId == operatorId &&
-                   current.SkinId == skinId;
+            using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+            {
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    EditorGUILayout.LabelField(
+                        $"{definition.DisplayName}  /  {definition.EnglishName}  [{definition.OperatorId}]",
+                        EditorStyles.boldLabel);
+
+                    GUILayout.FlexibleSpace();
+                    if (GUILayout.Button("定位描述资产", GUILayout.Width(100f)))
+                    {
+                        Selection.activeObject = definition;
+                        EditorGUIUtility.PingObject(definition);
+                    }
+                }
+
+                EditorGUILayout.Space(4);
+                var skinScroll = _skinScroll.TryGetValue(definition.OperatorId, out var savedScroll)
+                    ? savedScroll
+                    : Vector2.zero;
+                skinScroll = EditorGUILayout.BeginScrollView(
+                    skinScroll,
+                    true,
+                    false,
+                    GUILayout.Height(SkinCardHeight + 12f));
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    var skins = definition.Skins;
+                    for (var skinIndex = 0; skinIndex < skins.Count; skinIndex++)
+                    {
+                        var skin = skins[skinIndex];
+                        if (skin == null)
+                            continue;
+
+                        DrawSkinCard(
+                            definition,
+                            skin,
+                            IsCurrent(current, definition.OperatorId, skin.SkinId));
+                        GUILayout.Space(8);
+                    }
+                }
+                EditorGUILayout.EndScrollView();
+                _skinScroll[definition.OperatorId] = skinScroll;
+            }
         }
 
-        private void DrawOperatorCard(
-            string displayName,
-            string englishName,
-            string skinLabel,
-            string avatarPath,
-            bool selected,
-            System.Action switchAction)
+        private static bool IsCurrent(
+            PlayableOperatorIdentity current,
+            string operatorId,
+            string skinId)
+        {
+            return current != null &&
+                   string.Equals(current.OperatorId, operatorId, StringComparison.OrdinalIgnoreCase) &&
+                   string.Equals(current.SkinId, skinId, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void DrawSkinCard(
+            PlayableOperatorDefinition definition,
+            PlayableOperatorSkinDefinition skin,
+            bool selected)
         {
             using (new EditorGUILayout.VerticalScope(
                        selected ? "SelectionRect" : EditorStyles.helpBox,
-                       GUILayout.Width(CardWidth),
-                       GUILayout.Height(CardHeight)))
+                       GUILayout.Width(SkinCardWidth),
+                       GUILayout.Height(SkinCardHeight)))
             {
                 GUILayout.Space(8);
-                GUILayout.Label(displayName, new GUIStyle(EditorStyles.boldLabel)
-                {
-                    fontSize = 22,
-                    alignment = TextAnchor.MiddleCenter
-                });
-                GUILayout.Label(englishName, new GUIStyle(EditorStyles.miniBoldLabel)
-                {
-                    alignment = TextAnchor.MiddleCenter
-                });
-                GUILayout.Space(4);
-
-                var avatar = AssetDatabase.LoadAssetAtPath<Texture2D>(avatarPath);
-                var rect = GUILayoutUtility.GetRect(160f, 160f, GUILayout.ExpandWidth(true));
-                if (avatar != null)
-                    GUI.DrawTexture(rect, avatar, ScaleMode.ScaleToFit, true);
-                else
-                    GUI.Box(rect, "头像未导入\n" + avatarPath);
-
-                GUILayout.Space(4);
-                GUILayout.Label("皮肤：" + skinLabel, new GUIStyle(EditorStyles.label)
-                {
-                    alignment = TextAnchor.MiddleCenter
-                });
-
-                using (new EditorGUI.DisabledScope(EditorApplication.isPlayingOrWillChangePlaymode))
-                {
-                    if (GUILayout.Button(selected ? "重新构建" : "切换", GUILayout.Height(34)))
+                GUILayout.Label(
+                    skin.DisplayName,
+                    new GUIStyle(EditorStyles.boldLabel)
                     {
-                        // Rebuilding the scene mutates the editor hierarchy and can invalidate
-                        // IMGUI's active layout stack if done inside OnGUI. Defer the entire action.
+                        fontSize = 17,
+                        alignment = TextAnchor.MiddleCenter
+                    });
+
+                GUILayout.Label(
+                    skin.IsReserved ? $"{skin.SkinId}  ·  预留" : skin.SkinId,
+                    new GUIStyle(EditorStyles.miniLabel)
+                    {
+                        alignment = TextAnchor.MiddleCenter
+                    });
+
+                GUILayout.Space(4);
+                var avatar = !string.IsNullOrWhiteSpace(skin.AvatarResourceKey)
+                    ? Resources.Load<Texture2D>(skin.AvatarResourceKey)
+                    : null;
+                var avatarRect = GUILayoutUtility.GetRect(
+                    150f,
+                    150f,
+                    GUILayout.ExpandWidth(true));
+
+                if (avatar != null)
+                    GUI.DrawTexture(avatarRect, avatar, ScaleMode.ScaleToFit, true);
+                else
+                    GUI.Box(avatarRect, "头像未绑定");
+
+                GUILayout.FlexibleSpace();
+                using (new EditorGUI.DisabledScope(
+                           EditorApplication.isPlayingOrWillChangePlaymode || skin.IsReserved))
+                {
+                    if (GUILayout.Button(
+                            skin.IsReserved
+                                ? "预留（未接入）"
+                                : selected ? "刷新当前角色资源" : "设为起始并生成",
+                            GUILayout.Height(34f)))
+                    {
+                        var operatorId = definition.OperatorId;
+                        var skinId = skin.SkinId;
+                        PrototypeOperatorEditorSelection.Remember(operatorId, skinId);
                         EditorApplication.delayCall += () =>
                         {
-                            switchAction?.Invoke();
+                            if (selected)
+                                RefreshExistingOperator(definition, skin);
+                            else
+                                PrototypeRunSceneBuilder.Build(operatorId, skinId);
                             Repaint();
-                            var identity = FindFirstObjectByType<PlayableOperatorIdentity>();
-                            if (identity != null)
-                                Selection.activeGameObject = identity.gameObject;
                         };
                     }
                 }
+            }
+        }
+
+        private static void RefreshExistingOperator(
+            PlayableOperatorDefinition definition,
+            PlayableOperatorSkinDefinition skin)
+        {
+            if (definition == null || skin == null)
+                return;
+
+            var current = PrototypeOperatorEditorSelection.FindCurrentSceneIdentity();
+            PrototypeOperatorEditorSelection.Remember(definition.OperatorId, skin.SkinId);
+            CurrentOperatorAssetRefreshService.Refresh(
+                definition,
+                skin,
+                current,
+                force: false,
+                reason: "operator switcher");
+
+            if (current != null)
+            {
+                Selection.activeGameObject = current.gameObject;
+                EditorGUIUtility.PingObject(current.gameObject);
             }
         }
     }

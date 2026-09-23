@@ -311,7 +311,12 @@ def parse_effects(text):
         if "攻击力" in stats:
             add_effect(effects, "IncomingDamagePercent" if is_enemy else "AllDamagePercent", value, professions, duration)
         if "防御力" in stats:
-            add_effect(effects, "PhysicalDamagePercent" if is_enemy else "IncomingDamagePercent", -value, professions, duration)
+            if is_enemy:
+                # Enemy DEF modifiers still use the legacy outgoing-physical compatibility path
+                # until target-side global stat auras are migrated.
+                add_effect(effects, "EnemyPhysicalDefensePercent", value, professions, duration)
+            else:
+                add_effect(effects, "PhysicalDefensePercent", value, professions, duration)
         if "生命值" in stats:
             add_effect(effects, "EnemyMaxHealthPercent" if is_enemy else "MaxHealthPercent", value, professions, duration)
 
@@ -333,16 +338,16 @@ def parse_effects(text):
         else:
             add_effect(effects, "AllDamagePercent", value, nearest_professions(normalized, m.start()), duration)
 
-    # Defense is represented as incoming-damage scaling in the ACT combat model.
+    # Friendly DEF now maps to the formal CombatStats defense layer.
     for m in re.finditer(r"防御力\s*([+-]\d+(?:\.\d+)?)\s*%", normalized):
         defense = percent_number(m.group(1))
         prefix = normalized[max(0, m.start() - 28):m.start()]
         if "敌方" in prefix or "敌人" in prefix:
-            # ACT currently has no target Defense stat in DamageSystem. Represent defense reduction
-            # as the equivalent physical-damage modifier so the approved relic remains functional.
-            add_effect(effects, "PhysicalDamagePercent", -defense, [""], duration)
+            # Target-side global DEF auras are not migrated yet; preserve the previous functional
+            # approximation for enemy DEF changes until that pass lands.
+            add_effect(effects, "EnemyPhysicalDefensePercent", defense, [""], duration)
             continue
-        add_effect(effects, "IncomingDamagePercent", -defense, nearest_professions(normalized, m.start()), duration)
+        add_effect(effects, "PhysicalDefensePercent", defense, nearest_professions(normalized, m.start()), duration)
 
     # Player max health / enemy max health.
     for m in re.finditer(r"生命值?\s*([+-]\d+(?:\.\d+)?)\s*%", normalized):

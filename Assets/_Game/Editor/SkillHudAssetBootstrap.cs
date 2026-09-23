@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
-using UnityEditor.Callbacks;
 using UnityEngine;
 
 namespace ArknightsACT.EditorTools
@@ -22,12 +21,6 @@ namespace ArknightsACT.EditorTools
             "Assets/_Game/Art/FX/Extracted/Chen/Frames/skill_02_start/f0025.png";
         private const string Skill2Fallback =
             "Assets/_Game/Art/FX/Extracted/Chen/Frames/skill_03_start/f0020.png";
-
-        [DidReloadScripts]
-        private static void OnScriptsReloaded()
-        {
-            // Intentionally disabled. Do not auto-substitute extracted FX frames as skill icons.
-        }
 
         private static void RefreshLocalSkillIcons()
         {

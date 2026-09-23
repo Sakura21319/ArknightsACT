@@ -64,7 +64,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                     entity.Health.MaxHealth * playerDamageFraction,
                     DamageType.True,
                     Vector2.zero,
-                    sourceId: "Environment_Pit"));
+                    sourceId: "Environment_Pit", tags: DamageTags.Environment));
                 if (entity.Health != null && !entity.Health.IsDead)
                     ResetActor(entity.transform);
                 return;
@@ -79,7 +79,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                     entity.Health.CurrentHealth + entity.Health.MaxHealth,
                     DamageType.True,
                     Vector2.zero,
-                    sourceId: "Environment_Pit"));
+                    sourceId: "Environment_Pit", tags: DamageTags.Environment));
             }
         }
 

@@ -68,7 +68,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 damage,
                 DamageType.True,
                 Vector2.zero,
-                sourceId: "Environment_ActiveOriginium"));
+                sourceId: "Environment_ActiveOriginium", tags: DamageTags.Environment));
         }
 
         private void OnTriggerExit(Collider other)
