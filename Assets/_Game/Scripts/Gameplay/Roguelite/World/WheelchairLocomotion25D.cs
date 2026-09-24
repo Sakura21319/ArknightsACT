@@ -4,6 +4,7 @@ using ArknightsACT.Gameplay.Characters;
 using ArknightsACT.Gameplay.Combat;
 using ArknightsACT.Gameplay.Input;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace ArknightsACT.Gameplay.Roguelite.World
 {
@@ -11,18 +12,25 @@ namespace ArknightsACT.Gameplay.Roguelite.World
     /// Player-side locomotion while seated on a <see cref="Wheelchair25D"/>.
     /// Replaces <see cref="PlayerMotor25D"/> (disabled for the duration) and drives the same
     /// CharacterController with manual-wheelchair physics:
-    /// slow top speed, sluggish acceleration, long coasting after input release,
-    /// limited turn rate (no instant reversal), no jump and no dash.
-    /// Destroyed on dismount.
+    /// modest top speed reached through slow spin-up, gentle coasting brake after input
+    /// release, limited turn rate (no instant reversal), no jump and no dash.
+    /// Holding Shift while rolling fast starts a drift: the wheels turn sharply but
+    /// momentum keeps the chair sliding along its old line, scrubbing speed and
+    /// leaning the body into the slide. Destroyed on dismount.
     /// </summary>
     public sealed class WheelchairLocomotion25D : MonoBehaviour, IPlayerControlLockSource
     {
-        private const float MaxSpeed = 2.0f;          // manual wheelchair pace
-        private const float Acceleration = 2.4f;      // sluggish push-off
-        private const float Deceleration = 0.8f;      // coasting: keeps rolling after release
-        private const float InputLagPerSecond = 5f;   // push rhythm smoothing
-        private const float TurnRateSlow = 220f;      // deg/s when nearly stopped
-        private const float TurnRateFast = 105f;      // deg/s at full speed
+        private const float MaxSpeed = 3.0f;              // slightly brisker manual-chair pace
+        private const float Acceleration = 2.0f;          // slow spin-up: ~1.5s of pushing to reach top speed
+        private const float Deceleration = 1.0f;          // gentle brake: ~3s to roll to a stop from full speed
+        private const float InputLagPerSecond = 5f;       // push rhythm smoothing
+        private const float TurnRateSlow = 220f;          // deg/s when nearly stopped
+        private const float TurnRateFast = 105f;          // deg/s at full speed
+        private const float DriftMinSpeed = 1.1f;         // below this the wheels just grip
+        private const float DriftTurnMultiplier = 2.1f;   // wheels whip around while drifting
+        private const float DriftGripDegPerSecond = 150f; // momentum chases the new heading slowly = slide
+        private const float NormalGripDegPerSecond = 900f;// effectively locked when not drifting
+        private const float DriftDrag = 1.3f;             // extra speed scrubbed while sliding
         private const float Gravity = -24f;
 
         private Wheelchair25D _chair;
@@ -37,6 +45,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         private Vector2 _smoothedInput;
         private Vector3 _heading = Vector3.forward;
         private float _verticalVelocity;
+        private bool _drifting;
 
         public bool BlocksMovement => false;
         public bool BlocksDash => true;
@@ -77,22 +86,39 @@ namespace ArknightsACT.Gameplay.Roguelite.World
 
             var desired = CameraRelative(_smoothedInput);
             var speed = _velocity.magnitude;
+            var driftHeld = !locked && Keyboard.current != null &&
+                            (Keyboard.current.leftShiftKey.isPressed || Keyboard.current.rightShiftKey.isPressed);
+            _drifting = driftHeld && speed > DriftMinSpeed && desired.sqrMagnitude > .001f;
+
             if (desired.sqrMagnitude > .001f)
             {
                 if (speed < .05f)
                     _heading = desired.normalized;
                 var turnRate = Mathf.Lerp(TurnRateSlow, TurnRateFast, Mathf.Clamp01(speed / MaxSpeed)) * Mathf.Deg2Rad;
+                if (_drifting)
+                    turnRate *= DriftTurnMultiplier;
                 _heading = Vector3.RotateTowards(_heading, desired.normalized, turnRate * dt, 0f);
                 // Large heading error (tight turn / reversal) bleeds speed: the chair must arc around.
                 var error = Vector3.Angle(_heading, desired);
                 var targetSpeed = MaxSpeed * (1f - Mathf.Clamp01(error / 130f));
                 speed = Mathf.MoveTowards(speed, targetSpeed, Acceleration * dt);
+                // Sliding sideways scrubs speed on top of the push.
+                if (_drifting)
+                    speed = Mathf.MoveTowards(speed, 0f, DriftDrag * dt);
             }
             else
             {
                 speed = Mathf.MoveTowards(speed, 0f, Deceleration * dt);
             }
-            _velocity = speed > .01f ? _heading * speed : Vector3.zero;
+
+            // Grip: the momentum direction chases the wheel heading. Normally the chase is
+            // near-instant; while drifting it lags, so the chair slides along its old line.
+            var velocityDir = speed > .01f && _velocity.sqrMagnitude > .0001f ? _velocity.normalized : _heading;
+            var grip = (_drifting ? DriftGripDegPerSecond : NormalGripDegPerSecond) * Mathf.Deg2Rad;
+            velocityDir = Vector3.RotateTowards(velocityDir, _heading, grip * dt, 0f);
+            if (velocityDir.sqrMagnitude < .001f)
+                velocityDir = _heading;
+            _velocity = speed > .01f ? velocityDir.normalized * speed : Vector3.zero;
 
             if (_controller.isGrounded && _verticalVelocity < 0f)
                 _verticalVelocity = -2f;
@@ -103,7 +129,12 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             if (speed > .05f && _motor != null)
                 _motor.SetPlanarFacing(_heading);
             if (_chair != null)
-                _chair.SyncPose(transform.position, _heading);
+            {
+                // Lean into the slide: while drifting the heading leads the momentum.
+                var slide = speed > .2f ? Vector3.SignedAngle(velocityDir, _heading, Vector3.up) : 0f;
+                _chair.SyncPose(transform.position, _heading, speed * dt, Mathf.Clamp(slide * .6f, -12f, 12f));
+                _chair.SetTrailEmitting(speed > .4f);
+            }
         }
 
         private Vector3 CameraRelative(Vector2 input)

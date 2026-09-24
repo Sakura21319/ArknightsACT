@@ -167,7 +167,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             chair.SetRider(actor);
             _mountedChair = chair;
             _seatedMotor = motor;
-            _notice = "已坐上轮椅 · 移动更慢、起步迟缓、松手后惯性滑行，不能跳跃和冲刺";
+            _notice = "已坐上轮椅 · 起步迟缓、松手后缓慢滑行，移动中按住 Shift 可漂移，不能跳跃和冲刺";
             _noticeUntil = Time.unscaledTime + 4f;
         }
         private void Dismount(Transform actor)
@@ -212,8 +212,8 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             if (_candidateChair != null && Time.unscaledTime >= _noticeUntil)
             {
                 text = _mountedChair == _candidateChair
-                    ? $"按住 G 离开轮椅 {_progress / WheelchairMountSeconds:P0}\n轮椅中：移动缓慢且带惯性，不能跳跃和冲刺"
-                    : $"按住 G 坐上轮椅 {_progress / WheelchairMountSeconds:P0}\n轮椅移动更慢，起步迟缓，松手后会继续滑行";
+                    ? $"按住 G 离开轮椅 {_progress / WheelchairMountSeconds:P0}\n轮椅中：松手缓慢滑行，按住 Shift 漂移，不能跳跃和冲刺"
+                    : $"按住 G 坐上轮椅 {_progress / WheelchairMountSeconds:P0}\n起步迟缓、松手后缓慢滑行，移动中按住 Shift 可漂移";
             }
             else if (_candidate != null && Time.unscaledTime >= _noticeUntil)
             {
