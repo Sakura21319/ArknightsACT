@@ -182,6 +182,7 @@ namespace ArknightsACT.Editor
                         var allContainers = root.GetComponentsInChildren<SearchableContainer25D>(true);
                         Require(allContainers.Select(x => x.RewardSeed).Distinct().Count() == allContainers.Length, "Duplicate container seeds including locked rewards");
                         ValidateFacilities(root, map, report);
+                        ValidateWheelchairs(root, report);
                         ValidateTower(root, map, report);
                         foreach (var room in rooms)
                         {
@@ -298,7 +299,7 @@ namespace ArknightsACT.Editor
         {
             var controller = root.GetComponentInChildren<CityFacilityController>();
             Require(controller != null && controller.Facilities.Count >= 3, "Missing interactive courts");
-            Require(controller.Facilities.Select(x => x.Kind).Distinct().Count() >= 3, "Missing facility kind");
+            Require(controller.Facilities.Select(x => x.Kind).Distinct().Count() >= 4, "Missing facility kind");
             Require(controller.Facilities.Select(x => x.StableId).Distinct().Count() == controller.Facilities.Count, "Duplicate facility IDs");
             var actor = new GameObject("FacilityTestActor");
             var health = actor.AddComponent<ArknightsACT.Combat.Health>(); health.SetMaxHealth(100f);
@@ -307,10 +308,11 @@ namespace ArknightsACT.Editor
                 var visited = map.Blocks.Count(x => x.Explored);
                 foreach (var facility in controller.Facilities)
                 {
-                    if ((int)facility.Kind > (int)CityFacilityKind.Power) continue;
+                    if (facility.Kind == CityFacilityKind.Overload || facility.Kind == CityFacilityKind.PressureVent || facility.Kind == CityFacilityKind.RelaySwitch) continue;
                     actor.transform.position = facility.transform.position + Vector3.forward * 2f;
                     Require(!Physics.CheckSphere(actor.transform.position + Vector3.up * .9f, .28f, ~0, QueryTriggerInteraction.Ignore), "Facility approach blocked");
                     if (facility.Kind == CityFacilityKind.Medical) Require(!facility.CanUse(health), "Full-health aid consumed");
+                    if (facility.Kind == CityFacilityKind.WaterStation) Require(!facility.CanUse(health), "Full-health water consumed");
                     health.SetCurrentHealth(50f);
                     controller.Tick(actor.transform, true, .5f);
                     Require(controller.Progress > 0f, "Facility inaccessible / no progress");
@@ -326,13 +328,40 @@ namespace ArknightsACT.Editor
                     Require(facility.Used, "Facility did not activate");
                     Require(!facility.Activate(health, controller), "Facility rewards repeated");
                     if (facility.Kind == CityFacilityKind.Medical) Require(Mathf.Abs(health.CurrentHealth - 70f) < .01f, "Wrong heal fraction");
+                    if (facility.Kind == CityFacilityKind.WaterStation) Require(Mathf.Abs(health.CurrentHealth - 62f) < .01f, "Wrong water heal fraction");
                     if (facility.Kind == CityFacilityKind.Relay) Require(controller.IsSurveyed(facility.BlockIndex), "Relay failed to survey");
                     if (facility.Kind == CityFacilityKind.Power)
                         Require(facility.transform.parent.GetComponentInChildren<SearchableContainer25D>() != null, "Powered cache not searchable");
                     health.SetCurrentHealth(100f);
                 }
                 Require(map.Blocks.Count(x => x.Explored) == visited, "Survey incorrectly records exploration / skips encounter");
-                report.Add($"PASS: Stage {map.StageIndex} facilities: all three kinds, clear approaches, hold/release/movement/damage cancellation, one-use effects, survey separated from visits.");
+                report.Add($"PASS: Stage {map.StageIndex} facilities: main + secondary kinds, clear approaches, hold/release/movement/damage cancellation, one-use effects, survey separated from visits.");
+            }
+            finally { UnityEngine.Object.DestroyImmediate(actor); }
+        }
+
+        private static void ValidateWheelchairs(GameObject root, List<string> report)
+        {
+            var controller = root.GetComponentInChildren<CityFacilityController>();
+            Require(controller != null && controller.Wheelchairs.Count > 0, "No wheelchair spawned");
+            var chair = controller.Wheelchairs[0];
+            Require(chair != null && !chair.Occupied, "Wheelchair occupied at spawn");
+            Require(chair.GetComponentInChildren<Collider>() == null, "Wheelchair should not block navigation");
+            var actor = new GameObject("WheelchairTestActor");
+            var health = actor.AddComponent<ArknightsACT.Combat.Health>(); health.SetMaxHealth(100f);
+            try
+            {
+                // Bare actor has no PlayerMotor25D: mount must fail gracefully without seating or exceptions.
+                actor.transform.position = chair.transform.position + Vector3.forward * 1.2f;
+                controller.Tick(actor.transform, true, .3f);
+                Require(controller.Progress > 0f, "Wheelchair not selectable");
+                controller.Tick(actor.transform, true, .3f);
+                Require(controller.Progress == 0f && !controller.IsSeated && !chair.Occupied, "Bare actor mounted a wheelchair");
+                controller.Tick(actor.transform, true, .3f);
+                actor.transform.position += Vector3.right * 2f;
+                controller.Tick(actor.transform, true, .1f);
+                Require(controller.Progress == 0f, "Wheelchair hold did not cancel on movement");
+                report.Add("PASS: wheelchairs registered, collider-free, selectable via shared G interaction, bare actor cannot mount, movement cancels hold.");
             }
             finally { UnityEngine.Object.DestroyImmediate(actor); }
         }
@@ -363,7 +392,7 @@ namespace ArknightsACT.Editor
                 Require(!Physics.SphereCast(center - direction * 12f + Vector3.up * .9f, .3f, direction, out var hit, 24f, ~0, QueryTriggerInteraction.Ignore), $"Tower ground lane blocked: {hit.collider?.name}");
             Require(tower.Structure.GetComponentsInChildren<Renderer>().Max(x => x.bounds.max.y) > 43f, "Landmark too short");
             var controller = root.GetComponentInChildren<CityFacilityController>();
-            Require(controller.Facilities.Select(x => x.Kind).Distinct().Count() == 6, "Missing tower interactions");
+            Require(controller.Facilities.Select(x => x.Kind).Distinct().Count() == 9, "Missing tower interactions");
             foreach (var facility in controller.Facilities.Where(x => (int)x.Kind > 2))
                 Require(!Physics.CheckSphere(facility.transform.position + Vector3.forward * 2f + Vector3.up * .9f, .28f, ~0, QueryTriggerInteraction.Ignore), "Tower console approach blocked");
             var actor = new GameObject("RiskActor"); var health = actor.AddComponent<ArknightsACT.Combat.Health>(); health.SetMaxHealth(100f);

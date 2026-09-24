@@ -70,6 +70,55 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             var facility = device.gameObject.AddComponent<CityFacility25D>();
             facility.Configure(kind, block.Index, cache, court.Find("LockedReserveHousing"), lamp.GetComponent<Renderer>(), screen.GetComponent<Renderer>());
             controller.Register(facility);
+            BuildSecondaryFacility(court, block, controller);
+            if (block.Type == RogueliteBlockType.Start || block.Index % 6 == 0)
+            {
+                var chair = Wheelchair25D.Create(court, new Vector3(-2.9f, .1f, 2.1f), _roofMetal, _paintTrim, _windowWarm);
+                controller.RegisterWheelchair(chair);
+                if (block.Type == RogueliteBlockType.Start)
+                    SectorLabel(court, "WheelchairSign", "应急轮椅\n按住 G 乘坐", new Vector3(-2.9f, 1.5f, 2.1f), false);
+            }
+        }
+
+        private void BuildSecondaryFacility(Transform court, RogueliteBlockState block, CityFacilityController controller)
+        {
+            var kind = block.Type == RogueliteBlockType.Start
+                ? CityFacilityKind.WaterStation
+                : (block.Index / 3 + stageMap.StageIndex) % 3 == 0 ? CityFacilityKind.ChargeStation
+                : (block.Index / 3 + stageMap.StageIndex) % 3 == 1 ? CityFacilityKind.ScrapCache
+                : CityFacilityKind.WaterStation;
+            var device = new GameObject(kind.ToString()).transform;
+            device.SetParent(court, false);
+            device.localPosition = new Vector3(1.7f, .14f, 2.2f);
+            if (kind == CityFacilityKind.ScrapCache)
+            {
+                CreateBox(device, "ScrapBase", new Vector3(0f, .22f, 0f), new Vector3(1.35f, .42f, 1.05f), .06f, _roofMetal, true);
+                CreateBox(device, "ScrapChunkA", new Vector3(-.3f, .52f, .1f), new Vector3(.6f, .28f, .5f), .04f, _paintTrim, false, Quaternion.Euler(0f, 18f, 0f));
+                CreateBox(device, "ScrapChunkB", new Vector3(.28f, .5f, -.16f), new Vector3(.5f, .24f, .42f), .035f, _facades[3], false, Quaternion.Euler(0f, -24f, 0f));
+                CreateBox(device, "ScrapChunkC", new Vector3(.05f, .74f, .05f), new Vector3(.38f, .2f, .34f), .03f, _roofMetal, false, Quaternion.Euler(0f, 41f, 0f));
+            }
+            else
+            {
+                CreateBox(device, "DeviceBase", new Vector3(0f, .45f, 0f), new Vector3(.95f, .9f, .7f), .06f, kind == CityFacilityKind.WaterStation ? _facades[3] : _roofMetal, true);
+                if (kind == CityFacilityKind.ChargeStation)
+                {
+                    for (var ring = 0; ring < 3; ring++)
+                        CreateBox(device, "ChargeCoil", new Vector3(0f, .38f + ring * .26f, 0f), new Vector3(1.1f - ring * .12f, .07f, .82f - ring * .1f), .015f, _windowWarm, false);
+                    CreateBox(device, "ChargeTip", new Vector3(0f, 1.12f, 0f), new Vector3(.18f, .3f, .18f), .02f, _windowWarm, false);
+                }
+                else
+                {
+                    CreateBox(device, "WaterTank", new Vector3(0f, 1.05f, -.08f), new Vector3(.7f, .55f, .55f), .08f, _roofMetal, false);
+                    CreateBox(device, "WaterTap", new Vector3(0f, .62f, .4f), new Vector3(.12f, .2f, .12f), .015f, _windowWarm, false);
+                }
+            }
+            var lamp = CreateBox(device, "StatusLamp", new Vector3(0f, kind == CityFacilityKind.ScrapCache ? .95f : 1.32f, .02f), new Vector3(.6f, .16f, .1f), .015f, _windowWarm, false);
+            var screen = CreateBox(device, "TerminalScreen", new Vector3(0f, kind == CityFacilityKind.ScrapCache ? .18f : .72f, kind == CityFacilityKind.ScrapCache ? .55f : .4f), new Vector3(.5f, .24f, .03f), .005f, _windowDark, false);
+            SectorLabel(court, "SecondaryFacilitySign", kind == CityFacilityKind.ChargeStation ? "源石充能桩" : kind == CityFacilityKind.WaterStation ? "应急净水点" : "废料回收堆",
+                new Vector3(1.7f, 1.85f, 2.2f), false);
+            var facility = device.gameObject.AddComponent<CityFacility25D>();
+            facility.Configure(kind, block.Index, null, null, lamp.GetComponent<Renderer>(), screen.GetComponent<Renderer>());
+            controller.Register(facility);
         }
 
         private void SectorLabel(Transform parent, string name, string text, Vector3 position, bool ground)
