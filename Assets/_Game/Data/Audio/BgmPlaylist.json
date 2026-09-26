@@ -1,0 +1,67 @@
+{
+  "schema": "arknightsact.bgm-playlist/v1",
+  "settings": {
+    "mode": "shuffle",
+    "noImmediateRepeat": true,
+    "introThenLoop": true,
+    "crossfadeSec": 1.0
+  },
+  "ui": {
+    "label": "游戏界面（未进入地图）",
+    "tracks": [
+      {
+        "id": "music_bg_default",
+        "name": "生命流",
+        "group": "ui",
+        "introAsset": "Assets/_Game/Art/Audio/BGM/UI_LifeFlow/intro.wav",
+        "loopAsset": "Assets/_Game/Art/Audio/BGM/UI_LifeFlow/loop.wav",
+        "sourceBank": "sys.ON_MUSIC.bg_void"
+      },
+      {
+        "id": "music_bg_ghosthunter",
+        "name": "Ghost Hunter",
+        "group": "ui",
+        "introAsset": "Assets/_Game/Art/Audio/BGM/UI_GhostHunter/intro.wav",
+        "loopAsset": "Assets/_Game/Art/Audio/BGM/UI_GhostHunter/loop.wav",
+        "sourceBank": "sys.ON_MUSIC.bg_ghosthunter"
+      },
+      {
+        "id": "music_bg_street",
+        "name": "City",
+        "group": "ui",
+        "introAsset": "Assets/_Game/Art/Audio/BGM/UI_City/intro.wav",
+        "loopAsset": "Assets/_Game/Art/Audio/BGM/UI_City/loop.wav",
+        "sourceBank": "sys.ON_MUSIC.bg_street"
+      }
+    ]
+  },
+  "map": {
+    "label": "进入地图",
+    "tracks": [
+      {
+        "id": "music_act17side_1",
+        "name": "蔓延",
+        "group": "map",
+        "introAsset": "Assets/_Game/Art/Audio/BGM/Map_Spreading/intro.wav",
+        "loopAsset": "Assets/_Game/Art/Audio/BGM/Map_Spreading/loop.wav",
+        "sourceBank": "battle.ON_GAME_READY.bat_act17side_01"
+      },
+      {
+        "id": "music_act17side_3",
+        "name": "深渊梦呓",
+        "group": "map",
+        "introAsset": "Assets/_Game/Art/Audio/BGM/Map_AbyssalDream/intro.wav",
+        "loopAsset": "Assets/_Game/Art/Audio/BGM/Map_AbyssalDream/loop.wav",
+        "sourceBank": "battle.ON_GAME_READY.bat_act17side_03"
+      },
+      {
+        "id": "music_rogue_1_3",
+        "name": "深层迷醉",
+        "group": "map",
+        "introAsset": "Assets/_Game/Art/Audio/BGM/Map_DeepDrunken/intro.wav",
+        "loopAsset": "Assets/_Game/Art/Audio/BGM/Map_DeepDrunken/loop.wav",
+        "sourceBank": "battle.ON_GAME_READY.rglk1normal2"
+      }
+    ]
+  }
+}

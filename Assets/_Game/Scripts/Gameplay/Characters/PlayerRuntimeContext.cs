@@ -18,6 +18,17 @@ namespace ArknightsACT.Gameplay.Characters
     }
 
     /// <summary>
+    /// Runtime activation hook invoked after an operator/skin becomes the active player.
+    /// Use this for character-local bindings that must be refreshed when a reserve GameObject is
+    /// enabled through Tab switching. Editor asset refresh and runtime switching must converge on
+    /// the same runtime state instead of relying on activation order.
+    /// </summary>
+    public interface IPlayerRuntimeActivationHandler
+    {
+        void OnPlayerRuntimeActivated();
+    }
+
+    /// <summary>
     /// Stable runtime indirection for the current controllable operator.
     /// World/run systems depend on this service instead of retaining a scene-baked Player reference.
     /// </summary>
@@ -187,6 +198,7 @@ namespace ArknightsACT.Gameplay.Characters
             if (!nextPlayer.gameObject.activeSelf)
                 nextPlayer.gameObject.SetActive(true);
 
+            NotifyRuntimeActivated(nextPlayer);
             ActivePlayerChanged?.Invoke(previous, nextPlayer);
 
             var identity = nextPlayer.GetComponent<PlayableOperatorIdentity>();
@@ -196,6 +208,19 @@ namespace ArknightsACT.Gameplay.Characters
                     : $"[ArknightsACT/Player] Active operator -> {nextPlayer.name}.",
                 nextPlayer);
             return true;
+        }
+
+        private static void NotifyRuntimeActivated(Transform player)
+        {
+            if (player == null)
+                return;
+
+            var behaviours = player.GetComponents<MonoBehaviour>();
+            for (var i = 0; i < behaviours.Length; i++)
+            {
+                if (behaviours[i] is IPlayerRuntimeActivationHandler handler)
+                    handler.OnPlayerRuntimeActivated();
+            }
         }
 
         private static void CopyCombatStatuses(Transform previous, Transform next)

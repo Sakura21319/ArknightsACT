@@ -58,6 +58,7 @@ namespace ArknightsACT.Editor
             PrtsOriginalSpineFxSetup.PrepareDownloadedChen();
             if (ChenExtractedFxSetup.HasImportedEffects())
                 ChenExtractedFxSetup.Configure(player);
+            PlayableOperatorPrototypeComposer.ApplyFormalCombatProfile(player, 100f, 2.2f, 5f);
         }
     }
 }

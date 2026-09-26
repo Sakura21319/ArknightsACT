@@ -154,9 +154,6 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             LoadSavedTuning();
             if (GetComponent<ChenFxTuningOverlay>() == null)
                 gameObject.AddComponent<ChenFxTuningOverlay>();
-            if (GetComponent<ChenTrainingDummySpawner>() == null)
-                gameObject.AddComponent<ChenTrainingDummySpawner>();
-
             if (_skills == null || _skill1 == null || _skill2 == null)
             {
                 Debug.LogError(

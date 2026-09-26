@@ -121,10 +121,6 @@ namespace ArknightsACT.Editor
             go.AddComponent<ChenPresentationDriver25D>();
             PrepareCustomFxMountPoint(go);
             AddCustomFxController(go);
-            var trainingDummy = go.AddComponent<ChenTrainingDummySpawner>();
-            trainingDummy.ConfigurePresentationPrefab(
-                AssetDatabase.LoadAssetAtPath<GameObject>(
-                    "Assets/_Game/Generated/PRTS/Prefabs/enemy_1006_shield.prefab"));
             go.AddComponent<DamageTintFlash2D>();
             go.AddComponent<WorldHealthBar2D>();
             go.AddComponent<DamageNumberEmitter2D>();
@@ -204,7 +200,9 @@ namespace ArknightsACT.Editor
                 "default",
                 "UI/HUD/chen_avatar",
                 "UI/Skills/chen_badao",
-                "UI/Skills/chen_jueying");
+                "UI/Skills/chen_jueying",
+                physicalDefense: 2.2f,
+                artsResistance: 5f);
 
             go.AddComponent<ChenSkill1>();
             go.AddComponent<ChenSkill2>();

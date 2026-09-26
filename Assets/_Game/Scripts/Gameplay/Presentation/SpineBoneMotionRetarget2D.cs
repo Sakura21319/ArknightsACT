@@ -8,15 +8,15 @@ using UnityEngine;
 namespace ArknightsACT.Gameplay.Presentation
 {
     /// <summary>
-    /// Experimental motion-only retargeter for Arknights operator Spine assets.
+    /// Motion source bridge for Arknights operator Spine assets.
     ///
-    /// Example use case: Texas' combat skeleton has weapons but no Move animation, while
-    /// build_char_102_texas has Move but no combat weapons. The base skeleton is kept hidden,
-    /// plays Move, and this component copies matching bone DELTAS onto the visible combat
-    /// skeleton. Attachments/slots still come from the combat skeleton, so weapons remain.
+    /// Default mode keeps the build skeleton hidden and copies matching bone deltas onto the
+    /// combat skeleton. For skins whose BaseMotion changes slots/attachments (eyes, seated art,
+    /// costume parts, etc.), full-source mode swaps the complete build Spine into view while
+    /// Move / Relax / Interact / Sit / Sleep / Special are playing, then restores combat Spine.
     ///
-    /// The system is deliberately runtime-agnostic and reflection based. If bone coverage is
-    /// insufficient it disables itself and the normal procedural locomotion fallback remains.
+    /// Full-source mode does not require combat/build bone coverage because it renders the authored
+    /// BaseMotion skeleton directly; classic bone-retarget mode still requires sufficient coverage.
     /// </summary>
     [DefaultExecutionOrder(1000)]
     public sealed class SpineBoneMotionRetarget2D : MonoBehaviour
@@ -28,8 +28,13 @@ namespace ArknightsACT.Gameplay.Presentation
         [SerializeField] private string preferredMoveAnimation = "Move";
         [SerializeField, Range(0.25f, 1f)] private float minimumBoneCoverage = 0.60f;
         [SerializeField] private string[] excludedBoneNameTokens = Array.Empty<string>();
+        [SerializeField] private bool useFullSourceVisuals;
+        [SerializeField, Min(0.1f)] private float fullSourceScaleMultiplier = 1f;
+        [SerializeField] private Vector3 fullSourceLocalOffset = Vector3.zero;
 
         private readonly List<BonePair> _pairs = new();
+        private Renderer[] _sourceRenderers = Array.Empty<Renderer>();
+        private Renderer[] _targetRenderers = Array.Empty<Renderer>();
         private Component _targetSkeletonAnimation;
         private Component _sourceSkeletonAnimation;
         private object _targetSkeleton;
@@ -39,6 +44,10 @@ namespace ArknightsACT.Gameplay.Presentation
         private MethodInfo _targetUpdateWorldTransformNoArgs;
         private MethodInfo _targetUpdateWorldTransformOneArg;
         private bool _moving;
+        private bool _motionActionActive;
+        private bool _motionActionLoop;
+        private float _motionActionEndsAt;
+        private string _activeMotionAction = string.Empty;
         private bool _bound;
         private bool _logged;
         private int _bindAttempts;
@@ -49,17 +58,48 @@ namespace ArknightsACT.Gameplay.Presentation
         public bool IsCompatible => TryBind();
         public float BoneCoverage { get; private set; }
         public string ResolvedMoveAnimation => _resolvedMoveAnimation;
+        public bool IsPlayingMotionAction => _motionActionActive;
+        public string ActiveMotionAction => _activeMotionAction;
+
+        public void ConfigureFullSourceAlignment(float scaleMultiplier, Vector3 localOffset)
+        {
+            fullSourceScaleMultiplier = scaleMultiplier > 0f ? Mathf.Max(0.1f, scaleMultiplier) : 1f;
+            fullSourceLocalOffset = localOffset;
+            if (_bound && useFullSourceVisuals && (_moving || _motionActionActive))
+                SyncSourceVisualPose();
+        }
+
+        public void EnableFullSourceVisuals(bool enabled)
+        {
+            useFullSourceVisuals = enabled;
+            _bindAttempts = 0;
+
+            if (sourceMotionRoot != null && targetPresentationRoot != null)
+            {
+                sourceMotionRoot.localPosition = targetPresentationRoot.localPosition;
+                sourceMotionRoot.localRotation = targetPresentationRoot.localRotation;
+            }
+
+            HideMotionSourceVisuals();
+            if (_bound)
+            {
+                CacheVisualRenderers();
+                SetSourceVisualMode(enabled && (_moving || _motionActionActive));
+            }
+        }
 
         public void Configure(
             Transform targetRoot,
             Transform sourceRoot,
             string moveAnimation = "Move",
-            string[] excludedBoneTokens = null)
+            string[] excludedBoneTokens = null,
+            bool showFullSourceVisuals = false)
         {
             targetPresentationRoot = targetRoot;
             sourceMotionRoot = sourceRoot;
             preferredMoveAnimation = string.IsNullOrWhiteSpace(moveAnimation) ? "Move" : moveAnimation;
             excludedBoneNameTokens = excludedBoneTokens ?? Array.Empty<string>();
+            useFullSourceVisuals = showFullSourceVisuals;
             HideMotionSourceVisuals();
         }
 
@@ -74,20 +114,121 @@ namespace ArknightsACT.Gameplay.Presentation
             if (!TryBind())
                 return;
 
+            if (moving && _motionActionActive)
+                ClearMotionActionState();
+
             if (_moving == moving)
+            {
+                if (useFullSourceVisuals)
+                    SetSourceVisualMode(_moving || _motionActionActive);
                 return;
+            }
 
             _moving = moving;
             if (_moving)
+            {
                 PlaySourceMove();
+                if (useFullSourceVisuals)
+                    SetSourceVisualMode(true);
+            }
+            else if (useFullSourceVisuals && !_motionActionActive)
+            {
+                SetSourceVisualMode(false);
+            }
+        }
+
+        public bool HasSourceAnimation(string animation)
+        {
+            if (!TryBind() || string.IsNullOrWhiteSpace(animation))
+                return false;
+
+            return !string.IsNullOrWhiteSpace(FindExact(GetAnimationNames(_sourceSkeleton), animation));
+        }
+
+        public bool PlayMotionAction(string animation, bool loop)
+        {
+            if (!TryBind() || string.IsNullOrWhiteSpace(animation))
+                return false;
+
+            var resolved = FindExact(GetAnimationNames(_sourceSkeleton), animation);
+            if (string.IsNullOrWhiteSpace(resolved) || !PlaySourceAnimation(resolved, loop))
+                return false;
+
+            _moving = false;
+            _motionActionActive = true;
+            if (useFullSourceVisuals)
+                SetSourceVisualMode(true);
+            _motionActionLoop = loop;
+            _activeMotionAction = resolved;
+            if (loop)
+            {
+                _motionActionEndsAt = float.PositiveInfinity;
+            }
+            else if (TryGetSourceAnimationDuration(resolved, out var rawDuration))
+            {
+                _motionActionEndsAt = Time.time + rawDuration /
+                    Mathf.Max(0.01f, SpineCharacterPresentation2D.ImportedAnimationPlaybackSpeed);
+            }
+            else
+            {
+                _motionActionEndsAt = Time.time + 1f;
+            }
+
+            return true;
+        }
+
+        public void StopMotionAction()
+        {
+            if (_motionActionActive)
+                ClearMotionActionState();
+        }
+
+        private void ClearMotionActionState()
+        {
+            _motionActionActive = false;
+            _motionActionLoop = false;
+            _motionActionEndsAt = 0f;
+            _activeMotionAction = string.Empty;
+            if (useFullSourceVisuals && !_moving)
+                SetSourceVisualMode(false);
         }
 
         private void Update()
         {
-            if (!_moving || !TryBind())
+            if (!TryBind())
                 return;
 
-            ApplyRetargetPose();
+            if (_motionActionActive)
+            {
+                if (!_motionActionLoop && Time.time >= _motionActionEndsAt)
+                {
+                    ClearMotionActionState();
+                    return;
+                }
+
+                if (useFullSourceVisuals)
+                {
+                    SyncSourceVisualPose();
+                    return;
+                }
+
+                ApplyRetargetPose();
+                return;
+            }
+
+            if (_moving)
+            {
+                if (useFullSourceVisuals)
+                    SyncSourceVisualPose();
+                else
+                    ApplyRetargetPose();
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (useFullSourceVisuals)
+                SetSourceVisualMode(false);
         }
 
         private bool TryBind()
@@ -132,12 +273,17 @@ namespace ArknightsACT.Gameplay.Presentation
             if (_sourceSetAnimationMethod == null)
                 return false;
 
-            if (!BuildBonePairs())
+            var boneRetargetAvailable = false;
+            if (!useFullSourceVisuals)
             {
-                // Once actual initialized skeletons were compared, low bone coverage is a
-                // structural incompatibility rather than an initialization race.
-                _bindAttempts = MaxBindAttempts;
-                return false;
+                boneRetargetAvailable = BuildBonePairs();
+                if (!boneRetargetAvailable)
+                {
+                    // Once actual initialized skeletons were compared, low bone coverage is a
+                    // structural incompatibility rather than an initialization race.
+                    _bindAttempts = MaxBindAttempts;
+                    return false;
+                }
             }
 
             ResolveMoveAnimation();
@@ -148,11 +294,15 @@ namespace ArknightsACT.Gameplay.Presentation
                 return false;
             }
 
-            ResolveWorldTransformMethods();
+            if (boneRetargetAvailable)
+                ResolveWorldTransformMethods();
+            CacheVisualRenderers();
             _bound = true;
+            if (useFullSourceVisuals)
+                SetSourceVisualMode(false);
             LogOnce(
-                $"motion retarget ready: move='{_resolvedMoveAnimation}', matchedBones={_pairs.Count}, " +
-                $"coverage={BoneCoverage:P0}");
+                $"motion source ready: move='{_resolvedMoveAnimation}', fullVisual={useFullSourceVisuals}, " +
+                $"matchedBones={_pairs.Count}, coverage={BoneCoverage:P0}");
             return true;
         }
 
@@ -241,17 +391,52 @@ namespace ArknightsACT.Gameplay.Presentation
 
         private void PlaySourceMove()
         {
-            if (!_bound || string.IsNullOrWhiteSpace(_resolvedMoveAnimation))
-                return;
+            if (!PlaySourceAnimation(_resolvedMoveAnimation, true))
+                _moving = false;
+        }
+
+        private bool PlaySourceAnimation(string animation, bool loop)
+        {
+            if (!_bound || string.IsNullOrWhiteSpace(animation))
+                return false;
 
             try
             {
-                _sourceSetAnimationMethod.Invoke(_sourceAnimationState, new object[] { 0, _resolvedMoveAnimation, true });
+                var entry = _sourceSetAnimationMethod.Invoke(
+                    _sourceAnimationState,
+                    new object[] { 0, animation, loop });
+                if (entry != null)
+                {
+                    var entryType = entry.GetType();
+                    var property = entryType.GetProperty(
+                        "TimeScale",
+                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                    if (property != null && property.CanWrite)
+                    {
+                        property.SetValue(
+                            entry,
+                            SpineCharacterPresentation2D.ImportedAnimationPlaybackSpeed);
+                    }
+                    else
+                    {
+                        var field = entryType.GetField(
+                            "timeScale",
+                            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                        field?.SetValue(
+                            entry,
+                            SpineCharacterPresentation2D.ImportedAnimationPlaybackSpeed);
+                    }
+                }
+
+                return true;
             }
             catch (Exception exception)
             {
-                Debug.LogWarning("[ArknightsACT/Spine] Failed to play retarget source Move: " + exception.GetBaseException().Message, this);
-                _moving = false;
+                Debug.LogWarning(
+                    $"[ArknightsACT/Spine] Failed to play retarget source animation '{animation}': " +
+                    exception.GetBaseException().Message,
+                    this);
+                return false;
             }
         }
 
@@ -348,13 +533,93 @@ namespace ArknightsACT.Gameplay.Presentation
             if (sourceMotionRoot == null)
                 return;
 
-            foreach (var renderer in sourceMotionRoot.GetComponentsInChildren<Renderer>(true))
-                renderer.enabled = false;
+            var sourceSkeleton = _sourceSkeletonAnimation ?? FindSkeletonAnimation(sourceMotionRoot);
+            var sourceRenderer = sourceSkeleton != null ? sourceSkeleton.GetComponent<Renderer>() : null;
+            _sourceRenderers = sourceRenderer != null
+                ? new[] { sourceRenderer }
+                : Array.Empty<Renderer>();
+            if (sourceRenderer != null)
+                sourceRenderer.enabled = false;
 
             foreach (var presentation in sourceMotionRoot.GetComponentsInChildren<SpineCharacterPresentation2D>(true))
                 presentation.enabled = false;
             foreach (var layout in sourceMotionRoot.GetComponentsInChildren<SpineVisualAutoLayout2D>(true))
                 layout.enabled = false;
+        }
+
+        private void CacheVisualRenderers()
+        {
+            // Only swap the actual Spine mesh renderers. Never toggle every Renderer below the
+            // presentation roots: runtime character FX, weapon glows, trails and other authored
+            // child renderers may live there and must remain independently controlled.
+            var sourceRenderer = _sourceSkeletonAnimation != null
+                ? _sourceSkeletonAnimation.GetComponent<Renderer>()
+                : null;
+            var targetRenderer = _targetSkeletonAnimation != null
+                ? _targetSkeletonAnimation.GetComponent<Renderer>()
+                : null;
+
+            _sourceRenderers = sourceRenderer != null
+                ? new[] { sourceRenderer }
+                : Array.Empty<Renderer>();
+            _targetRenderers = targetRenderer != null
+                ? new[] { targetRenderer }
+                : Array.Empty<Renderer>();
+
+            if (!useFullSourceVisuals || sourceRenderer == null || targetRenderer == null)
+                return;
+
+            sourceRenderer.sortingLayerID = targetRenderer.sortingLayerID;
+            sourceRenderer.sortingOrder = targetRenderer.sortingOrder;
+        }
+
+        private void SetSourceVisualMode(bool sourceVisible)
+        {
+            if (!useFullSourceVisuals)
+                return;
+
+            if (_sourceRenderers == null || _sourceRenderers.Length == 0 ||
+                _targetRenderers == null || _targetRenderers.Length == 0)
+                CacheVisualRenderers();
+
+            for (var i = 0; i < _sourceRenderers.Length; i++)
+                if (_sourceRenderers[i] != null)
+                    _sourceRenderers[i].enabled = sourceVisible;
+            for (var i = 0; i < _targetRenderers.Length; i++)
+                if (_targetRenderers[i] != null)
+                    _targetRenderers[i].enabled = !sourceVisible;
+
+            if (sourceVisible)
+                SyncSourceVisualPose();
+        }
+
+        private void SyncSourceVisualPose()
+        {
+            if (!useFullSourceVisuals || _sourceSkeletonAnimation == null || _targetSkeletonAnimation == null)
+                return;
+
+            var sourceVisual = _sourceSkeletonAnimation.transform;
+            var targetVisual = _targetSkeletonAnimation.transform;
+            if (sourceVisual == null || targetVisual == null)
+                return;
+
+            // Combat presentation is runtime-calibrated by SpineVisualAutoLayout2D, while the
+            // hidden BaseMotion layout is intentionally disabled. Copy the combat visual's final
+            // calibrated transform so switching to full build Spine does not make the character
+            // suddenly shrink back to the BaseMotion prefab's safeInitialScale.
+            var targetScale = targetVisual.localScale;
+            var targetSign = targetScale.x < 0f ? -1f : 1f;
+            // Newly added serialized floats are zero on older scene instances; zero means
+            // neutral 1x here so migration never shrinks an existing character.
+            var multiplier = fullSourceScaleMultiplier > 0f
+                ? Mathf.Max(0.1f, fullSourceScaleMultiplier)
+                : 1f;
+            sourceVisual.localScale = new Vector3(
+                Mathf.Abs(targetScale.x) * targetSign * multiplier,
+                Mathf.Abs(targetScale.y) * multiplier,
+                Mathf.Abs(targetScale.z) * multiplier);
+            sourceVisual.localPosition = targetVisual.localPosition + fullSourceLocalOffset;
+            sourceVisual.localRotation = targetVisual.localRotation;
         }
 
         private static Component FindSkeletonAnimation(Transform root)
@@ -422,6 +687,38 @@ namespace ArknightsACT.Gameplay.Presentation
                     result.Add(name);
             }
             return result;
+        }
+
+        private bool TryGetSourceAnimationDuration(string animationName, out float duration)
+        {
+            duration = 0f;
+            var data = GetPropertyValue(_sourceSkeleton, "Data");
+            var animations = GetPropertyValue(data, "Animations") as IEnumerable;
+            if (animations == null)
+                return false;
+
+            foreach (var animation in animations)
+            {
+                var name = GetPropertyOrFieldValue(animation, "Name", "name") as string;
+                if (!string.Equals(name, animationName, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var value = GetPropertyOrFieldValue(animation, "Duration", "duration");
+                if (value == null)
+                    return false;
+
+                try
+                {
+                    duration = Mathf.Max(0.01f, Convert.ToSingle(value));
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+
+            return false;
         }
 
         private static string FindExact(IEnumerable<string> names, string wanted)

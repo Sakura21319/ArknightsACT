@@ -86,6 +86,7 @@ namespace ArknightsACT.Editor
             if (FrostNovaExtractedFxSetup.HasImported(variant))
                 FrostNovaExtractedFxSetup.Configure(player, variant);
             FrostNovaLocalAssetBootstrap.ConfigureAudioProfile(player, variant);
+            PlayableOperatorPrototypeComposer.ApplyFormalCombatProfile(player, 125f, 2.0f, 20f);
         }
     }
 }

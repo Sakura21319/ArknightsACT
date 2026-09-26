@@ -21,10 +21,10 @@ namespace ArknightsACT.Gameplay.Characters.Chen
     [RequireComponent(typeof(PlayerMotor25D), typeof(PlayerAttackController), typeof(PlayerSkillController))]
     public sealed class ChenPresentationDriver25D : MonoBehaviour, IPlayerRunResettable
     {
-        private const float AttackPlaybackSpeed = 2.0f;
-        private const float Combo3PlaybackSpeed = 1.80f;
-        private const float Skill1PlaybackSpeed = 1.50f;
-        private const float Skill2PlaybackSpeed = 1.55f;
+        private const float AttackPlaybackSpeed = 1.0f;
+        private const float Combo3PlaybackSpeed = 1.0f;
+        private const float Skill1PlaybackSpeed = 1.0f;
+        private const float Skill2PlaybackSpeed = 1.0f;
         private const float IdleDirectionStrength = 0.25f;
         private const float MoveDirectionStrength = 0.65f;
         private const float ActionDirectionStrength = 1.00f;
@@ -196,9 +196,11 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             if (entry == null)
                 return;
 
+            var playbackSpeed = ResolvePlaybackSpeed(speed);
             SetFloatMember(entry, "TrackTime", "trackTime", duration * resolvedStart);
-            SetFloatMember(entry, "TimeScale", "timeScale", Mathf.Max(0.01f, speed));
-            _visualLockUntil = Time.time + duration * (resolvedEnd - resolvedStart) / Mathf.Max(0.01f, speed);
+            SetFloatMember(entry, "TimeScale", "timeScale", playbackSpeed);
+            _visualLockUntil = Time.time +
+                               duration * (resolvedEnd - resolvedStart) / playbackSpeed;
             _actionVisualWasActive = true;
         }
 
@@ -210,17 +212,18 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             var entry = _setAnimation.Invoke(_animationState, new object[] { 0, clip, false });
             if (entry == null)
                 return;
-            SetFloatMember(entry, "TimeScale", "timeScale", Mathf.Max(0.01f, speed));
+            var playbackSpeed = ResolvePlaybackSpeed(speed);
+            SetFloatMember(entry, "TimeScale", "timeScale", playbackSpeed);
 
-            var total = duration / Mathf.Max(0.01f, speed);
+            var total = duration / playbackSpeed;
             if (!string.IsNullOrWhiteSpace(endClip) &&
                 _durations.TryGetValue(endClip, out var endDuration) &&
                 _addAnimation != null)
             {
                 var endEntry = _addAnimation.Invoke(_animationState, new object[] { 0, endClip, false, 0f });
                 if (endEntry != null)
-                    SetFloatMember(endEntry, "TimeScale", "timeScale", Mathf.Max(0.01f, speed));
-                total += endDuration / Mathf.Max(0.01f, speed);
+                    SetFloatMember(endEntry, "TimeScale", "timeScale", playbackSpeed);
+                total += endDuration / playbackSpeed;
             }
 
             _visualLockUntil = Time.time + total;
@@ -233,13 +236,22 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                 return;
             try
             {
-                _setAnimation.Invoke(_animationState, new object[] { 0, clip, true });
+                var entry = _setAnimation.Invoke(_animationState, new object[] { 0, clip, true });
+                SetFloatMember(
+                    entry,
+                    "TimeScale",
+                    "timeScale",
+                    SpineCharacterPresentation2D.ImportedAnimationPlaybackSpeed);
             }
             catch
             {
                 // Generic locomotion presentation will recover on the next frame.
             }
         }
+
+        private static float ResolvePlaybackSpeed(float relativeSpeed) =>
+            SpineCharacterPresentation2D.ImportedAnimationPlaybackSpeed *
+            Mathf.Max(0.01f, relativeSpeed);
 
         private bool TryBind()
         {

@@ -62,3 +62,12 @@
 交互提示文案同步更新（乘坐提示中加入 Shift 漂移说明）。
 
 **验证**：`Tools/compile_check.py` 通过（Game.Gameplay / Game.Editor 各 0 错误）。`SyncPose` 签名变为 `(position, heading, rollDistance, leanDegrees)`，仅轮椅移动组件一处调用，已同步。Play Mode 待试玩：漂移的滑动手感、侧倾幅度、轨迹颜色/粗细、漂移磨速数值按体验再调。
+
+## 2026-09-24 晚：乘坐姿态与透视关系
+
+- `WheelchairLocomotion25D` 乘坐时通过 `SpineBoneMotionRetarget2D` 持续播放 build/BaseMotion 的 `Sit` 动作；组件执行顺序设为 900，在普通 Gameplay/Presentation 更新之后、motion source(1000)之前重新确认 Sit，避免轮椅移动时回到站立 Idle。对于启用 full-source BaseMotion 的角色（当前 Wisadel default/game#9），Sit 直接显示完整 build Spine，而不是只复制骨骼，因此皮肤专属坐姿/attachment 不会被 combat Spine 覆盖。
+- 下车销毁 `WheelchairLocomotion25D` 时自动 `StopMotionAction()`，恢复普通角色表现。
+- 该逻辑依赖角色导入流程保留 `Sit` BaseMotion；没有 Sit 的角色不会伪造替代动作。
+- 轮椅整体视觉缩放调整为 **1.22x**；跟随骑乘者时沿行进朝向向身后偏移 **0.10m**，让角色 Sit 姿态更自然地落入座椅/靠背层次，而不是与轮椅根节点完全共面。
+- 为避免放大后的后轮/车架在 2.5D 透视里挡住人物主体，轮椅视觉额外沿 gameplay camera forward（远离相机方向）后压 **0.16m**；角色仍保持碰撞/移动根节点不变，这只是视觉景深调整。
+- 后轮自转半径同步乘以视觉缩放，避免放大轮椅后轮胎转速与移动距离不匹配。

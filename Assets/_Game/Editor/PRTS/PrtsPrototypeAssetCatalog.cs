@@ -160,6 +160,64 @@ namespace ArknightsACT.Editor.PRTS
             FrostNovaWinterNew
         };
 
+        // Wisadel is imported from the user's local unpack. Keep original and game#9 skins
+        // separate even where the two skins share attack/skill FX frames.
+        public static readonly PrtsAssetDescriptor WisadelDefault = new(
+            "维什戴尔·原版",
+            "local",
+            string.Empty,
+            "char_1035_wisdel",
+            "Assets/_Game/Art/Characters/Wisadel/PRTS/Default/Spine",
+            "Player",
+            1.64f,
+            -0.72f,
+            0.38f,
+            "wisadel_default");
+
+        public static readonly PrtsAssetDescriptor WisadelDefaultMotion = new(
+            "维什戴尔·原版动作源",
+            "local",
+            string.Empty,
+            "build_char_1035_wisdel",
+            "Assets/_Game/Art/Characters/Wisadel/PRTS/Default/BaseMotion",
+            "MotionSource",
+            1.64f,
+            -0.72f,
+            0.38f,
+            "wisadel_default_motion");
+
+        public static readonly PrtsAssetDescriptor WisadelGame9 = new(
+            "维什戴尔·game#9",
+            "local",
+            string.Empty,
+            "char_1035_wisdel_game#9",
+            "Assets/_Game/Art/Characters/Wisadel/PRTS/Game9/Spine",
+            "Player",
+            1.64f,
+            -0.72f,
+            0.38f,
+            "wisadel_game_9");
+
+        public static readonly PrtsAssetDescriptor WisadelGame9Motion = new(
+            "维什戴尔·game#9 动作源",
+            "local",
+            string.Empty,
+            "build_char_1035_wisdel_game#9",
+            "Assets/_Game/Art/Characters/Wisadel/PRTS/Game9/BaseMotion",
+            "MotionSource",
+            1.64f,
+            -0.72f,
+            0.38f,
+            "wisadel_game_9_motion");
+
+        public static readonly PrtsAssetDescriptor[] WisadelLocalAssets =
+        {
+            WisadelDefault,
+            WisadelDefaultMotion,
+            WisadelGame9,
+            WisadelGame9Motion
+        };
+
         public static readonly PrtsAssetDescriptor NormalTreasureChest = new(
             "宝箱·水月",
             "https://prts.wiki/w/%E5%AE%9D%E7%AE%B1%28%E6%B0%B4%E6%9C%88%29",

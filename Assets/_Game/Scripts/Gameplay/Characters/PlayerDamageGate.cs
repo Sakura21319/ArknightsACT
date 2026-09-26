@@ -13,6 +13,11 @@ namespace ArknightsACT.Gameplay.Characters
 
         private void Awake()
         {
+            RefreshSources();
+        }
+
+        public void RefreshSources()
+        {
             _behaviours = GetComponents<MonoBehaviour>();
         }
 

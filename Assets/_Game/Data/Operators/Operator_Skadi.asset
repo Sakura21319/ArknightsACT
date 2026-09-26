@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e82f4cbd944dcc641a152d63c82805c7, type: 3}
+  m_Name: Operator_Skadi
+  m_EditorClassIdentifier: 
+  operatorId: Skadi
+  displayName: "\u65AF\u5361\u8482"
+  englishName: SKADI
+  sortOrder: 50
+  skins:
+  - skinId: default
+    displayName: "\u539F\u7248"
+    avatarResourceKey: UI/HUD/Operators/skadi_default
+    skill1IconResourceKey: UI/Skills/Skadi/s2
+    skill2IconResourceKey: UI/Skills/Skadi/s3
+    isDefault: 1
+    isReserved: 0
+  - skinId: marthe#5
+    displayName: marthe#5
+    avatarResourceKey: UI/HUD/Operators/skadi_marthe_5
+    skill1IconResourceKey: UI/Skills/Skadi/s2
+    skill2IconResourceKey: UI/Skills/Skadi/s3
+    isDefault: 0
+    isReserved: 0
+  - skinId: summer#3
+    displayName: summer#3
+    avatarResourceKey: UI/HUD/Operators/skadi_summer_3
+    skill1IconResourceKey: UI/Skills/Skadi/s2
+    skill2IconResourceKey: UI/Skills/Skadi/s3
+    isDefault: 0
+    isReserved: 0

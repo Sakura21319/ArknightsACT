@@ -56,6 +56,7 @@ namespace ArknightsACT.Editor
             Prototype25DProductionFactory.ConfigureCamera(camera, player.transform);
 
             var enemyTemplates = Prototype25DProductionFactory.CreateEnemyTemplates(camera);
+            Prototype25DProductionFactory.CreateTrainingDummy(player.transform);
             var treasureTemplates = PrototypeTreasureFactory.CreateTemplates(camera);
             var rogueliteRoot = PrototypeRogueliteFactory.CreateExploration(player.transform);
             PrototypeOperatorRosterFactory.RegisterReserves(rogueliteRoot, roster);

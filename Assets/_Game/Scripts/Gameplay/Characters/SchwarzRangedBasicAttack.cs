@@ -11,7 +11,10 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
     /// then reused by the damage resolver at impact time.
     /// </summary>
     [DisallowMultipleComponent]
-    public sealed class SchwarzRangedBasicAttack : MonoBehaviour, IPlayerBasicAttackResolver
+    public sealed class SchwarzRangedBasicAttack :
+        MonoBehaviour,
+        IPlayerBasicAttackResolver,
+        IPlayerBasicAttackTargetProvider
     {
         [SerializeField, Min(1f)] private float baseRange = 12f;
         [SerializeField, Range(-1f, 1f)] private float minimumForwardDot = 0.18f;
@@ -20,6 +23,8 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
 
         private CombatEntity _entity;
         private IPlayerLocomotion _locomotion;
+        private CombatEntity _pendingTarget;
+        private bool _hasPendingTarget;
 
         public float CurrentVisualRange => baseRange * GetCurrentRangeMultiplier();
 
@@ -31,7 +36,28 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
 
         public bool TryGetAimTarget(out CombatEntity target)
         {
-            target = FindBestTarget(_entity, _locomotion, GetCurrentRangeMultiplier());
+            if (_hasPendingTarget && IsPendingTargetValid(_entity, _pendingTarget, GetCurrentRangeMultiplier()))
+            {
+                target = _pendingTarget;
+                return true;
+            }
+
+            return TryAcquireBasicAttackTarget(
+                _entity,
+                _locomotion,
+                GetCurrentRangeMultiplier(),
+                out target);
+        }
+
+        public bool TryAcquireBasicAttackTarget(
+            CombatEntity attacker,
+            IPlayerLocomotion locomotion,
+            float rangeMultiplier,
+            out CombatEntity target)
+        {
+            target = FindBestTarget(attacker, locomotion, rangeMultiplier);
+            _pendingTarget = target;
+            _hasPendingTarget = true;
             return target != null;
         }
 
@@ -49,7 +75,19 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
             float rangeMultiplier,
             out CombatEntity hitTarget)
         {
-            hitTarget = FindBestTarget(attacker, locomotion, rangeMultiplier);
+            if (_hasPendingTarget)
+            {
+                hitTarget = IsPendingTargetValid(attacker, _pendingTarget, rangeMultiplier)
+                    ? _pendingTarget
+                    : null;
+                _pendingTarget = null;
+                _hasPendingTarget = false;
+            }
+            else
+            {
+                hitTarget = FindBestTarget(attacker, locomotion, rangeMultiplier);
+            }
+
             if (hitTarget == null)
                 return false;
 
@@ -77,57 +115,43 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
             IPlayerLocomotion locomotion,
             float rangeMultiplier)
         {
-            if (attacker == null || attacker.Health == null || attacker.Health.IsDead)
-                return null;
-
             var forward = ResolveForward(locomotion);
             var origin = transform.position + Vector3.up * 0.76f;
             var range = Mathf.Max(1f, baseRange * Mathf.Max(0.1f, rangeMultiplier));
-            var colliders = Physics.OverlapSphere(
+
+            return RangedBasicAttackTargeting.TryFindBestTarget(
+                attacker,
                 transform.position,
                 range,
-                ~0,
-                QueryTriggerInteraction.Ignore);
+                maxHeightDifference,
+                forward,
+                minimumForwardDot,
+                forwardPenaltyWeight: 2f,
+                extraFilter: candidate => HasClearLine(attacker, candidate, origin),
+                out var target)
+                ? target
+                : null;
+        }
 
-            CombatEntity best = null;
-            var bestScore = float.PositiveInfinity;
-            for (var i = 0; i < colliders.Length; i++)
-            {
-                var collider = colliders[i];
-                if (collider == null)
-                    continue;
+        private bool IsPendingTargetValid(
+            CombatEntity attacker,
+            CombatEntity target,
+            float rangeMultiplier)
+        {
+            if (!RangedBasicAttackTargeting.IsValidEnemy(attacker, target))
+                return false;
 
-                var candidate = collider.GetComponentInParent<CombatEntity>();
-                if (!CanTarget(attacker, candidate))
-                    continue;
+            var delta = target.transform.position - transform.position;
+            var height = Mathf.Abs(delta.y);
+            delta.y = 0f;
+            var range = Mathf.Max(1f, baseRange * Mathf.Max(0.1f, rangeMultiplier));
+            if (height > maxHeightDifference || delta.sqrMagnitude < 0.001f || delta.sqrMagnitude > range * range)
+                return false;
 
-                var delta = candidate.transform.position - transform.position;
-                var height = Mathf.Abs(delta.y);
-                delta.y = 0f;
-                if (height > maxHeightDifference || delta.sqrMagnitude < 0.001f)
-                    continue;
-
-                var distance = delta.magnitude;
-                if (distance > range)
-                    continue;
-
-                var dot = Vector3.Dot(forward, delta / distance);
-                if (dot < minimumForwardDot)
-                    continue;
-
-                if (!HasClearLine(attacker, candidate, origin))
-                    continue;
-
-                var aimPenalty = (1f - dot) * range * 2f;
-                var score = distance + aimPenalty;
-                if (score >= bestScore)
-                    continue;
-
-                bestScore = score;
-                best = candidate;
-            }
-
-            return best;
+            var forward = ResolveForward(_locomotion);
+            var dot = Vector3.Dot(forward, delta.normalized);
+            return dot >= minimumForwardDot &&
+                   HasClearLine(attacker, target, transform.position + Vector3.up * 0.76f);
         }
 
         private static Vector3 ResolveForward(IPlayerLocomotion locomotion)

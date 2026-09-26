@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using ArknightsACT.Combat;
+using ArknightsACT.Combat.Status;
 using ArknightsACT.Gameplay.Characters;
 using UnityEngine;
 
@@ -12,7 +13,9 @@ namespace ArknightsACT.Gameplay.Characters.FrostNova
             Vector3 center,
             float radius,
             float damage,
-            string sourceId)
+            string sourceId,
+            string statusId = null,
+            float statusDuration = 0f)
         {
             if (source == null || radius <= 0f || damage <= 0f)
                 return 0;
@@ -51,7 +54,18 @@ namespace ArknightsACT.Gameplay.Characters.FrostNova
                     tags: DamageTags.Skill);
 
                 if (DamageSystem.Apply(context).Applied)
+                {
                     applied++;
+                    if (!string.IsNullOrWhiteSpace(statusId) && target.Status != null)
+                    {
+                        target.Status.Apply(
+                            statusId,
+                            duration: statusDuration,
+                            source: source,
+                            owner: target,
+                            sourceId: sourceId);
+                    }
+                }
             }
 
             return applied;

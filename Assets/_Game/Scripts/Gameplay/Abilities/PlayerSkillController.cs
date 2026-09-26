@@ -55,6 +55,18 @@ namespace ArknightsACT.Gameplay.Abilities
                 gameObject.AddComponent<GameplayHUDController>();
         }
 
+        private void OnEnable()
+        {
+            if (_attack != null)
+                _attack.AttackStarted += OnBasicAttackStarted;
+        }
+
+        private void OnDisable()
+        {
+            if (_attack != null)
+                _attack.AttackStarted -= OnBasicAttackStarted;
+        }
+
         private void Update()
         {
             if (_entity != null && _entity.Health != null && _entity.Health.IsDead)
@@ -67,8 +79,8 @@ namespace ArknightsACT.Gameplay.Abilities
             var flatRecovery = _collectibles != null
                 ? Mathf.Max(0f, _collectibles.GetEffectTotal(CollectibleEffectType.SkillPointRecoveryPerSecond))
                 : 0f;
-            _skill1?.TickSkillPoints(Time.deltaTime, recoveryMultiplier, flatRecovery);
-            _skill2?.TickSkillPoints(Time.deltaTime, recoveryMultiplier, flatRecovery);
+            TickSkillPoints(_skill1, Time.deltaTime, recoveryMultiplier, flatRecovery);
+            TickSkillPoints(_skill2, Time.deltaTime, recoveryMultiplier, flatRecovery);
 
             if (_input == null || IsCasting || (_dash != null && _dash.IsDashing))
                 return;
@@ -83,18 +95,19 @@ namespace ArknightsACT.Gameplay.Abilities
 
         public void GainAllSkillPoints(float amount)
         {
-            if (amount <= 0f) return;
-            _skill1?.GainSkillPoints(amount);
-            _skill2?.GainSkillPoints(amount);
+            if (amount <= 0f)
+                return;
+
+            if (PlayerSkillLifecycleUtility.CanReceiveSkillPoints(_skill1))
+                _skill1.GainSkillPoints(amount);
+            if (PlayerSkillLifecycleUtility.CanReceiveSkillPoints(_skill2))
+                _skill2.GainSkillPoints(amount);
         }
 
         private void TryCast(IPlayerSkill skill)
         {
-            if (skill == null)
+            if (skill == null || PlayerSkillLifecycleUtility.IsActive(skill))
                 return;
-
-            var activeState = skill as IPlayerSkillActiveState;
-            var wasActive = activeState != null && activeState.IsActive;
 
             if (_attack != null && _attack.IsAttacking)
                 _attack.CancelCurrentAttack();
@@ -102,11 +115,36 @@ namespace ArknightsACT.Gameplay.Abilities
             if (!skill.TryCast())
                 return;
 
-            var isActiveAfter = activeState != null && activeState.IsActive;
-            if (wasActive && !isActiveAfter)
+            SkillCastSucceeded?.Invoke(skill.Slot);
+        }
+
+        private static void TickSkillPoints(
+            IPlayerSkill skill,
+            float deltaTime,
+            float recoveryMultiplier,
+            float flatRecoveryPerSecond)
+        {
+            if (!PlayerSkillLifecycleUtility.CanReceiveSkillPoints(skill))
+                return;
+
+            skill.TickSkillPoints(deltaTime, recoveryMultiplier, flatRecoveryPerSecond);
+        }
+
+        private void OnBasicAttackStarted(int _)
+        {
+            ConsumeBasicAttackAmmo(_skill1);
+            ConsumeBasicAttackAmmo(_skill2);
+        }
+
+        private void ConsumeBasicAttackAmmo(IPlayerSkill skill)
+        {
+            if (skill is not IPlayerSkillAmmoConsumer ammo ||
+                !ammo.IsActive ||
+                !ammo.ConsumeAmmoOnBasicAttackStarted)
+                return;
+
+            if (ammo.TryConsumeAmmo() && !ammo.IsActive)
                 SkillCancelled?.Invoke(skill.Slot);
-            else
-                SkillCastSucceeded?.Invoke(skill.Slot);
         }
 
         public void InterruptCombatActions(CombatActionMask actions)

@@ -1456,7 +1456,6 @@ P0 不应该再横向开发新大系统。
 ## 暂时不要删
 
 - OHMS 研究工具与分析数据：仍可用于资源反查。
-- PHASE_* 文档：作为历史实现参考。
 - legacy_roguelike 图标：仍是 importer 离线兜底。
 - 原客户端研究目录：不要挂运行时，但可作为资源比对。
 
@@ -1474,17 +1473,7 @@ P0 不应该再横向开发新大系统。
 6. SCAVENGING_RELIC_RUNTIME_HANDOFF_2026_09_20.md
 7. 需要专项历史时再看其他文档
 
-已明确失效，不应再作为实现依据：
-
-- SCAVENGING_SEARCH_UI_HANDOFF_2026_09_20.md
-- RogueRelics/ROGUE_RELIC_DB_HANDOFF.md
-- RogueRelics/RogueRelic_EconomyDesign.md
-- SCHWARZ_CHARACTER_HANDOFF_2026_09_21.md
-- CHERNOB0G_CITY_MAP_HANDOFF.md
-- CHERNOB0G_CITY_MAP_HANDOFF_NEXT.md
-- CITY_EXPLORATION_HANDOFF_2026_09_20.md
-
-由于当前 FolderBridge 本地写接口不能物理 delete，这些文件可能仍存在磁盘；存在不代表有效。
+早期重复总交接和已由当前搜刮、城市、角色专项文档取代的旧交接，已于 2026-09-24 从文档目录清理。最新的整体进度与优先级见 `PROJECT_STATUS_AND_ROADMAP_2026_09_24.md`；本文件保留为较完整的实现与设计快照。
 
 ---
 

@@ -66,13 +66,13 @@ namespace ArknightsACT.Gameplay.Characters.FrostNova
     {
         public const string ResourcePath = "Config/FrostNovaTuningProfile";
 
-        [Header("Shared animation speed")]
-        [SerializeField, Min(0.05f)] private float moveAnimationSpeed = 2f;
-        [SerializeField, Min(0.05f)] private float basicAttackAnimationSpeed = 2f;
+        [Header("Relative animation multiplier (1 = project default 2x)")]
+        [SerializeField, Min(0.05f)] private float moveAnimationSpeed = 1f;
+        [SerializeField, Min(0.05f)] private float basicAttackAnimationSpeed = 1f;
 
-        [Header("Winter skill animation speed")]
+        [Header("Winter skill relative multiplier (1 = project default 2x)")]
         [SerializeField, Min(0.05f)] private float skill2AnimationSpeed = 1f;
-        [SerializeField, Min(0.05f)] private float skill3AnimationSpeed = 0.70f;
+        [SerializeField, Min(0.05f)] private float skill3AnimationSpeed = 1f;
 
         [Header("Basic attack")]
         [SerializeField, Min(0.02f)] private float basicProjectileFlightSeconds = 0.22f;
@@ -162,10 +162,10 @@ namespace ArknightsACT.Gameplay.Characters.FrostNova
 
         public void ResetDefaults()
         {
-            moveAnimationSpeed = 2f;
-            basicAttackAnimationSpeed = 2f;
+            moveAnimationSpeed = 1f;
+            basicAttackAnimationSpeed = 1f;
             skill2AnimationSpeed = 1f;
-            skill3AnimationSpeed = 0.70f;
+            skill3AnimationSpeed = 1f;
             basicProjectileFlightSeconds = 0.22f;
 
             basicStart = New();

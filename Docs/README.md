@@ -1,27 +1,32 @@
 # ArknightsACT 文档索引
 
-更新时间：2026-09-23
+更新时间：2026-09-24
 
 本目录已经经历多轮原型、地图和角色迭代。后续接手不要按文件名时间顺序全部阅读；优先使用下面的“当前入口”，只有追查历史实现时才看阶段文档。
 
 ## 1. 当前接手入口
 
-1. `MASTER_HANDOFF_2026_09_23.md`
-   - 当前唯一总交接入口。
-   - 汇总项目方向、架构、三名角色、HUD、118 件搜刮数据、二维背包、真撤离、仓库、切城、设施、验证状态、技术债和 P0-P4 后续计划。
-2. `P1_COMBAT_STATUS_HANDOFF_2026_09_23.md`
+1. `PROJECT_STATUS_AND_ROADMAP_2026_09_24.md`
+   - 当前进度、验收边界和 P0-P4 后续计划的简明总览。
+2. `MASTER_HANDOFF_2026_09_23.md`
+   - 详细项目交接快照，记录玩法、实现边界、角色状态、城市系统和长期规则；遇到进度变化时以本索引、最新专项文档和当前源码为准。
+3. `P1_COMBAT_STATUS_HANDOFF_2026_09_23.md`
    - 当前战斗底层 source of truth。
    - DEF / RES / True、穿透、目标属性 Aura、DamageTags、数据驱动 Status、控制/中断、DOT、Schwarz 破甲与防御藏品迁移。
-3. `CHARACTER_SYSTEM_REFACTOR_HANDOFF_2026_09_22.md`
+4. `CHARACTER_SYSTEM_REFACTOR_HANDOFF_2026_09_22.md`
    - `PlayerRuntimeContext`、`PlayableOperatorSwitchController`、局内角色切换和 Run 状态迁移。
-4. `ARCHITECTURE.md`
+5. `ARCHITECTURE.md`
    - Core / Combat / Gameplay / Character-specific 的依赖方向和禁止结构。
-5. `PROJECT_HANDOFF_2026_09_21.md`
-   - 搜打撤 / UI / 仓库等上一版总交接，现作为专项细节补充。
-   - 若与 MASTER 冲突，以 MASTER + 当前源码为准。
 
 ## 2. 当前角色文档
 
+- `CHARACTER_IMPORT_WORKFLOW.md`
+  - 当前角色素材绑定 source of truth；用户负责从游戏本体导出，Agent 负责直接修改工程并完成 Spine/动作/FX/Audio/UI/Gameplay 全绑定。
+  - 记录统一 Spine 动作 2x、Straight Alpha、高清 atlas 复用、FX timing.json FPS、公共训练假人等长期规则。
+- `WISADEL_FX_BINDING_2026_09_24.md`
+  - Wisadel effects 79 组重新扫描结果；当前 Basic/S2/S3 复合 FX、game#9 替换、S1/Token 排除项和调参 slot 的明确绑定表。
+- `CHARACTER_IMPORT_PIPELINE_REVIEW_2026_09_24.md`
+  - Wisadel 导入流程审阅与 V2 重构记录；包含已落地项、仍待 Unity 验收项以及后续批量角色导入方向。
 - `FROSTNOVA_CHARACTER_HANDOFF_2026_09_23.md`
   - 当前最新角色接入。
   - 冬痕 Slot 1 = `Skill_1`，Slot 2 = `Skill_3`。
@@ -72,33 +77,14 @@
 
 ## 5. 稳定参考文档
 
-以下文档虽然较早，但仍包含独立实现约束，不应仅按日期删除：
+- `ASSET_INTEGRATION.md`：资源导入层与运行时表现层的边界。
+- `PRTS_PROTOTYPE_ASSET_PACK.md`：本地资源接入与素材边界。
 
-- `ASSET_INTEGRATION.md`
-- `PRTS_PROTOTYPE_ASSET_PACK.md`
-- `PROTOTYPE_25D_DEMO.md`
-- `PHASE_03_SPINE_PRESENTATION.md`
-- `PHASE_04_ROGUELITE_R1_R2.md`
-- `PHASE_05_ROGUELITE_R3_ROUTING.md`
-- `PHASE_06_25D_MIGRATION.md`
-- `PHASE_07_*.md`
-- `PHASE_08_*.md`
+早期已完成的 Phase 计划、旧音频菜单流程与初始 Demo 说明已清理；当前行为以源码和上方专项文档为准。
 
-这些属于设计/实现演进记录。若与当前 handoff 冲突，以当前 handoff + 当前源码为准。
+## 6. 历史与专项资料
 
-## 6. 已明确失效的旧交接
-
-以下文件不应再作为实现依据，当前内容已经被新文档或源码覆盖：
-
-- `SCAVENGING_SEARCH_UI_HANDOFF_2026_09_20.md`
-- `RogueRelics/ROGUE_RELIC_DB_HANDOFF.md`
-- `RogueRelics/RogueRelic_EconomyDesign.md`
-- `SCHWARZ_CHARACTER_HANDOFF_2026_09_21.md`
-- `CHERNOB0G_CITY_MAP_HANDOFF.md`
-- `CHERNOB0G_CITY_MAP_HANDOFF_NEXT.md`
-- `CITY_EXPLORATION_HANDOFF_2026_09_20.md`
-
-注意：`RogueRelic_EconomyDesign.md` 仍可能被旧预处理脚本生成，但它不是正式数据源，不能覆盖 `RogueRelicDatabase_IS1_CurrentPool.xlsx`。
+被后续实现和交接取代的旧计划、旧原型与重复交接已从目录清理。需要了解当前架构时查看 `ARCHITECTURE.md` 和当前专项文档，不再从旧阶段计划推断运行时行为。
 
 ## 7. 当前项目关键事实
 

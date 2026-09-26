@@ -206,10 +206,7 @@ namespace ArknightsACT.Editor
 
                     var scene = SceneManager.GetActiveScene();
                     if (scene.IsValid() && scene.isLoaded && !EditorApplication.isPlayingOrWillChangePlaymode)
-                    {
                         EditorSceneManager.MarkSceneDirty(scene);
-                        EditorSceneManager.SaveScene(scene);
-                    }
                 }
 
                 AssetDatabase.SaveAssets();

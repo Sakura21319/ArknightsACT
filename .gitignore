@@ -40,6 +40,13 @@ Assets/_Game/Art/**/PRTS/
 
 # Original game-client battle FX extracted locally from AssetBundles. Keep them out of source control.
 Assets/_Game/Art/FX/OriginalClient/
+Assets/_Game/Art/FX/Extracted/Wisadel/
+Assets/_Game/Art/Audio/Wisadel/
+Assets/_Game/Resources/UI/HUD/Operators/wisadel_*.png
+Assets/_Game/Resources/UI/Skills/Wisadel/
+Assets/_Game/Resources/Config/WisadelFxTuningProfile.asset*
+Assets/_Game/Data/Operators/Operator_Wisadel.asset*
+Assets/_Game/Data/Attacks/Wisadel/
 
 # Generated prefabs reference local PRTS skeleton/atlas assets and therefore stay local as well.
 Assets/_Game/Generated/PRTS/

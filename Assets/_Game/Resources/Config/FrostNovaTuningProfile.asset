@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8cb0aaeb71496f74681ebc9b93d1caa1, type: 3}
   m_Name: FrostNovaTuningProfile
   m_EditorClassIdentifier: 
-  moveAnimationSpeed: 2
-  basicAttackAnimationSpeed: 2
-  skill2AnimationSpeed: 2
-  skill3AnimationSpeed: 2
+  moveAnimationSpeed: 1
+  basicAttackAnimationSpeed: 1
+  skill2AnimationSpeed: 1
+  skill3AnimationSpeed: 1
   basicProjectileFlightSeconds: 0.22
   basicStart:
     offset: {x: 0, y: 0}

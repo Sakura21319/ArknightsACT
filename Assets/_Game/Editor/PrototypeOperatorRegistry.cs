@@ -40,15 +40,73 @@ namespace ArknightsACT.Editor
             EnsureFolder(Root);
             var path = $"{Root}/{assetName}.asset";
             var definition = AssetDatabase.LoadAssetAtPath<PlayableOperatorDefinition>(path);
-            if (definition != null)
+            if (definition == null)
+            {
+                definition = ScriptableObject.CreateInstance<PlayableOperatorDefinition>();
+                definition.name = assetName;
+                definition.Configure(operatorId, displayName, englishName, sortOrder, skins);
+                AssetDatabase.CreateAsset(definition, path);
+                EditorUtility.SetDirty(definition);
                 return definition;
+            }
 
-            definition = ScriptableObject.CreateInstance<PlayableOperatorDefinition>();
-            definition.name = assetName;
-            definition.Configure(operatorId, displayName, englishName, sortOrder, skins);
-            AssetDatabase.CreateAsset(definition, path);
-            EditorUtility.SetDirty(definition);
+            if (!DefinitionMatches(
+                    definition,
+                    operatorId,
+                    displayName,
+                    englishName,
+                    sortOrder,
+                    skins))
+            {
+                definition.Configure(operatorId, displayName, englishName, sortOrder, skins);
+                EditorUtility.SetDirty(definition);
+            }
+
             return definition;
+        }
+
+        private static bool DefinitionMatches(
+            PlayableOperatorDefinition definition,
+            string operatorId,
+            string displayName,
+            string englishName,
+            int sortOrder,
+            PlayableOperatorSkinDefinition[] skins)
+        {
+            if (definition == null ||
+                !string.Equals(definition.OperatorId, operatorId, StringComparison.Ordinal) ||
+                !string.Equals(definition.DisplayName, displayName, StringComparison.Ordinal) ||
+                !string.Equals(definition.EnglishName, englishName, StringComparison.Ordinal) ||
+                definition.SortOrder != sortOrder)
+                return false;
+
+            var actual = definition.Skins;
+            var expected = skins ?? Array.Empty<PlayableOperatorSkinDefinition>();
+            if (actual == null || actual.Count != expected.Length)
+                return false;
+
+            for (var i = 0; i < expected.Length; i++)
+            {
+                var a = actual[i];
+                var e = expected[i];
+                if (a == null || e == null)
+                {
+                    if (!ReferenceEquals(a, e))
+                        return false;
+                    continue;
+                }
+
+                if (!string.Equals(a.SkinId, e.SkinId, StringComparison.Ordinal) ||
+                    !string.Equals(a.DisplayName, e.DisplayName, StringComparison.Ordinal) ||
+                    !string.Equals(a.AvatarResourceKey, e.AvatarResourceKey, StringComparison.Ordinal) ||
+                    !string.Equals(a.Skill1IconResourceKey, e.Skill1IconResourceKey, StringComparison.Ordinal) ||
+                    !string.Equals(a.Skill2IconResourceKey, e.Skill2IconResourceKey, StringComparison.Ordinal) ||
+                    a.IsDefault != e.IsDefault ||
+                    a.IsReserved != e.IsReserved)
+                    return false;
+            }
+
+            return true;
         }
 
         private static void EnsureFolder(string path)

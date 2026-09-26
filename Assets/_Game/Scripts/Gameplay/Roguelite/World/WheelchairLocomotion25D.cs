@@ -3,6 +3,7 @@ using ArknightsACT.Gameplay.Abilities;
 using ArknightsACT.Gameplay.Characters;
 using ArknightsACT.Gameplay.Combat;
 using ArknightsACT.Gameplay.Input;
+using ArknightsACT.Gameplay.Presentation;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -18,6 +19,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
     /// momentum keeps the chair sliding along its old line, scrubbing speed and
     /// leaning the body into the slide. Destroyed on dismount.
     /// </summary>
+    [DefaultExecutionOrder(900)]
     public sealed class WheelchairLocomotion25D : MonoBehaviour, IPlayerControlLockSource
     {
         private const float MaxSpeed = 3.0f;              // slightly brisker manual-chair pace
@@ -32,6 +34,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         private const float NormalGripDegPerSecond = 900f;// effectively locked when not drifting
         private const float DriftDrag = 1.3f;             // extra speed scrubbed while sliding
         private const float Gravity = -24f;
+        private const float RiderVisualLift = 0.56f;      // 0.16m base lift + requested additional 0.40m
 
         private Wheelchair25D _chair;
         private PlayerMotor25D _motor;
@@ -40,6 +43,10 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         private IPlayerInputSource _input;
         private PlayerAttackController _attack;
         private PlayerSkillController _skills;
+        private SpineBoneMotionRetarget2D _motionRetarget;
+        private Transform _presentationRoot;
+        private Vector3 _presentationBaseLocalPosition;
+        private bool _presentationLiftApplied;
         private Camera _camera;
         private Vector3 _velocity;
         private Vector2 _smoothedInput;
@@ -60,17 +67,32 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             _input = GetComponent<IPlayerInputSource>();
             _attack = GetComponent<PlayerAttackController>();
             _skills = GetComponent<PlayerSkillController>();
+            _motionRetarget = GetComponent<SpineBoneMotionRetarget2D>();
+            _presentationRoot = transform.Find("PresentationBillboard");
+            if (_presentationRoot != null)
+            {
+                _presentationBaseLocalPosition = _presentationRoot.localPosition;
+                _presentationRoot.localPosition = _presentationBaseLocalPosition + Vector3.up * RiderVisualLift;
+                _presentationLiftApplied = true;
+            }
             _camera = Camera.main;
             var forward = motor != null ? motor.PlanarForward : Vector3.forward;
             forward.y = 0f;
             if (forward.sqrMagnitude > .001f)
                 _heading = forward.normalized;
+
+            EnsureSeatedPose();
         }
 
         private void Update()
         {
             if (_controller == null)
                 return;
+
+            // Reassert Sit late in the frame. Combat/presentation scripts may briefly request
+            // another animation, but the motion retarget excludes authored upper-body weapon
+            // bones where configured, so the rider stays seated while attacks/skills remain usable.
+            EnsureSeatedPose();
             var dt = Time.deltaTime;
             var dead = _entity != null && _entity.Health != null && _entity.Health.IsDead;
             var locked = dead || GameplayInputBlocker.IsBlocked ||
@@ -135,6 +157,30 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 _chair.SyncPose(transform.position, _heading, speed * dt, Mathf.Clamp(slide * .6f, -12f, 12f));
                 _chair.SetTrailEmitting(speed > .4f);
             }
+        }
+
+        private void EnsureSeatedPose()
+        {
+            if (_motionRetarget == null || !_motionRetarget.IsCompatible)
+                return;
+
+            if (!_motionRetarget.IsPlayingMotionAction ||
+                !string.Equals(
+                    _motionRetarget.ActiveMotionAction,
+                    "Sit",
+                    System.StringComparison.OrdinalIgnoreCase))
+            {
+                _motionRetarget.PlayMotionAction("Sit", true);
+            }
+        }
+
+        private void OnDestroy()
+        {
+            _motionRetarget?.StopMotionAction();
+            if (_presentationLiftApplied && _presentationRoot != null)
+                _presentationRoot.localPosition = _presentationBaseLocalPosition;
+            _presentationLiftApplied = false;
+            _chair?.SetTrailEmitting(false);
         }
 
         private Vector3 CameraRelative(Vector2 input)

@@ -25,7 +25,9 @@ namespace ArknightsACT.Gameplay.Characters.Chen
 
         private void Start()
         {
-            SpawnDummy();
+            // Legacy compatibility only. Training dummies are now scene-level public facilities
+            // created by Prototype25DProductionFactory, never by a playable operator.
+            enabled = false;
         }
 
         private void SpawnDummy()

@@ -73,12 +73,6 @@ namespace ArknightsACT.Editor
             if (SchwarzExtractedFxSetup.HasVariantImported(skin))
                 SchwarzExtractedFxSetup.Configure(go, skin);
 
-            var trainingDummy = go.GetComponent<ChenTrainingDummySpawner>() ??
-                                go.AddComponent<ChenTrainingDummySpawner>();
-            trainingDummy.ConfigurePresentationPrefab(
-                UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(
-                    "Assets/_Game/Generated/PRTS/Prefabs/enemy_1006_shield.prefab"));
-
             go.AddComponent<DamageTintFlash2D>();
             go.AddComponent<WorldHealthBar2D>();
             go.AddComponent<DamageNumberEmitter2D>();
@@ -105,11 +99,16 @@ namespace ArknightsACT.Editor
                 SkinId(skin),
                 AvatarResourceKey(skin),
                 "UI/Skills/Schwarz/s2",
-                "UI/Skills/Schwarz/s3");
+                "UI/Skills/Schwarz/s3",
+                maxHealth: 95f,
+                physicalDefense: 1.4f,
+                artsResistance: 0f);
 
             go.AddComponent<SchwarzRangedBasicAttack>();
-            go.AddComponent<SchwarzSkill1>();
-            go.AddComponent<SchwarzSkill2>();
+            var skill1 = go.AddComponent<SchwarzSkill1>();
+            var skill2 = go.AddComponent<SchwarzSkill2>();
+            skill1.ConfigureFormalLifecycle();
+            skill2.ConfigureFormalLifecycle();
             if (go.GetComponent<SchwarzArmorBreakTalent>() == null)
                 go.AddComponent<SchwarzArmorBreakTalent>();
             go.AddComponent<SchwarzSniperModeController>();

@@ -137,15 +137,12 @@ namespace ArknightsACT.Gameplay.Characters
                 return false;
 
             var skills = current.GetComponent<PlayerSkillController>();
-            if (skills != null)
-            {
-                if (skills.IsCasting)
-                    return false;
-                if (skills.Skill1 is IPlayerSkillActiveState activeSkill1 && activeSkill1.IsActive)
-                    return false;
-                if (skills.Skill2 is IPlayerSkillActiveState activeSkill2 && activeSkill2.IsActive)
-                    return false;
-            }
+            // Only the activation/cast action blocks switching. Once a lifecycle skill has
+            // entered its Permanent / Duration / Ammo active phase, the operator may be switched
+            // out without treating the buff itself as an input lock. The skill component owns
+            // persistence of its active state while the reserve GameObject is disabled.
+            if (skills != null && skills.IsCasting)
+                return false;
 
             var dash = current.GetComponent<PlayerDashController>();
             if (dash != null && dash.IsDashing)

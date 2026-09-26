@@ -8,6 +8,7 @@ using System.Reflection;
 using ArknightsACT.Gameplay.Presentation;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace ArknightsACT.Editor.PRTS
 {
@@ -117,7 +118,14 @@ namespace ArknightsACT.Editor.PRTS
 
                 var renderer = visual.GetComponent<Renderer>() ?? visual.GetComponentInChildren<Renderer>(true);
                 if (renderer != null)
+                {
                     renderer.sortingOrder = descriptor.Role == "Player" ? 30 : 20;
+                    renderer.shadowCastingMode = ShadowCastingMode.Off;
+                    renderer.receiveShadows = false;
+                    renderer.lightProbeUsage = LightProbeUsage.Off;
+                    renderer.reflectionProbeUsage = ReflectionProbeUsage.Off;
+                    renderer.motionVectorGenerationMode = MotionVectorGenerationMode.ForceNoMotion;
+                }
 
                 var path = GetPrefabPath(descriptor.PrefabKey);
                 PrefabUtility.SaveAsPrefabAsset(root, path);

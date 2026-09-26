@@ -13,6 +13,7 @@ namespace ArknightsACT.Editor
     internal static class PrototypeStageRuntimeFactory
     {
         private const string MaterialRoot = "Assets/_Game/Data/Prototype25D/Materials";
+        private const string BgmRoot = "Assets/_Game/Art/Audio/BGM";
 
         public static GameObject Create(
             Transform player,
@@ -106,12 +107,13 @@ namespace ArknightsACT.Editor
 
         private static void ConfigurePrototypeAudio(GameObject stageRuntime, Transform player)
         {
-            var audio = stageRuntime.AddComponent<RoguelitePrototypeAudioController>();
+            var audio = UnityEngine.Object.FindFirstObjectByType<RoguelitePrototypeAudioController>() ??
+                        stageRuntime.AddComponent<RoguelitePrototypeAudioController>();
             var profile = player != null ? player.GetComponent<PlayableOperatorAudioProfile>() : null;
             audio.Configure(
                 player,
                 null,
-                LoadAudio(PrtsGameplayAudioCatalog.AbnormalSpectrum.LocalPath),
+                null,
                 profile != null ? profile.Skill1Sfx : null,
                 profile != null ? profile.Skill2Sfx : null,
                 profile != null ? profile.Skill1Voices : null,
@@ -123,6 +125,31 @@ namespace ArknightsACT.Editor
                 LoadAudio(PrtsGameplayAudioCatalog.EnemyMeleeAttack.LocalPath),
                 LoadAudio(PrtsGameplayAudioCatalog.EnemyRangedAttack.LocalPath),
                 LoadAudio(PrtsGameplayAudioCatalog.EnemyDeath.LocalPath));
+            audio.ConfigureBgmPlaylist(
+                new[]
+                {
+                    LoadAudio($"{BgmRoot}/UI_LifeFlow/intro.wav"),
+                    LoadAudio($"{BgmRoot}/UI_GhostHunter/intro.wav"),
+                    LoadAudio($"{BgmRoot}/UI_City/intro.wav")
+                },
+                new[]
+                {
+                    LoadAudio($"{BgmRoot}/UI_LifeFlow/loop.wav"),
+                    LoadAudio($"{BgmRoot}/UI_GhostHunter/loop.wav"),
+                    LoadAudio($"{BgmRoot}/UI_City/loop.wav")
+                },
+                new[]
+                {
+                    LoadAudio($"{BgmRoot}/Map_Spreading/intro.wav"),
+                    LoadAudio($"{BgmRoot}/Map_AbyssalDream/intro.wav"),
+                    LoadAudio($"{BgmRoot}/Map_DeepDrunken/intro.wav")
+                },
+                new[]
+                {
+                    LoadAudio($"{BgmRoot}/Map_Spreading/loop.wav"),
+                    LoadAudio($"{BgmRoot}/Map_AbyssalDream/loop.wav"),
+                    LoadAudio($"{BgmRoot}/Map_DeepDrunken/loop.wav")
+                });
         }
 
         private static Texture2D[] LoadEnvironmentBackdrops()

@@ -641,6 +641,133 @@ FolderBridge：
 
 ---
 
+## 24. 2026-09-24：技能生命周期正式化
+
+本轮新增通用技能生命周期层，不再只用 `IPlayerSkillActiveState.IsActive` 区分所有技能。
+
+新增：
+
+- `PlayerSkillLifecycleType.Detached`：脱手类。技能释放完成后不存在持续激活态，SP 正常重新回复。
+- `PlayerSkillLifecycleType.Permanent`：永久增益类。SP 满后开启，进入 Active 后保持到 Run 重置/角色死亡等明确系统清理，不允许通过再次按技能键取消。
+- `PlayerSkillLifecycleType.Duration`：持续时间类。开启后按绝对结束时间运行，持续期间不回复 SP，到时自动结束。
+- `PlayerSkillLifecycleType.Ammo`：弹药类。开启后保持 Active，弹药耗尽才结束；通用层支持按普通攻击开始自动消耗一发，也允许具体技能自行决定消耗事件。
+
+核心文件：
+
+- `Assets/_Game/Scripts/Gameplay/Abilities/PlayerSkillLifecycle.cs`
+- `Assets/_Game/Scripts/Gameplay/Abilities/PlayerSkillController.cs`
+
+新增接口：
+
+- `IPlayerSkillLifecycleState`
+- `IPlayerSkillAmmoConsumer`
+
+兼容规则：
+
+- 未实现生命周期接口的现有技能自动视为 `Detached`。
+- 旧的 `IPlayerSkillActiveState` 仍兼容，并按 Duration 解释，避免一次性要求所有旧角色同时重写。
+- 硬控的 Skill Interrupt 只中断仍处于 `IsCasting` 的起手/施法动作，不会粗暴删除已经进入 Active 的 Permanent / Duration / Ammo 状态。
+- Active 生命周期技能期间不自然回复 SP，也不接受“所有技能 +SP”。
+- 已经 Active 的技能再次按技能键不会当作“手动取消”。
+
+角色切换规则同步调整：
+
+- 正在起手 / 施法仍禁止切换。
+- 已经进入 Permanent / Duration / Ammo Active 的技能本身不再永久锁死角色切换。
+- Duration 技能使用绝对结束时间，因此角色进入 reserve 后计时仍继续，切回来时会按真实剩余时间恢复/结束。
+
+### 当前角色迁移
+
+陈：
+
+- 赤霄·拔刀：Detached。
+- 赤霄·绝影：Detached。
+
+霜星：
+
+- Slot 1：Detached。
+- Slot 2：Detached。
+- 已移除此前 `1/1 SP`、无限释放的调试实现。
+- Slot 1 当前正式原型 SP：20 cost / 10 initial / 1 SP/s。
+- Slot 2 当前正式原型 SP：35 cost / 15 initial / 1 SP/s。
+- 两个技能均支持新 Run 重置。
+
+黑：
+
+- 暮眼锐瞳：Duration，40s 基础持续。
+- 战术的终结：Duration，25s 基础持续。
+- 两个技能默认退出 `debugInfiniteDuration`。
+- Builder / Factory 会显式调用 `ConfigureFormalLifecycle()`，避免旧 Scene 已序列化的 true 继续保留无限持续。
+- 持续技能不可再通过再次按键手动取消。
+
+### HUD 适配
+
+正式 HUD 已识别技能生命周期：
+
+- Duration：显示剩余秒数。
+- Permanent：显示 ACTIVE / 永久。
+- Ammo：显示 当前弹药 / 总弹药。
+- Active 时 SP 条保持激活态，不伪装成 Ready。
+
+同时新增玩家 Status 行：
+
+- 最多显示 4 个当前状态和剩余时间。
+- 已有中文映射：寒冷、冻结、灼烧、缴械、沉默、晕眩、束缚、减速、攻速↓、防御↓、法抗↓、脆弱、虚弱、震荡、墨染。
+- 当前先使用文字状态行；以后替换成正式图标不需要修改 Status gameplay 层。
+
+## 25. 2026-09-24：正式原型 DEF / RES 与 Boss 抗性
+
+当前 2.5D ACT 数值尺度不是原版明日方舟的数百 DEF 数值，因此这里使用当前项目战斗尺度下的正式原型值，而不是直接搬原版面板数值。
+
+玩家：
+
+- 陈：HP 100 / DEF 2.2 / RES 5
+- 黑：HP 95 / DEF 1.4 / RES 0
+- 霜星：HP 125 / DEF 2.0 / RES 20
+
+普通敌人：
+
+- FastMelee：DEF 0.5 / RES 0
+- Ranged：DEF 0.75 / RES 5
+- Melee：DEF 1.0 / RES 0
+
+当前 Heavy/Boss fallback：
+
+- DEF 4
+- RES 10
+- HardCrowdControl duration ×0.35
+- MovementImpair duration ×0.65
+- Disarm immune
+
+Boss 抗性继续通过 `StatusResistanceProfile` 配置，不向 StatusController / DamageSystem 增加 `if (isBoss)` 分支。
+
+霜星冰系技能也已接入正式 Status 链：
+
+- Skill 1 命中施加 `Cold` 4s。
+- Skill 2 每次 Pulse 命中施加 `Cold` 4s。
+- 第二次 Cold 使用现有 Reaction 转为 `Freeze`。
+- Boss 的 `StatusResistanceProfile` 自动缩短 Freeze / HardCrowdControl 持续时间，角色技能不判断目标是否 Boss。
+
+## 26. 本轮新增回归测试
+
+新增：
+
+- `Assets/_Game/Tests/EditMode/PlayerSkillLifecycleTests.cs`
+
+覆盖：
+
+- 未迁移技能自动按 Detached 兼容。
+- Permanent Active 后不 Ready / 不再获得 SP。
+- Duration 剩余时间 HUD 语义。
+- Ammo 只有在最后一发消费后才退出 Active。
+
+FolderBridge 本轮 source build / test smoke：
+
+- exit 0
+- issues 0
+
+仍然注意：FolderBridge 当前是 validation-only，不等价于 Unity Editor C# 真编译和 Test Runner。
+
 ## 一句话状态
 
 P1 已经从“有三种 DamageType、但没有正式防御与异常层”推进到“统一 DEF / RES / True、穿透、团队减防 Aura、数据驱动 Status、控制/中断、DOT、Schwarz 破甲、藏品迁移和回归测试均已落地”。

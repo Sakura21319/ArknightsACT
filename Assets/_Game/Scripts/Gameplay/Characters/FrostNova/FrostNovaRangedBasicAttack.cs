@@ -10,6 +10,7 @@ namespace ArknightsACT.Gameplay.Characters.FrostNova
     public sealed class FrostNovaRangedBasicAttack :
         MonoBehaviour,
         IPlayerBasicAttackResolver,
+        IPlayerBasicAttackTargetProvider,
         IPlayerBasicAttackImpactTimingProvider
     {
         [SerializeField, Min(1f)] private float baseRange = 10.5f;
@@ -20,6 +21,8 @@ namespace ArknightsACT.Gameplay.Characters.FrostNova
         private CombatEntity _entity;
         private IPlayerLocomotion _locomotion;
         private FrostNovaTuningProfile _tuning;
+        private CombatEntity _pendingTarget;
+        private bool _hasPendingTarget;
 
         public float CurrentVisualRange => baseRange;
 
@@ -48,7 +51,24 @@ namespace ArknightsACT.Gameplay.Characters.FrostNova
 
         public bool TryGetAimTarget(out CombatEntity target)
         {
-            target = FindBestTarget(_entity, _locomotion);
+            if (_hasPendingTarget && IsPendingTargetValid(_entity, _pendingTarget, 1f))
+            {
+                target = _pendingTarget;
+                return true;
+            }
+
+            return TryAcquireBasicAttackTarget(_entity, _locomotion, 1f, out target);
+        }
+
+        public bool TryAcquireBasicAttackTarget(
+            CombatEntity attacker,
+            IPlayerLocomotion locomotion,
+            float rangeMultiplier,
+            out CombatEntity target)
+        {
+            target = FindBestTarget(attacker, locomotion, Mathf.Max(0.1f, rangeMultiplier));
+            _pendingTarget = target;
+            _hasPendingTarget = true;
             return target != null;
         }
 
@@ -66,7 +86,19 @@ namespace ArknightsACT.Gameplay.Characters.FrostNova
             float rangeMultiplier,
             out CombatEntity hitTarget)
         {
-            hitTarget = FindBestTarget(attacker, locomotion, Mathf.Max(0.1f, rangeMultiplier));
+            if (_hasPendingTarget)
+            {
+                hitTarget = IsPendingTargetValid(attacker, _pendingTarget, Mathf.Max(0.1f, rangeMultiplier))
+                    ? _pendingTarget
+                    : null;
+                _pendingTarget = null;
+                _hasPendingTarget = false;
+            }
+            else
+            {
+                hitTarget = FindBestTarget(attacker, locomotion, Mathf.Max(0.1f, rangeMultiplier));
+            }
+
             if (hitTarget == null)
                 return false;
 
@@ -94,53 +126,43 @@ namespace ArknightsACT.Gameplay.Characters.FrostNova
             IPlayerLocomotion locomotion,
             float rangeMultiplier = 1f)
         {
-            if (attacker == null || attacker.Health == null || attacker.Health.IsDead)
-                return null;
-
             var forward = ResolveForward(locomotion);
             var origin = transform.position + Vector3.up * 0.82f;
             var range = Mathf.Max(1f, baseRange * rangeMultiplier);
-            var colliders = Physics.OverlapSphere(
+
+            return RangedBasicAttackTargeting.TryFindBestTarget(
+                attacker,
                 transform.position,
                 range,
-                ~0,
-                QueryTriggerInteraction.Ignore);
+                maxHeightDifference,
+                forward,
+                minimumForwardDot,
+                forwardPenaltyWeight: 1f,
+                extraFilter: candidate => HasClearLine(attacker, candidate, origin),
+                out var target)
+                ? target
+                : null;
+        }
 
-            CombatEntity best = null;
-            var bestScore = float.PositiveInfinity;
-            for (var i = 0; i < colliders.Length; i++)
-            {
-                var collider = colliders[i];
-                if (collider == null)
-                    continue;
+        private bool IsPendingTargetValid(
+            CombatEntity attacker,
+            CombatEntity target,
+            float rangeMultiplier)
+        {
+            if (!RangedBasicAttackTargeting.IsValidEnemy(attacker, target))
+                return false;
 
-                var candidate = collider.GetComponentInParent<CombatEntity>();
-                if (!CanTarget(attacker, candidate))
-                    continue;
+            var delta = target.transform.position - transform.position;
+            var height = Mathf.Abs(delta.y);
+            delta.y = 0f;
+            var range = Mathf.Max(1f, baseRange * rangeMultiplier);
+            if (height > maxHeightDifference || delta.sqrMagnitude < 0.001f || delta.sqrMagnitude > range * range)
+                return false;
 
-                var delta = candidate.transform.position - transform.position;
-                var height = Mathf.Abs(delta.y);
-                delta.y = 0f;
-                if (height > maxHeightDifference || delta.sqrMagnitude < 0.001f)
-                    continue;
-
-                var distance = delta.magnitude;
-                if (distance > range)
-                    continue;
-
-                var dot = Vector3.Dot(forward, delta / distance);
-                if (dot < minimumForwardDot || !HasClearLine(attacker, candidate, origin))
-                    continue;
-
-                var score = distance + (1f - dot) * range;
-                if (score >= bestScore)
-                    continue;
-
-                bestScore = score;
-                best = candidate;
-            }
-
-            return best;
+            var forward = ResolveForward(_locomotion);
+            var dot = Vector3.Dot(forward, delta.normalized);
+            return dot >= minimumForwardDot &&
+                   HasClearLine(attacker, target, transform.position + Vector3.up * 0.82f);
         }
 
         private static Vector3 ResolveForward(IPlayerLocomotion locomotion)

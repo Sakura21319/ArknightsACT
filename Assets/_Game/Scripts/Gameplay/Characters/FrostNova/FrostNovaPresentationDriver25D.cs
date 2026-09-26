@@ -64,8 +64,8 @@ namespace ArknightsACT.Gameplay.Characters.FrostNova
                 FrostNovaTuningProfile.ResourcePath);
         }
 
-        private float MoveSpeed => _tuning != null ? _tuning.MoveAnimationSpeed : 2f;
-        private float AttackSpeed => _tuning != null ? _tuning.BasicAttackAnimationSpeed : 2f;
+        private float MoveSpeed => _tuning != null ? _tuning.MoveAnimationSpeed : 1f;
+        private float AttackSpeed => _tuning != null ? _tuning.BasicAttackAnimationSpeed : 1f;
 
         private void Awake()
         {

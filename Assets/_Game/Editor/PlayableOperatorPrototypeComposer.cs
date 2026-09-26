@@ -75,6 +75,26 @@ namespace ArknightsACT.Editor
                 skill2IconResourceKey);
         }
 
+        public static void ApplyFormalCombatProfile(
+            GameObject go,
+            float maxHealth,
+            float physicalDefense,
+            float artsResistance)
+        {
+            if (go == null)
+                return;
+
+            var health = go.GetComponent<Health>() ?? go.AddComponent<Health>();
+            health.SetMaxHealth(maxHealth, refill: !Application.isPlaying);
+
+            var stats = go.GetComponent<CombatStats>() ?? go.AddComponent<CombatStats>();
+            stats.SetBasePhysicalDefense(physicalDefense);
+            stats.SetBaseArtsResistance(artsResistance);
+
+            var profile = go.GetComponent<PlayerCombatProfile>() ?? go.AddComponent<PlayerCombatProfile>();
+            profile.ConfigureMitigation(physicalDefense, artsResistance);
+        }
+
         public static void CompleteGameplay(GameObject go)
         {
             if (go.GetComponent<PlayerSkillController>() == null)

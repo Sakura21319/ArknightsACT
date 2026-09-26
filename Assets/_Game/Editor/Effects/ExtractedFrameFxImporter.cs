@@ -22,6 +22,12 @@ namespace ArknightsACT.Editor.Effects
         private const float DefaultFps = 30f;
         private const float DefaultPixelsPerUnit = 512f;
 
+        [Serializable]
+        private sealed class TimingMetadata
+        {
+            public float fps = DefaultFps;
+        }
+
         internal sealed class ImportResult
         {
             internal readonly List<string> PrefabPaths = new();
@@ -56,6 +62,7 @@ namespace ArknightsACT.Editor.Effects
                 throw new InvalidOperationException("frames 目录中没有 skill_* 特效文件夹。");
 
             var copiedFolders = new List<string>();
+            var fpsByDestination = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
             foreach (var sourceFolder in sourceFolders)
             {
                 var effectName = SanitizeName(Path.GetFileName(sourceFolder), "Effect");
@@ -64,6 +71,7 @@ namespace ArknightsACT.Editor.Effects
                 EnsureAssetFolder(destination);
                 CopyFrames(sourceFolder, destination, result);
                 copiedFolders.Add(destination);
+                fpsByDestination[destination] = ReadSourceFps(sourceFolder);
             }
 
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
@@ -89,9 +97,12 @@ namespace ArknightsACT.Editor.Effects
                 DeleteAssetIfExists(controllerPath);
                 DeleteAssetIfExists(prefabPath);
 
-                var clip = CreateClip(clipPath, sprites, loop);
+                var fps = fpsByDestination.TryGetValue(destination, out var sourceFps)
+                    ? sourceFps
+                    : DefaultFps;
+                var clip = CreateClip(clipPath, sprites, loop, fps);
                 var controller = CreateController(controllerPath, clip);
-                CreatePrefab(prefabPath, effectName, sprites[0], material, controller, sprites.Length, loop);
+                CreatePrefab(prefabPath, effectName, sprites[0], material, controller, sprites.Length, loop, fps);
                 result.PrefabPaths.Add(prefabPath);
                 result.ImportedEffects++;
             }
@@ -110,12 +121,15 @@ namespace ArknightsACT.Editor.Effects
                 throw new ArgumentNullException(nameof(sourceFolders));
 
             var folders = sourceFolders
-                .Where(path => !string.IsNullOrWhiteSpace(path) && Directory.Exists(path))
+                .Where(path => !string.IsNullOrWhiteSpace(path))
+                .Select(path => Path.GetFullPath(path.Trim()))
+                .Where(HasAnimationFrames)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
             if (folders.Length == 0)
-                throw new InvalidOperationException("没有找到指定的特效帧目录。");
+                throw new InvalidOperationException(
+                    "没有找到包含 f<number>.png 动画帧的特效目录。请检查源目录路径和帧文件名。");
 
             packageName = SanitizeName(packageName, "Imported");
             outputRoot = NormalizeAssetPath(string.IsNullOrWhiteSpace(outputRoot) ? DefaultOutputRoot : outputRoot);
@@ -132,6 +146,7 @@ namespace ArknightsACT.Editor.Effects
             };
 
             var copiedFolders = new List<string>();
+            var fpsByDestination = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
             foreach (var sourceFolder in folders)
             {
                 var effectName = SanitizeName(Path.GetFileName(sourceFolder), "Effect");
@@ -139,6 +154,7 @@ namespace ArknightsACT.Editor.Effects
                 EnsureAssetFolder(destination);
                 CopyFrames(sourceFolder, destination, result);
                 copiedFolders.Add(destination);
+                fpsByDestination[destination] = ReadSourceFps(sourceFolder);
             }
 
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
@@ -158,9 +174,12 @@ namespace ArknightsACT.Editor.Effects
                 DeleteAssetIfExists(controllerPath);
                 DeleteAssetIfExists(prefabPath);
 
-                var clip = CreateClip(clipPath, sprites, loop);
+                var fps = fpsByDestination.TryGetValue(destination, out var sourceFps)
+                    ? sourceFps
+                    : DefaultFps;
+                var clip = CreateClip(clipPath, sprites, loop, fps);
                 var controller = CreateController(controllerPath, clip);
-                CreatePrefab(prefabPath, effectName, sprites[0], material, controller, sprites.Length, loop);
+                CreatePrefab(prefabPath, effectName, sprites[0], material, controller, sprites.Length, loop, fps);
                 result.PrefabPaths.Add(prefabPath);
                 result.ImportedEffects++;
             }
@@ -240,6 +259,48 @@ namespace ArknightsACT.Editor.Effects
             return true;
         }
 
+        private static bool HasAnimationFrames(string folder)
+        {
+            try
+            {
+                return Directory.GetFiles(folder, "*.png", SearchOption.TopDirectoryOnly)
+                    .Any(IsAnimationFrameFile);
+            }
+            catch (IOException)
+            {
+                return false;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return false;
+            }
+        }
+
+        internal static float ReadSourceFps(string sourceFolder)
+        {
+            if (string.IsNullOrWhiteSpace(sourceFolder))
+                return DefaultFps;
+
+            var timingPath = Path.Combine(sourceFolder, "timing.json");
+            if (!File.Exists(timingPath))
+                return DefaultFps;
+
+            try
+            {
+                var metadata = JsonUtility.FromJson<TimingMetadata>(File.ReadAllText(timingPath));
+                return metadata != null && metadata.fps > 0f
+                    ? Mathf.Clamp(metadata.fps, 1f, 120f)
+                    : DefaultFps;
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning(
+                    "[ArknightsACT/FX] Failed to read timing FPS from " + timingPath + ": " +
+                    exception.GetBaseException().Message);
+                return DefaultFps;
+            }
+        }
+
         private static Sprite[] ImportSprites(string folder)
         {
             var paths = AssetDatabase.FindAssets("t:Texture2D", new[] { folder })
@@ -268,22 +329,27 @@ namespace ArknightsACT.Editor.Effects
                 .ToArray();
         }
 
-        private static AnimationClip CreateClip(string path, Sprite[] sprites, bool loop)
+        private static AnimationClip CreateClip(
+            string path,
+            Sprite[] sprites,
+            bool loop,
+            float fps)
         {
+            fps = Mathf.Clamp(fps, 1f, 120f);
             var clip = new AnimationClip
             {
                 name = Path.GetFileNameWithoutExtension(path),
-                frameRate = DefaultFps,
+                frameRate = fps,
                 wrapMode = loop ? WrapMode.Loop : WrapMode.Once
             };
             var keys = new ObjectReferenceKeyframe[sprites.Length];
             for (var i = 0; i < sprites.Length; i++)
-                keys[i] = new ObjectReferenceKeyframe { time = i / DefaultFps, value = sprites[i] };
+                keys[i] = new ObjectReferenceKeyframe { time = i / fps, value = sprites[i] };
             var binding = EditorCurveBinding.PPtrCurve(string.Empty, typeof(SpriteRenderer), "m_Sprite");
             AnimationUtility.SetObjectReferenceCurve(clip, binding, keys);
             var settings = AnimationUtility.GetAnimationClipSettings(clip);
             settings.loopTime = loop;
-            settings.stopTime = sprites.Length / DefaultFps;
+            settings.stopTime = sprites.Length / fps;
             AnimationUtility.SetAnimationClipSettings(clip, settings);
             AssetDatabase.CreateAsset(clip, path);
             return clip;
@@ -307,7 +373,8 @@ namespace ArknightsACT.Editor.Effects
             Material material,
             AnimatorController controller,
             int frameCount,
-            bool loop)
+            bool loop,
+            float fps)
         {
             var root = new GameObject("FX_" + effectName);
             var renderer = root.AddComponent<SpriteRenderer>();
@@ -327,7 +394,7 @@ namespace ArknightsACT.Editor.Effects
                 : ExtractedFrameFxPlayback.DefaultPlaybackSpeed;
             playback.Configure(
                 animator,
-                frameCount / DefaultFps,
+                frameCount / Mathf.Clamp(fps, 1f, 120f),
                 loop,
                 playbackSpeed);
 

@@ -5,9 +5,11 @@ using ArknightsACT.Editor.PRTS;
 using ArknightsACT.Gameplay.CameraSystem;
 using ArknightsACT.Gameplay.Enemies;
 using ArknightsACT.Gameplay.Feedback;
+using ArknightsACT.Gameplay.Facilities;
 using ArknightsACT.Gameplay.Presentation;
 using ArknightsACT.Gameplay.Roguelite.Progression;
 using ArknightsACT.Gameplay.Rooms;
+using UnityEditor;
 using UnityEngine;
 
 namespace ArknightsACT.Editor
@@ -58,6 +60,29 @@ namespace ArknightsACT.Editor
             return templates;
         }
 
+        public static TrainingDummyFacility CreateTrainingDummy(Transform playerSpawn)
+        {
+            var root = new GameObject("[TrainingDummyFacility]");
+            var facility = root.AddComponent<TrainingDummyFacility>();
+            var spawnPosition = playerSpawn != null ? playerSpawn.position : Vector3.zero;
+            var motor = playerSpawn != null
+                ? playerSpawn.GetComponent<ArknightsACT.Gameplay.Characters.PlayerMotor25D>()
+                : null;
+            var forward = motor != null ? motor.PlanarForward : Vector3.right;
+            forward.y = 0f;
+            if (forward.sqrMagnitude < 0.001f)
+                forward = Vector3.right;
+
+            facility.Configure(
+                spawnPosition +
+                forward.normalized * TrainingDummyFacility.SpawnTestDistance +
+                Vector3.up * 0.03f,
+                AssetDatabase.LoadAssetAtPath<GameObject>(
+                    "Assets/_Game/Generated/PRTS/Prefabs/enemy_1006_shield.prefab"),
+                showBar: true);
+            return facility;
+        }
+
         public static PrototypeRoomLoopController CreateRoomLoop(Transform player, GameObject[] enemyTemplates)
         {
             var go = new GameObject("[RoomLoop]");
@@ -103,6 +128,26 @@ namespace ArknightsACT.Editor
 
             var entity = go.GetComponent<CombatEntity>() ?? go.AddComponent<CombatEntity>();
             entity.SetTeam(Team.Enemy);
+
+            var stats = go.GetComponent<CombatStats>() ?? go.AddComponent<CombatStats>();
+            stats.SetBasePhysicalDefense(healthOverride.HasValue ? 4f : ResolveDefense(archetype));
+            stats.SetBaseArtsResistance(healthOverride.HasValue ? 10f : ResolveResistance(archetype));
+
+            if (healthOverride.HasValue)
+            {
+                var resistance = go.GetComponent<StatusResistanceProfile>() ??
+                                 go.AddComponent<StatusResistanceProfile>();
+                resistance.ClearRules();
+                resistance.ConfigureTagRule(
+                    CombatStatusTags.HardCrowdControl,
+                    immune: false,
+                    durationMultiplier: 0.35f);
+                resistance.ConfigureTagRule(
+                    CombatStatusTags.MovementImpair,
+                    immune: false,
+                    durationMultiplier: 0.65f);
+                resistance.ConfigureIdRule(CombatStatusIds.Disarm, immune: true);
+            }
 
             var experience = go.AddComponent<EnemyExperienceReward>();
             experience.Configure(healthOverride.HasValue ? 120 : ResolveExperience(archetype));

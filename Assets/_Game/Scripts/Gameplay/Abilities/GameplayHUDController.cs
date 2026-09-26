@@ -1,4 +1,6 @@
+using System.Text;
 using ArknightsACT.Combat;
+using ArknightsACT.Combat.Status;
 using ArknightsACT.Gameplay.Characters;
 using ArknightsACT.Gameplay.Roguelite.Collectibles;
 using ArknightsACT.Gameplay.Roguelite.Routing;
@@ -30,6 +32,7 @@ namespace ArknightsACT.Gameplay.Abilities
             public bool LastReady;
             public bool LastCasting;
             public bool LastActive;
+            public string LastActiveValue = string.Empty;
         }
 
         private static readonly Color Panel = new(0.025f, 0.035f, 0.043f, 0.48f);
@@ -46,6 +49,7 @@ namespace ArknightsACT.Gameplay.Abilities
 
         private PlayerSkillController _skills;
         private Health _health;
+        private StatusController _status;
         private CollectibleInventory _collectibles;
         private ScavengingInventory25D _scavenging;
         private RogueliteRunState _runState;
@@ -61,7 +65,9 @@ namespace ArknightsACT.Gameplay.Abilities
         private CanvasGroup _spFeedbackGroup;
         private Text _backpackValue;
         private Text _ingotValue;
+        private Text _statusValue;
         private float _spFeedbackUntil;
+        private string _lastStatusText = string.Empty;
 
         private int _lastHp = int.MinValue;
         private int _lastMaxHp = int.MinValue;
@@ -74,6 +80,7 @@ namespace ArknightsACT.Gameplay.Abilities
         {
             _skills = GetComponent<PlayerSkillController>();
             _health = GetComponent<Health>();
+            _status = GetComponent<StatusController>();
             _collectibles = GetComponent<CollectibleInventory>();
             _scavenging = GetComponent<ScavengingInventory25D>();
             Build();
@@ -97,6 +104,7 @@ namespace ArknightsACT.Gameplay.Abilities
             AttachRuntimeSources();
             RefreshHealth(force: true);
             RefreshSkills(force: true);
+            RefreshStatuses(force: true);
             RefreshBackpack(force: true);
             RefreshIngots(force: true);
         }
@@ -106,6 +114,7 @@ namespace ArknightsACT.Gameplay.Abilities
             AttachRuntimeSources();
             RefreshHealth(force: true);
             RefreshSkills(force: true);
+            RefreshStatuses(force: true);
             RefreshBackpack(force: true);
             RefreshIngots(force: true);
         }
@@ -153,6 +162,7 @@ namespace ArknightsACT.Gameplay.Abilities
             // emitting an event in older content.
             RefreshHealth(force: false);
             RefreshSkills(force: false);
+            RefreshStatuses(force: false);
             RefreshBackpack(force: false);
             RefreshIngots(force: false);
             UpdateSkillPointFeedback();
@@ -225,6 +235,70 @@ namespace ArknightsACT.Gameplay.Abilities
             _ingotValue.text = $"源石锭  {ingots}";
         }
 
+        private void RefreshStatuses(bool force)
+        {
+            if (_statusValue == null)
+                return;
+
+            var builder = new StringBuilder(96);
+            if (_status != null)
+            {
+                var shown = 0;
+                foreach (var instance in _status.ActiveStatuses)
+                {
+                    if (instance?.Definition == null)
+                        continue;
+                    if (shown >= 4)
+                    {
+                        builder.Append("  …");
+                        break;
+                    }
+
+                    if (builder.Length > 0)
+                        builder.Append("  ");
+                    builder.Append(StatusDisplayName(instance.Id));
+                    if (instance.Stacks > 1)
+                        builder.Append('×').Append(instance.Stacks);
+                    var remaining = Mathf.Max(0f, instance.ExpiresAt - Time.time);
+                    if (remaining > 0.05f)
+                        builder.Append(' ').Append(remaining.ToString("0.0")).Append('s');
+                    shown++;
+                }
+            }
+
+            var value = builder.ToString();
+            if (!force && string.Equals(value, _lastStatusText, System.StringComparison.Ordinal))
+                return;
+
+            _lastStatusText = value;
+            _statusValue.text = value;
+            if (_statusValue.transform.parent != null)
+                _statusValue.transform.parent.gameObject.SetActive(!string.IsNullOrEmpty(value));
+        }
+
+        private static string StatusDisplayName(string id)
+        {
+            return id switch
+            {
+                CombatStatusIds.Cold => "寒冷",
+                CombatStatusIds.Freeze => "冻结",
+                CombatStatusIds.Burn => "灼烧",
+                CombatStatusIds.Disarm => "缴械",
+                CombatStatusIds.Silence => "沉默",
+                CombatStatusIds.Stun => "晕眩",
+                CombatStatusIds.Root => "束缚",
+                CombatStatusIds.Slow => "减速",
+                CombatStatusIds.AttackSlow => "攻速↓",
+                CombatStatusIds.DefenseDown => "防御↓",
+                CombatStatusIds.ResistanceDown => "法抗↓",
+                CombatStatusIds.Fragile => "脆弱",
+                CombatStatusIds.Weaken => "虚弱",
+                CombatStatusIds.Shock => "震荡",
+                CombatStatusIds.Ink => "墨染",
+                _ => id
+            };
+        }
+
         private void UpdateSkillPointFeedback()
         {
             if (_spFeedbackGroup == null || _spFeedbackGroup.alpha <= 0f)
@@ -275,10 +349,7 @@ namespace ArknightsACT.Gameplay.Abilities
         }
 
         private static bool IsReady(IPlayerSkill skill) =>
-            skill != null &&
-            !skill.IsCasting &&
-            !(skill is IPlayerSkillActiveState state && state.IsActive) &&
-            skill.SkillPointRatio >= 0.999f;
+            PlayerSkillLifecycleUtility.IsReady(skill);
 
         private void RefreshSkill(SkillSlotView view, IPlayerSkill skill, string key, bool force)
         {
@@ -293,8 +364,10 @@ namespace ArknightsACT.Gameplay.Abilities
                 return;
             }
 
-            var active = skill is IPlayerSkillActiveState activeState && activeState.IsActive;
+            var active = PlayerSkillLifecycleUtility.IsActive(skill);
             var activeChanged = view.LastActive != active;
+            var activeValue = active ? PlayerSkillLifecycleUtility.GetActiveHudValue(skill) : string.Empty;
+            var activeValueChanged = !string.Equals(view.LastActiveValue, activeValue, System.StringComparison.Ordinal);
             var ready = IsReady(skill);
             var cost = Mathf.Max(1, Mathf.RoundToInt(skill.SkillPointCost));
             var current = ready
@@ -302,11 +375,12 @@ namespace ArknightsACT.Gameplay.Abilities
                 : Mathf.Clamp(Mathf.FloorToInt(skill.SkillPoints + 0.0001f), 0, Mathf.Max(0, cost - 1));
             var casting = skill.IsCasting;
 
-            if (force || view.LastCurrent != current || view.LastCost != cost || activeChanged)
+            if (force || view.LastCurrent != current || view.LastCost != cost || activeChanged || activeValueChanged)
             {
                 view.LastCurrent = current;
                 view.LastCost = cost;
-                view.Value.text = active ? "ACTIVE" : $"{current} / {cost}";
+                view.LastActiveValue = activeValue;
+                view.Value.text = active ? activeValue : $"{current} / {cost}";
                 var ratio = active ? 1f : Mathf.Clamp01(current / (float)cost);
                 SetHorizontalFill(view.Fill.rectTransform, view.FillWidth, ratio);
             }
@@ -315,7 +389,10 @@ namespace ArknightsACT.Gameplay.Abilities
             {
                 view.LastReady = ready;
                 view.LastCasting = casting;
-                view.Name.text = active ? $"{skill.DisplayName}  ACTIVE" : skill.DisplayName;
+                var lifecycleLabel = active ? PlayerSkillLifecycleUtility.GetLifecycleLabel(skill) : string.Empty;
+                view.Name.text = active && !string.IsNullOrEmpty(lifecycleLabel)
+                    ? $"{skill.DisplayName}  {lifecycleLabel}"
+                    : skill.DisplayName;
                 view.KeyText.text = key;
                 view.Fill.color = active || ready ? SpReadyYellow : SpGreen;
             }
@@ -341,7 +418,7 @@ namespace ArknightsACT.Gameplay.Abilities
             scaler.referenceResolution = new Vector2(1920f, 1080f);
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
 
-            _root = CreateRect("GameplayHUD", canvasGo.transform, 18f, 18f, 438f, 194f);
+            _root = CreateRect("GameplayHUD", canvasGo.transform, 18f, 18f, 438f, 218f);
             var flow = RogueliteGameFlowController.Instance;
             _root.SetActive(flow == null || flow.IsRunning);
             var rootImage = _root.AddComponent<Image>();
@@ -362,6 +439,7 @@ namespace ArknightsACT.Gameplay.Abilities
             BuildHealth(_root.transform, Resources.Load<Sprite>(avatarKey));
             _slot1 = BuildSkill(_root.transform, 58f, 386f, "S1", Resources.Load<Sprite>(skill1Key));
             _slot2 = BuildSkill(_root.transform, 112f, 386f, "S2", Resources.Load<Sprite>(skill2Key));
+            BuildStatusRow(_root.transform);
             BuildRunStatus(_root.transform);
             BuildSkillPointFeedback(_root.transform);
         }
@@ -430,9 +508,16 @@ namespace ArknightsACT.Gameplay.Abilities
             };
         }
 
+        private void BuildStatusRow(Transform parent)
+        {
+            var panel = CreatePanel(parent, "CombatStatus", 0f, 164f, 420f, 20f, new Color(0.025f, 0.035f, 0.043f, 0.28f));
+            _statusValue = CreateText(panel.transform, string.Empty, 9, FontStyle.Bold, Warning, 7f, 0f, 406f, 20f);
+            panel.SetActive(false);
+        }
+
         private void BuildRunStatus(Transform parent)
         {
-            var panel = CreatePanel(parent, "RunStatus", 0f, 168f, 346f, 22f, new Color(0.025f, 0.035f, 0.043f, 0.34f));
+            var panel = CreatePanel(parent, "RunStatus", 0f, 190f, 346f, 22f, new Color(0.025f, 0.035f, 0.043f, 0.34f));
             _backpackValue = CreateText(panel.transform, "B  背包  0/0", 10, FontStyle.Bold, White, 7f, 0f, 158f, 22f);
             _ingotValue = CreateText(panel.transform, "源石锭  0", 10, FontStyle.Bold, White, 174f, 0f, 164f, 22f, TextAnchor.MiddleRight);
         }

@@ -71,6 +71,9 @@ namespace ArknightsACT.Editor
             var variant = ParseSkin(skin?.SkinId);
             SchwarzExtractedFxSetup.Configure(player, variant);
             SchwarzLocalAssetBootstrap.ConfigureAudioProfile(player);
+            player.GetComponent<SchwarzSkill1>()?.ConfigureFormalLifecycle();
+            player.GetComponent<SchwarzSkill2>()?.ConfigureFormalLifecycle();
+            PlayableOperatorPrototypeComposer.ApplyFormalCombatProfile(player, 95f, 1.4f, 0f);
 #if UNITY_EDITOR
             UnityEditor.EditorUtility.SetDirty(player);
 #endif

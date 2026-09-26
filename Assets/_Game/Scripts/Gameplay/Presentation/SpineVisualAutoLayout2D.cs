@@ -60,12 +60,18 @@ namespace ArknightsACT.Gameplay.Presentation
                 return;
 
             var renderer = visualRoot.GetComponent<Renderer>() ?? visualRoot.GetComponentInChildren<Renderer>(true);
-            if (renderer == null || !renderer.enabled)
+            if (renderer == null)
             {
-                Debug.LogWarning("[ArknightsACT/Spine] No enabled renderer found for runtime layout; keeping safe scale.", this);
+                Debug.LogWarning("[ArknightsACT/Spine] No renderer found for runtime layout; keeping safe scale.", this);
                 RefreshPresentationScale();
                 return;
             }
+
+            // A presentation renderer can be intentionally hidden while another full-source
+            // BaseMotion skeleton is visible. Renderer.bounds remains usable as long as Spine
+            // continues updating its mesh, so do not reject calibration solely because
+            // renderer.enabled is false. Otherwise entering Move/Sit during the first two frames
+            // permanently leaves this presentation at safeInitialScale.
 
             var bounds = renderer.bounds;
             var height = bounds.size.y;

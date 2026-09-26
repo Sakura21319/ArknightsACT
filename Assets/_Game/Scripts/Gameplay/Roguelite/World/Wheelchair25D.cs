@@ -15,6 +15,9 @@ namespace ArknightsACT.Gameplay.Roguelite.World
     public sealed class Wheelchair25D : MonoBehaviour
     {
         private const float RearWheelRadius = .31f;
+        private const float VisualScale = 1.22f;
+        private const float RiderBackOffset = .10f;
+        private const float CameraDepthBackOffset = .16f;
         private const float MaxLeanDegrees = 14f;
 
         public bool Occupied { get; private set; }
@@ -42,17 +45,32 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         public void SyncPose(Vector3 riderPosition, Vector3 heading, float rollDistance, float leanDegrees)
         {
             if (!Occupied) return;
-            transform.position = new Vector3(riderPosition.x, riderPosition.y, riderPosition.z);
             heading.y = 0f;
+            var planarHeading = heading.sqrMagnitude > .001f
+                ? heading.normalized
+                : Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
+            if (planarHeading.sqrMagnitude < .001f)
+                planarHeading = Vector3.forward;
+
+            // Keep the larger chair slightly behind the rider root and also a little farther
+            // from the gameplay camera. The latter is important in the 2.5D view: it prevents the
+            // rear wheels/frame from depth-occluding the seated Spine body while preserving the
+            // feeling that the character is inside the seat/backrest.
+            var camera = Camera.main;
+            var cameraDepthOffset = camera != null
+                ? camera.transform.forward.normalized * CameraDepthBackOffset
+                : Vector3.zero;
+            var chairPosition = riderPosition - planarHeading * RiderBackOffset + cameraDepthOffset;
+            transform.position = new Vector3(chairPosition.x, riderPosition.y, chairPosition.z);
             if (heading.sqrMagnitude > .001f)
             {
                 _lean = Mathf.MoveTowards(_lean, Mathf.Clamp(leanDegrees, -MaxLeanDegrees, MaxLeanDegrees), 70f * Time.deltaTime);
-                var target = Quaternion.LookRotation(heading.normalized, Vector3.up) * Quaternion.Euler(0f, 0f, _lean);
+                var target = Quaternion.LookRotation(planarHeading, Vector3.up) * Quaternion.Euler(0f, 0f, _lean);
                 transform.rotation = Quaternion.Slerp(transform.rotation, target, .3f);
             }
             if (Mathf.Abs(rollDistance) > .0001f && _spinningWheels != null)
             {
-                _wheelSpin += rollDistance / RearWheelRadius * Mathf.Rad2Deg;
+                _wheelSpin += rollDistance / (RearWheelRadius * VisualScale) * Mathf.Rad2Deg;
                 var spin = Quaternion.Euler(_wheelSpin, 0f, 0f);
                 foreach (var wheel in _spinningWheels)
                     if (wheel != null)
@@ -75,6 +93,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             var root = new GameObject("Wheelchair");
             root.transform.SetParent(parent, false);
             root.transform.localPosition = localPosition;
+            root.transform.localScale = Vector3.one * VisualScale;
 
             // Neon accent: cloned from the warm window material, boosted into a bright cyan glow.
             var neon = new Material(accent != null ? accent : frame) { name = "WheelchairNeon" };

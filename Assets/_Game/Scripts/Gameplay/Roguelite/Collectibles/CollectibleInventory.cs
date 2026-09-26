@@ -402,7 +402,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Collectibles
         {
             if (_entity == null) return;
             var modifier = Mathf.Clamp(SumEffect(CollectibleEffectType.EnemyMaxHealthPercent), -0.9f, 5f);
-            var entities = FindObjectsOfType<CombatEntity>();
+            var entities = FindObjectsByType<CombatEntity>(FindObjectsSortMode.None);
             foreach (var candidate in entities)
             {
                 if (candidate == null || candidate == _entity || candidate.Health == null || candidate.Health.IsDead) continue;

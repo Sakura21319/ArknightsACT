@@ -225,6 +225,12 @@ namespace ArknightsACT.Gameplay.Combat
             if (_motor != null && !_motor.IsGrounded)
                 return;
 
+            // Ranged operators may own an explicit target-acquisition policy. Resolve the target
+            // before an attack cycle begins so animation, FX, ammo consumption and damage all use
+            // one decision. If a provider exists but has no target, do not start/consume ammo.
+            if (!TryPrepareBasicAttackTarget())
+                return;
+
             if (Time.time - _lastAttackFinishedAt > comboResetSeconds)
                 _comboIndex = 0;
 
@@ -290,6 +296,30 @@ namespace ArknightsACT.Gameplay.Combat
                 PerformHit25D(definition);
             else
                 PerformHit2D(definition);
+        }
+
+        private bool TryPrepareBasicAttackTarget()
+        {
+            var behaviours = GetComponents<MonoBehaviour>();
+            var foundProvider = false;
+            for (var i = 0; i < behaviours.Length; i++)
+            {
+                if (behaviours[i] is not IPlayerBasicAttackTargetProvider provider)
+                    continue;
+
+                foundProvider = true;
+                var acquired = provider.TryAcquireBasicAttackTarget(
+                    _entity,
+                    _motor,
+                    GetBasicAttackRangeMultiplier(),
+                    out var target);
+
+                if (acquired && target != null)
+                    return true;
+            }
+
+            // Existing melee characters have no provider and retain free attack behavior.
+            return !foundProvider;
         }
 
         private bool TryResolveCustomBasicAttack(AttackDefinition definition)

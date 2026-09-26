@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace ArknightsACT.Gameplay.Presentation
 {
@@ -18,6 +19,8 @@ namespace ArknightsACT.Gameplay.Presentation
     /// </summary>
     public sealed class SpineCharacterPresentation2D : MonoBehaviour
     {
+        public const float ImportedAnimationPlaybackSpeed = 2f;
+
         [Header("Resolved animation names")]
         [SerializeField] private string idleAnimation = "Idle";
         [SerializeField] private string moveAnimation = "Move";
@@ -74,6 +77,7 @@ namespace ArknightsACT.Gameplay.Presentation
                 visualRoot = transform;
 
             CaptureVisualBasePose();
+            ConfigureBillboardRenderers();
             TryBind();
         }
 
@@ -221,7 +225,11 @@ namespace ArknightsACT.Gameplay.Presentation
                 return false;
 
             var resolved = ResolveExact(animation) ?? animation;
-            return _animationDurations.TryGetValue(resolved, out duration) && duration > 0f;
+            if (!_animationDurations.TryGetValue(resolved, out var rawDuration) || rawDuration <= 0f)
+                return false;
+
+            duration = rawDuration / ImportedAnimationPlaybackSpeed;
+            return duration > 0f;
         }
 
         public bool SetCurrentAnimationSpeed(float speed)
@@ -242,7 +250,7 @@ namespace ArknightsACT.Gameplay.Presentation
                     entry,
                     "TimeScale",
                     "timeScale",
-                    Mathf.Max(0.01f, speed));
+                    ImportedAnimationPlaybackSpeed * Mathf.Max(0.01f, speed));
             }
             catch (Exception exception)
             {
@@ -402,7 +410,14 @@ namespace ArknightsACT.Gameplay.Presentation
 
             try
             {
-                _setAnimationMethod.Invoke(_animationState, new object[] { 0, resolved, loop });
+                var entry = _setAnimationMethod.Invoke(
+                    _animationState,
+                    new object[] { 0, resolved, loop });
+                SetFloatMember(
+                    entry,
+                    "TimeScale",
+                    "timeScale",
+                    ImportedAnimationPlaybackSpeed);
                 return true;
             }
             catch (TargetInvocationException exception)
@@ -619,7 +634,9 @@ namespace ArknightsACT.Gameplay.Presentation
             if (string.IsNullOrWhiteSpace(animation))
                 return 0f;
 
-            return _animationDurations.TryGetValue(animation, out var duration) ? duration : 0f;
+            return _animationDurations.TryGetValue(animation, out var duration)
+                ? duration / ImportedAnimationPlaybackSpeed
+                : 0f;
         }
 
         private static bool SetFloatMember(
@@ -665,6 +682,24 @@ namespace ArknightsACT.Gameplay.Presentation
 
             var field = type.GetField(fieldName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             return field?.GetValue(target);
+        }
+
+        private void ConfigureBillboardRenderers()
+        {
+            var root = visualRoot != null ? visualRoot : transform;
+            var renderers = root.GetComponentsInChildren<Renderer>(true);
+            for (var i = 0; i < renderers.Length; i++)
+            {
+                var renderer = renderers[i];
+                if (renderer == null)
+                    continue;
+
+                renderer.shadowCastingMode = ShadowCastingMode.Off;
+                renderer.receiveShadows = false;
+                renderer.lightProbeUsage = LightProbeUsage.Off;
+                renderer.reflectionProbeUsage = ReflectionProbeUsage.Off;
+                renderer.motionVectorGenerationMode = MotionVectorGenerationMode.ForceNoMotion;
+            }
         }
 
         private void CaptureVisualBasePose()

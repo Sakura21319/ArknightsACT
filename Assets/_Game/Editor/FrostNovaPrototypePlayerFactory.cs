@@ -92,7 +92,9 @@ namespace ArknightsACT.Editor
                 AvatarResourceKey(skin),
                 string.Empty,
                 string.Empty,
-                maxHealth: 125f);
+                maxHealth: 125f,
+                physicalDefense: 2.0f,
+                artsResistance: 20f);
 
             go.AddComponent<FrostNovaRangedBasicAttack>();
             var skill1 = go.AddComponent<FrostNovaSkill1>();

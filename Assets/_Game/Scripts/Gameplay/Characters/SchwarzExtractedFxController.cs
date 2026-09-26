@@ -152,10 +152,6 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
 
             PrewarmPersistentVisuals();
 
-            // The prototype training target used to be attached only to Ch'en's player factory.
-            // Keep it available for Schwarz FX/aim tuning as well, including already-saved scenes.
-            if (GetComponent<ArknightsACT.Gameplay.Characters.Chen.ChenTrainingDummySpawner>() == null)
-                gameObject.AddComponent<ArknightsACT.Gameplay.Characters.Chen.ChenTrainingDummySpawner>();
         }
 
         private void OnEnable()

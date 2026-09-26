@@ -6,6 +6,7 @@ using ArknightsACT.Gameplay.Abilities;
 using ArknightsACT.Gameplay.Combat;
 using ArknightsACT.Gameplay.Characters;
 using ArknightsACT.Gameplay.Enemies;
+using ArknightsACT.Gameplay.Roguelite.Routing;
 using UnityEngine;
 
 namespace ArknightsACT.Gameplay.Audio
@@ -25,6 +26,12 @@ namespace ArknightsACT.Gameplay.Audio
         [SerializeField] private AudioClip bgmLoop;
         [SerializeField, Range(0f, 1f)] private float bgmVolume = 0.30f;
         [SerializeField, Range(0.1f, 1f)] private float voiceDuckMultiplier = 0.56f;
+
+        [Header("BGM Playlist")]
+        [SerializeField] private AudioClip[] uiBgmIntros;
+        [SerializeField] private AudioClip[] uiBgmLoops;
+        [SerializeField] private AudioClip[] mapBgmIntros;
+        [SerializeField] private AudioClip[] mapBgmLoops;
 
         [Header("Skill SFX")]
         [SerializeField] private AudioClip skill1Sfx;
@@ -74,6 +81,17 @@ namespace ArknightsACT.Gameplay.Audio
         private Transform _audioProfileOwner;
         private int _lastSkill1Voice = -1;
         private int _lastSkill2Voice = -1;
+        private int _lastUiBgm = -1;
+        private int _lastMapBgm = -1;
+        private RogueliteGameFlowController _gameFlow;
+        private BgmGroup _activeBgmGroup;
+
+        private enum BgmGroup
+        {
+            None,
+            Ui,
+            Map
+        }
 
         private sealed class EnemyBinding
         {
@@ -118,6 +136,28 @@ namespace ArknightsACT.Gameplay.Audio
             ApplyOperatorAudioProfile(player);
         }
 
+        public void ConfigureBgmPlaylist(
+            AudioClip[] interfaceIntros,
+            AudioClip[] interfaceLoops,
+            AudioClip[] mapIntros,
+            AudioClip[] mapLoops)
+        {
+            // A legacy serialized fallback track may already be playing when the scene is
+            // reconfigured. Stop it explicitly before replacing the playlist; otherwise the old
+            // BGM can continue underneath the newly scheduled sources and make the switch seem
+            // ineffective.
+            StopBackgroundMusic();
+
+            uiBgmIntros = interfaceIntros;
+            uiBgmLoops = interfaceLoops;
+            mapBgmIntros = mapIntros;
+            mapBgmLoops = mapLoops;
+            _activeBgmGroup = BgmGroup.None;
+
+            if (isActiveAndEnabled)
+                StartBackgroundMusic();
+        }
+
         private void Awake()
         {
             EnsureSources();
@@ -126,6 +166,7 @@ namespace ArknightsACT.Gameplay.Audio
         private void OnEnable()
         {
             EnsureSources();
+            BindGameFlow();
             if (PlayerRuntimeContext.Instance != null)
                 PlayerRuntimeContext.Instance.ActivePlayerChanged += OnActivePlayerChanged;
             ResolveAndSubscribePlayer();
@@ -136,6 +177,7 @@ namespace ArknightsACT.Gameplay.Audio
 
         private void Start()
         {
+            BindGameFlow();
             ResolveAndSubscribePlayer();
             RefreshEnemyBindings(force: true);
             StartBackgroundMusic();
@@ -144,6 +186,7 @@ namespace ArknightsACT.Gameplay.Audio
 
         private void Update()
         {
+            BindGameFlow();
             ResolveAndSubscribePlayer();
             RefreshEnemyBindings(force: false);
         }
@@ -483,35 +526,163 @@ namespace ArknightsACT.Gameplay.Audio
                 return;
             EnsureSources();
 
-            if (bgmIntro == null && bgmLoop == null)
+            var group = ResolveBgmGroup();
+            _activeBgmGroup = group;
+            if (TrySelectBgm(group, out var playlistIntro, out var playlistLoop))
+            {
+                PlayBackgroundMusic(playlistIntro, playlistLoop);
+                return;
+            }
+
+            // Once a playlist is configured, never silently fall back to the old prototype
+            // track. A missing playlist entry should be obvious instead of masking configuration
+            // problems with the legacy BGM.
+            if (HasPairedTrack(uiBgmIntros, uiBgmLoops) || HasPairedTrack(mapBgmIntros, mapBgmLoops))
+                return;
+
+            PlayBackgroundMusic(bgmIntro, bgmLoop);
+        }
+
+        private void SwitchBgmGroup(BgmGroup group)
+        {
+            if (group == BgmGroup.None)
+                group = BgmGroup.Ui;
+            if (_activeBgmGroup == group && _bgmStarted)
+                return;
+
+            StopBackgroundMusic();
+            _activeBgmGroup = group;
+            if (TrySelectBgm(group, out var playlistIntro, out var playlistLoop))
+            {
+                PlayBackgroundMusic(playlistIntro, playlistLoop);
+                return;
+            }
+
+            if (HasPairedTrack(uiBgmIntros, uiBgmLoops) || HasPairedTrack(mapBgmIntros, mapBgmLoops))
+                return;
+
+            PlayBackgroundMusic(bgmIntro, bgmLoop);
+        }
+
+        private void PlayBackgroundMusic(AudioClip intro, AudioClip loop)
+        {
+            if (intro == null && loop == null)
                 return;
 
             _bgmStarted = true;
             SetBgmGain(1f);
 
-            if (bgmIntro != null && bgmLoop != null)
+            if (intro != null && loop != null)
             {
                 var startDsp = AudioSettings.dspTime + 0.12d;
-                _bgmIntroSource.clip = bgmIntro;
+                _bgmIntroSource.clip = intro;
                 _bgmIntroSource.loop = false;
-                _bgmLoopSource.clip = bgmLoop;
+                _bgmLoopSource.clip = loop;
                 _bgmLoopSource.loop = true;
                 _bgmIntroSource.PlayScheduled(startDsp);
-                _bgmLoopSource.PlayScheduled(startDsp + bgmIntro.length);
+                _bgmLoopSource.PlayScheduled(startDsp + intro.length);
                 return;
             }
 
-            if (bgmLoop != null)
+            if (loop != null)
             {
-                _bgmLoopSource.clip = bgmLoop;
+                _bgmLoopSource.clip = loop;
                 _bgmLoopSource.loop = true;
                 _bgmLoopSource.Play();
                 return;
             }
 
-            _bgmIntroSource.clip = bgmIntro;
+            _bgmIntroSource.clip = intro;
             _bgmIntroSource.loop = false;
             _bgmIntroSource.Play();
+        }
+
+        private void StopBackgroundMusic()
+        {
+            EnsureSources();
+            _bgmIntroSource.Stop();
+            _bgmLoopSource.Stop();
+            _bgmIntroSource.clip = null;
+            _bgmLoopSource.clip = null;
+            _bgmStarted = false;
+        }
+
+        private bool TrySelectBgm(BgmGroup group, out AudioClip intro, out AudioClip loop)
+        {
+            intro = null;
+            loop = null;
+            var intros = group == BgmGroup.Map ? mapBgmIntros : uiBgmIntros;
+            var loops = group == BgmGroup.Map ? mapBgmLoops : uiBgmLoops;
+            var count = Mathf.Min(intros != null ? intros.Length : 0, loops != null ? loops.Length : 0);
+            if (count <= 0)
+                return false;
+
+            var last = group == BgmGroup.Map ? _lastMapBgm : _lastUiBgm;
+            var start = UnityEngine.Random.Range(0, count);
+            var index = -1;
+            for (var offset = 0; offset < count; offset++)
+            {
+                var candidate = (start + offset) % count;
+                if (intros[candidate] != null && loops[candidate] != null && candidate != last)
+                {
+                    index = candidate;
+                    break;
+                }
+            }
+
+            if (index < 0)
+            {
+                for (var i = 0; i < count; i++)
+                {
+                    if (intros[i] == null || loops[i] == null)
+                        continue;
+                    index = i;
+                    break;
+                }
+            }
+
+            if (index < 0)
+                return false;
+
+            if (group == BgmGroup.Map)
+                _lastMapBgm = index;
+            else
+                _lastUiBgm = index;
+            intro = intros[index];
+            loop = loops[index];
+            Debug.Log(
+                $"[ArknightsACT/Audio/BGM] group={group}, index={index}, " +
+                $"intro='{(intro != null ? intro.name : "<none>")}', loop='{(loop != null ? loop.name : "<none>")}'.",
+                this);
+            return true;
+        }
+
+        private BgmGroup ResolveBgmGroup()
+        {
+            return _gameFlow != null && _gameFlow.State == RogueliteShellState.Running
+                ? BgmGroup.Map
+                : BgmGroup.Ui;
+        }
+
+        private void BindGameFlow()
+        {
+            var flow = RogueliteGameFlowController.Instance ?? FindFirstObjectByType<RogueliteGameFlowController>();
+            if (flow == _gameFlow)
+                return;
+
+            if (_gameFlow != null)
+                _gameFlow.StateChanged -= OnGameFlowStateChanged;
+            _gameFlow = flow;
+            if (_gameFlow != null)
+            {
+                _gameFlow.StateChanged += OnGameFlowStateChanged;
+                SwitchBgmGroup(ResolveBgmGroup());
+            }
+        }
+
+        private void OnGameFlowStateChanged(RogueliteShellState state)
+        {
+            SwitchBgmGroup(state == RogueliteShellState.Running ? BgmGroup.Map : BgmGroup.Ui);
         }
 
         private void SetBgmGain(float multiplier)
@@ -555,7 +726,9 @@ namespace ArknightsACT.Gameplay.Audio
             if (_warnedMissingAudio)
                 return;
 
-            var missingBgm = bgmIntro == null && bgmLoop == null;
+            var missingBgm = bgmIntro == null && bgmLoop == null &&
+                             !HasPairedTrack(uiBgmIntros, uiBgmLoops) &&
+                             !HasPairedTrack(mapBgmIntros, mapBgmLoops);
             var missingSkill = !_skillSfxOptional && (skill1Sfx == null || skill2Sfx == null);
             var missingVoice = !HasAnyClip(skill1Voices) || !HasAnyClip(skill2Voices);
             var missingCombat = !HasAnyClip(playerAttackSwings) || swordImpact == null ||
@@ -577,6 +750,17 @@ namespace ArknightsACT.Gameplay.Audio
                 return false;
             for (var i = 0; i < clips.Length; i++)
                 if (clips[i] != null)
+                    return true;
+            return false;
+        }
+
+        private static bool HasPairedTrack(AudioClip[] intros, AudioClip[] loops)
+        {
+            if (intros == null || loops == null)
+                return false;
+            var count = Mathf.Min(intros.Length, loops.Length);
+            for (var i = 0; i < count; i++)
+                if (intros[i] != null && loops[i] != null)
                     return true;
             return false;
         }
@@ -616,6 +800,9 @@ namespace ArknightsACT.Gameplay.Audio
 
         private void OnDisable()
         {
+            if (_gameFlow != null)
+                _gameFlow.StateChanged -= OnGameFlowStateChanged;
+            _gameFlow = null;
             if (PlayerRuntimeContext.Instance != null)
                 PlayerRuntimeContext.Instance.ActivePlayerChanged -= OnActivePlayerChanged;
             UnsubscribePlayer();

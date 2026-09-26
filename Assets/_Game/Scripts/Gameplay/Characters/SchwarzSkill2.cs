@@ -13,14 +13,14 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
     /// PlayerAttackController.
     /// </summary>
     [RequireComponent(typeof(CombatEntity))]
-    public sealed class SchwarzSkill2 : MonoBehaviour, IPlayerSkill, IPlayerBasicAttackModifier, IPlayerSkillActiveState, IPlayerControlLockSource, IPlayerSkillInterruptible
+    public sealed class SchwarzSkill2 : MonoBehaviour, IPlayerSkill, IPlayerBasicAttackModifier, IPlayerSkillLifecycleState, IPlayerControlLockSource, IPlayerSkillInterruptible
     {
         [SerializeField, Min(1f)] private float skillPointCost = 25f;
         [SerializeField, Min(0f)] private float initialSkillPoints = 12f;
         [SerializeField, Min(0f)] private float naturalSkillPointPerSecond = 1f;
         [SerializeField, Min(0f)] private float startupSeconds = 0.38f;
         [SerializeField, Min(0.5f)] private float buffDuration = 25f;
-        [SerializeField] private bool debugInfiniteDuration = true;
+        [SerializeField] private bool debugInfiniteDuration = false;
         [SerializeField, Min(1f)] private float basicAttackDamageMultiplier = 2.8f;
         [SerializeField, Min(1f)] private float basicAttackRangeMultiplier = 1.35f;
         [Tooltip("战术的终结会延长攻击间隔；ACT 中用攻击循环倍率近似原版 +0.4s。")]
@@ -34,6 +34,7 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
         private float _runtimeCostMultiplier = 1f;
         private Coroutine _routine;
         private SchwarzSkill1 _skill2;
+        private float _activeUntil;
 
         public int Slot => 2;
         public string DisplayName => "战术的终结";
@@ -47,6 +48,17 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
         public bool IsCasting { get; private set; }
         public bool IsBuffActive { get; private set; }
         public bool IsActive => IsBuffActive;
+        public PlayerSkillLifecycleType LifecycleType => PlayerSkillLifecycleType.Duration;
+        public float ActiveDurationSeconds => debugInfiniteDuration
+            ? float.PositiveInfinity
+            : Mathf.Max(0f, buffDuration * _runtimeDurationMultiplier);
+        public float ActiveSecondsRemaining => !IsBuffActive
+            ? 0f
+            : debugInfiniteDuration
+                ? float.PositiveInfinity
+                : Mathf.Max(0f, _activeUntil - Time.time);
+        public int AmmoRemaining => 0;
+        public int AmmoCapacity => 0;
         public bool BlocksMovement => IsCasting || IsBuffActive;
         public bool BlocksDash => IsCasting || IsBuffActive;
         public bool BlocksBasicAttack => IsBuffActive;
@@ -70,18 +82,28 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
             _skill2 = GetComponent<SchwarzSkill1>();
             if (GetComponent<SchwarzSniperModeController>() == null)
                 gameObject.AddComponent<SchwarzSniperModeController>();
-            _skillPoints = debugInfiniteDuration
-                ? SkillPointCost
-                : Mathf.Clamp(initialSkillPoints, 0f, SkillPointCost);
+            _skillPoints = Mathf.Clamp(initialSkillPoints, 0f, SkillPointCost);
+        }
+
+        private void OnEnable()
+        {
+            if (!IsBuffActive)
+                return;
+
+            if (!debugInfiniteDuration && Time.time >= _activeUntil)
+            {
+                EndActiveBuff();
+                return;
+            }
+
+            if (_routine == null)
+                _routine = StartCoroutine(WaitForBuffEnd());
         }
 
         public bool TryCast()
         {
             if (IsBuffActive)
-            {
-                CancelActiveBuff();
-                return true;
-            }
+                return false;
 
             if (IsCasting || (_skill2 != null && _skill2.IsBuffActive) ||
                 SkillPoints + 0.0001f < SkillPointCost || _entity?.Health == null || _entity.Health.IsDead)
@@ -102,8 +124,7 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
             _routine = null;
             IsCasting = false;
             IsBuffActive = false;
-            if (debugInfiniteDuration)
-                _skillPoints = SkillPointCost;
+            _activeUntil = 0f;
             BuffEnded?.Invoke();
         }
 
@@ -134,6 +155,13 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
                 GainSkillPoints(seconds * Mathf.Max(0.01f, NaturalSkillPointPerSecond));
         }
 
+        public void ConfigureFormalLifecycle()
+        {
+            debugInfiniteDuration = false;
+            if (IsBuffActive && float.IsPositiveInfinity(_activeUntil))
+                _activeUntil = Time.time + ActiveDurationSeconds;
+        }
+
         public void AddDamagePercent(float value) =>
             _runtimeDamageMultiplier = Mathf.Clamp(_runtimeDamageMultiplier + Mathf.Max(0f, value), 1f, 3.5f);
 
@@ -159,9 +187,8 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
             _runtimeRangeMultiplier = 1f;
             _runtimeDurationMultiplier = 1f;
             _runtimeCostMultiplier = 1f;
-            _skillPoints = debugInfiniteDuration
-                ? SkillPointCost
-                : Mathf.Clamp(initialSkillPoints, 0f, SkillPointCost);
+            _activeUntil = 0f;
+            _skillPoints = Mathf.Clamp(initialSkillPoints, 0f, SkillPointCost);
             if (wasActive)
                 BuffEnded?.Invoke();
         }
@@ -187,6 +214,15 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
             IsBuffActive = true;
             BuffStarted?.Invoke();
 
+            _activeUntil = debugInfiniteDuration
+                ? float.PositiveInfinity
+                : Time.time + ActiveDurationSeconds;
+
+            yield return WaitForBuffEnd();
+        }
+
+        private IEnumerator WaitForBuffEnd()
+        {
             if (debugInfiniteDuration)
             {
                 while (IsBuffActive)
@@ -194,11 +230,18 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
                 yield break;
             }
 
-            var duration = buffDuration * _runtimeDurationMultiplier;
-            if (duration > 0f)
-                yield return new WaitForSeconds(duration);
+            while (IsBuffActive && Time.time < _activeUntil)
+                yield return null;
 
+            if (IsBuffActive)
+                EndActiveBuff();
+        }
+
+        private void EndActiveBuff()
+        {
+            IsCasting = false;
             IsBuffActive = false;
+            _activeUntil = 0f;
             _routine = null;
             BuffEnded?.Invoke();
         }
@@ -209,11 +252,8 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
                 StopCoroutine(_routine);
             _routine = null;
             IsCasting = false;
-            if (IsBuffActive)
-            {
-                IsBuffActive = false;
-                BuffEnded?.Invoke();
-            }
+            // Keep the active lifecycle state when this operator is moved to reserve.
+            // Duration is absolute, so it can expire while another operator is active.
         }
     }
 }

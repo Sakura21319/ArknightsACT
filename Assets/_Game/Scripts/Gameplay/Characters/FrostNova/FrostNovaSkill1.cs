@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using ArknightsACT.Combat;
+using ArknightsACT.Combat.Status;
 using ArknightsACT.Gameplay.Characters;
 using ArknightsACT.Gameplay.Abilities;
 using UnityEngine;
@@ -9,8 +10,12 @@ namespace ArknightsACT.Gameplay.Characters.FrostNova
 {
     [DisallowMultipleComponent]
     [RequireComponent(typeof(CombatEntity))]
-    public sealed class FrostNovaSkill1 : MonoBehaviour, IPlayerSkill, IPlayerSkillInterruptible
+    public sealed class FrostNovaSkill1 : MonoBehaviour, IPlayerSkill, IPlayerSkillInterruptible, IPlayerRunResettable
     {
+        [Header("Skill points")]
+        [SerializeField, Min(1f)] private float skillPointCost = 20f;
+        [SerializeField, Min(0f)] private float initialSkillPoints = 10f;
+        [SerializeField, Min(0f)] private float naturalSkillPointPerSecond = 1f;
         [SerializeField, Min(0f)] private float startupSeconds = 0.62f;
         [SerializeField, Min(0.1f)] private float impactRadius = 4.4f;
         [SerializeField, Min(0f)] private float forwardOffset = 3.1f;
@@ -24,14 +29,17 @@ namespace ArknightsACT.Gameplay.Characters.FrostNova
         private IPlayerLocomotion _locomotion;
         private Coroutine _routine;
         private CombatEntity _lockedTarget;
+        private float _skillPoints;
 
         public int Slot => 1;
         public string DisplayName => displayName;
-        public float SkillPointCost => 1f;
-        public float SkillPoints => 1f;
-        public float SkillPointRatio => 1f;
-        public float NaturalSkillPointPerSecond => 0f;
-        public float CooldownRemaining => 0f;
+        public float SkillPointCost => Mathf.Max(1f, skillPointCost);
+        public float SkillPoints => Mathf.Clamp(_skillPoints, 0f, SkillPointCost);
+        public float SkillPointRatio => Mathf.Clamp01(SkillPoints / SkillPointCost);
+        public float NaturalSkillPointPerSecond => Mathf.Max(0f, naturalSkillPointPerSecond);
+        public float CooldownRemaining => NaturalSkillPointPerSecond <= 0f
+            ? (SkillPointRatio >= 1f ? 0f : float.PositiveInfinity)
+            : Mathf.Max(0f, SkillPointCost - SkillPoints) / NaturalSkillPointPerSecond;
         public bool IsCasting { get; private set; }
         public CombatEntity LockedTarget => _lockedTarget;
 
@@ -71,11 +79,13 @@ namespace ArknightsACT.Gameplay.Characters.FrostNova
 
             _entity = GetComponent<CombatEntity>();
             _locomotion = FindLocomotion();
+            _skillPoints = Mathf.Clamp(initialSkillPoints, 0f, SkillPointCost);
         }
 
         public bool TryCast()
         {
             if (IsCasting ||
+                SkillPoints + 0.0001f < SkillPointCost ||
                 _entity?.Health == null ||
                 _entity.Health.IsDead)
                 return false;
@@ -90,6 +100,7 @@ namespace ArknightsACT.Gameplay.Characters.FrostNova
                     out _lockedTarget);
             }
 
+            _skillPoints = Mathf.Max(0f, SkillPoints - SkillPointCost);
             _routine = StartCoroutine(CastRoutine());
             return true;
         }
@@ -99,18 +110,39 @@ namespace ArknightsACT.Gameplay.Characters.FrostNova
             float recoveryMultiplier,
             float flatRecoveryPerSecond)
         {
+            if (IsCasting || deltaTime <= 0f || SkillPointRatio >= 1f)
+                return;
+
+            var perSecond = NaturalSkillPointPerSecond * Mathf.Max(0f, recoveryMultiplier) +
+                            Mathf.Max(0f, flatRecoveryPerSecond);
+            GainSkillPoints(perSecond * deltaTime);
         }
 
         public void GainSkillPoints(float amount)
         {
+            if (amount > 0f)
+                _skillPoints = Mathf.Clamp(SkillPoints + amount, 0f, SkillPointCost);
         }
 
         public void SetSkillPoints(float amount)
         {
+            _skillPoints = Mathf.Clamp(amount, 0f, SkillPointCost);
         }
 
         public void ReduceCooldown(float seconds)
         {
+            if (seconds > 0f)
+                GainSkillPoints(seconds * Mathf.Max(0.01f, NaturalSkillPointPerSecond));
+        }
+
+        public void ResetForNewRun()
+        {
+            if (_routine != null)
+                StopCoroutine(_routine);
+            _routine = null;
+            _lockedTarget = null;
+            IsCasting = false;
+            _skillPoints = Mathf.Clamp(initialSkillPoints, 0f, SkillPointCost);
         }
 
         public void InterruptCast()
@@ -167,7 +199,9 @@ namespace ArknightsACT.Gameplay.Characters.FrostNova
                 center,
                 impactRadius,
                 artsDamage,
-                "FrostNova_Skill1_IceCone");
+                "FrostNova_Skill1_IceCone",
+                CombatStatusIds.Cold,
+                4f);
             Impact?.Invoke(center);
 
             var presentation = GetComponent<FrostNovaPresentationDriver25D>();

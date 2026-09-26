@@ -59,7 +59,7 @@ The current runtime uses the curated 118-item scavenging database and a real 2D 
 
 Exploration tracks entered, searched, uncleared and empty buildings without revealing unknown loot. The minimap supports fog-of-war, district coloring, an expanded view and navigation guidance. City generation, container distribution and the current landmark/facility layer are documented in the current Docs index.
 
-Start with [Docs/README.md](Docs/README.md) and [the project handoff](Docs/PROJECT_HANDOFF_2026_09_21.md) instead of older phase-specific handoffs.
+Start with [Docs/README.md](Docs/README.md) and the [current progress and roadmap](Docs/PROJECT_STATUS_AND_ROADMAP_2026_09_24.md). Use the detailed handoff and focused technical notes linked from the index when you need implementation context.
 
 ## Progression
 
