@@ -15,7 +15,8 @@ namespace ArknightsACT.Editor
         internal static GameObject Create25D(
             AttackDefinition[] attacks,
             Camera camera,
-            string skinId)
+            string skinId,
+            OperatorBaseStats baseStats)
         {
             var normalizedSkin = NormalizeSkinId(skinId);
             var combatDescriptor = SkadiLocalAssetBootstrap.GetCombatDescriptor(normalizedSkin);
@@ -36,9 +37,10 @@ namespace ArknightsACT.Editor
             PlayableOperatorPrototypeComposer.AddFoundation(
                 player,
                 attacks,
-                17f,
+                baseStats.Attack,
                 OperatorProfession.Guard,
                 CombatFeature.BasicAttack |
+                CombatFeature.ActiveSkills |
                 CombatFeature.Dash |
                 CombatFeature.PhysicalDamage,
                 "Skadi",
@@ -47,10 +49,17 @@ namespace ArknightsACT.Editor
                 AvatarResourceKey(normalizedSkin),
                 "UI/Skills/Skadi/s2",
                 "UI/Skills/Skadi/s3",
-                maxHealth: 120f,
-                physicalDefense: 2.0f,
-                artsResistance: 0f);
+                maxHealth: baseStats.MaxHealth,
+                physicalDefense: baseStats.PhysicalDefense,
+                artsResistance: baseStats.ArtsResistance,
+                attackInterval: baseStats.AttackInterval,
+                basicAttackRange: baseStats.BasicAttackRange,
+                skillRange: baseStats.SkillRange);
+
+            player.AddComponent<SkadiSkill1>();
+            player.AddComponent<SkadiSkill2>();
             PlayableOperatorPrototypeComposer.CompleteGameplay(player);
+            player.AddComponent<SkadiSkillAudioCue>();
             player.AddComponent<ScavengingInventory25D>();
 
             var motor = player.AddComponent<PlayerMotor25D>();
@@ -85,6 +94,7 @@ namespace ArknightsACT.Editor
             }
 
             player.AddComponent<SkadiPresentationDriver25D>();
+            SkadiLocalAssetBootstrap.ConfigurePlayer(player, normalizedSkin);
             player.AddComponent<DamageTintFlash2D>();
             player.AddComponent<WorldHealthBar2D>();
             player.AddComponent<DamageNumberEmitter2D>();

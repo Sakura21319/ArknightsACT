@@ -175,6 +175,28 @@ namespace ArknightsACT.Editor
                 skin.Skill2IconResourceKey,
                 skin.DisplayName);
 
+            if (definition.HasE2Progression)
+            {
+                var progression = player.GetComponent<OperatorProgressionController>() ??
+                                  player.AddComponent<OperatorProgressionController>();
+                progression.Configure(
+                    definition.PrtsCharacterId,
+                    definition.E2Progression,
+                    initialEliteLevel: 1,
+                    applyImmediately: false);
+                progression.ConfigureMetaProgression(definition.MetaProgression);
+            }
+
+            if (definition.HasSkillMastery)
+            {
+                var mastery = player.GetComponent<OperatorSkillMasteryController>() ??
+                              player.AddComponent<OperatorSkillMasteryController>();
+                mastery.Configure(
+                    definition.SkillMastery,
+                    definition.SkillMasteryCosts,
+                    applyLevel7: true);
+            }
+
             var safeSkinId = string.IsNullOrWhiteSpace(skin.SkinId)
                 ? "default"
                 : skin.SkinId.Replace('#', '_').Replace('/', '_');

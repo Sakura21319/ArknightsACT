@@ -16,7 +16,8 @@ namespace ArknightsACT.Editor
         public static GameObject Create25D(
             AttackDefinition[] attacks,
             Camera camera,
-            FrostNovaSkinVariant skin)
+            FrostNovaSkinVariant skin,
+            OperatorBaseStats baseStats)
         {
             var go = new GameObject("Player_FrostNova_" + skin.ToSkinId());
             go.SetActive(false);
@@ -30,7 +31,7 @@ namespace ArknightsACT.Editor
             controller.stepOffset = 0.28f;
             controller.slopeLimit = 45f;
 
-            AddSharedGameplay(go, attacks, skin);
+            AddSharedGameplay(go, attacks, skin, baseStats);
             go.AddComponent<ScavengingInventory25D>();
 
             var motor = go.AddComponent<PlayerMotor25D>();
@@ -75,12 +76,13 @@ namespace ArknightsACT.Editor
         private static void AddSharedGameplay(
             GameObject go,
             AttackDefinition[] attacks,
-            FrostNovaSkinVariant skin)
+            FrostNovaSkinVariant skin,
+            OperatorBaseStats baseStats)
         {
             PlayableOperatorPrototypeComposer.AddFoundation(
                 go,
                 attacks,
-                16f,
+                baseStats.Attack,
                 OperatorProfession.Caster,
                 CombatFeature.BasicAttack |
                 CombatFeature.ActiveSkills |
@@ -92,9 +94,12 @@ namespace ArknightsACT.Editor
                 AvatarResourceKey(skin),
                 string.Empty,
                 string.Empty,
-                maxHealth: 125f,
-                physicalDefense: 2.0f,
-                artsResistance: 20f);
+                maxHealth: baseStats.MaxHealth,
+                physicalDefense: baseStats.PhysicalDefense,
+                artsResistance: baseStats.ArtsResistance,
+                attackInterval: baseStats.AttackInterval,
+                basicAttackRange: baseStats.BasicAttackRange,
+                skillRange: baseStats.SkillRange);
 
             go.AddComponent<FrostNovaRangedBasicAttack>();
             var skill1 = go.AddComponent<FrostNovaSkill1>();

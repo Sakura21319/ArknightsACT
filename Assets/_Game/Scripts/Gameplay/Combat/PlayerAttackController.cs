@@ -6,7 +6,6 @@ using ArknightsACT.Gameplay.Abilities;
 using ArknightsACT.Gameplay.Characters;
 using ArknightsACT.Gameplay.Feedback;
 using ArknightsACT.Gameplay.Input;
-using ArknightsACT.Gameplay.Roguelite.Collectibles;
 using UnityEngine;
 
 namespace ArknightsACT.Gameplay.Combat
@@ -26,7 +25,7 @@ namespace ArknightsACT.Gameplay.Combat
         private PlayerDashController _dash;
         private IPlayerInputSource _input;
         private PlayerSkillController _skills;
-        private CollectibleInventory _collectibles;
+        private OperatorRuntimeStats _runtimeStats;
         private IPlayerBasicAttackMovementLockProvider _movementLockProvider;
         private Coroutine _attackRoutine;
         private AttackDefinition _currentDefinition;
@@ -41,6 +40,7 @@ namespace ArknightsACT.Gameplay.Combat
         public int CurrentComboIndex { get; private set; }
         public string CurrentAttackSourceId { get; private set; } = string.Empty;
         public string LastHitSourceId { get; private set; } = string.Empty;
+        public float ConfiguredBaseAttack => baseAttack;
 
         public bool IsMovementLocked
         {
@@ -82,8 +82,13 @@ namespace ArknightsACT.Gameplay.Combat
             _dash = GetComponent<PlayerDashController>();
             _input = GetComponent<IPlayerInputSource>();
             _skills = GetComponent<PlayerSkillController>();
-            _collectibles = GetComponent<CollectibleInventory>();
+            _runtimeStats = GetComponent<OperatorRuntimeStats>();
             _movementLockProvider = GetComponent<IPlayerBasicAttackMovementLockProvider>();
+        }
+
+        private void Start()
+        {
+            EnsureRuntimeStatsMigration();
         }
 
         private void OnEnable()
@@ -127,6 +132,8 @@ namespace ArknightsACT.Gameplay.Combat
         {
             combo = definitions;
             baseAttack = Mathf.Max(0f, attackValue);
+            _runtimeStats = GetComponent<OperatorRuntimeStats>();
+            _runtimeStats?.SetBaseAttack(baseAttack);
         }
 
         public bool TryManualTargetAttack(
@@ -146,7 +153,7 @@ namespace ArknightsACT.Gameplay.Combat
                 return false;
 
             var definition = combo != null && combo.Length > 0 ? combo[0] : null;
-            var finalDamage = baseAttack * Mathf.Max(0f, damageMultiplier) * GetBasicAttackDamageMultiplier();
+            var finalDamage = ResolveBaseAttack() * Mathf.Max(0f, damageMultiplier) * GetBasicAttackDamageMultiplier();
             var resolvedSourceId = string.IsNullOrWhiteSpace(sourceId) ? "ManualBasicAttack" : sourceId;
             CurrentAttackSourceId = resolvedSourceId;
             AttackStarted?.Invoke(0);
@@ -243,12 +250,12 @@ namespace ArknightsACT.Gameplay.Combat
             _currentDefinition = definition;
             _attackStartedAt = Time.time;
             _attackQueued = false;
-            var attackSpeedBonus = _collectibles != null
-                ? _collectibles.GetEffectTotal(CollectibleEffectType.AttackSpeedPercent)
-                : 0f;
-            var statAttackSpeed = _entity?.Stats != null ? _entity.Stats.AttackSpeedMultiplier : 1f;
-            var timingMultiplier = GetBasicAttackTimingMultiplier() /
-                                   Mathf.Max(0.1f, (1f + attackSpeedBonus) * statAttackSpeed);
+            if (_runtimeStats == null)
+                EnsureRuntimeStatsMigration();
+            var statTimingMultiplier = _runtimeStats != null && _runtimeStats.BaseAttackInterval > 0.01f
+                ? _runtimeStats.AttackInterval / _runtimeStats.BaseAttackInterval
+                : 1f / Mathf.Max(0.05f, _entity?.Stats != null ? _entity.Stats.AttackSpeedMultiplier : 1f);
+            var timingMultiplier = GetBasicAttackTimingMultiplier() * Mathf.Max(0.05f, statTimingMultiplier);
             var customImpactSeconds = GetBasicAttackImpactSecondsOverride(definition);
             _currentImpactSeconds = customImpactSeconds >= 0f
                 ? customImpactSeconds
@@ -330,7 +337,7 @@ namespace ArknightsACT.Gameplay.Combat
                 if (behaviours[i] is not IPlayerBasicAttackResolver resolver)
                     continue;
 
-                var damage = baseAttack * definition.damageMultiplier * GetBasicAttackDamageMultiplier();
+                var damage = ResolveBaseAttack() * definition.damageMultiplier * GetBasicAttackDamageMultiplier();
                 var hitAny = resolver.TryResolveBasicAttack(
                     _entity,
                     definition,
@@ -402,13 +409,18 @@ namespace ArknightsACT.Gameplay.Combat
             const float closeRangeForwardDot = -0.05f;
 
             var rangeMultiplier = GetBasicAttackRangeMultiplier();
+            var forwardCenterDistance =
+                Mathf.Max(0.55f, Mathf.Abs(definition.hitboxOffset.x) * forwardCenterScale) * rangeMultiplier;
+            var forwardHalfExtent =
+                Mathf.Max(0.65f, definition.hitboxSize.x * forwardHalfExtentScale) * rangeMultiplier;
             var center = transform.position +
-                         forward * Mathf.Max(0.55f, Mathf.Abs(definition.hitboxOffset.x) * forwardCenterScale) * rangeMultiplier +
+                         forward * forwardCenterDistance +
                          Vector3.up * 0.78f;
             var halfExtents = new Vector3(
                 Mathf.Max(0.48f, definition.hitboxSize.y * lateralHalfExtentScale),
                 0.72f,
-                Mathf.Max(0.65f, definition.hitboxSize.x * forwardHalfExtentScale) * rangeMultiplier);
+                forwardHalfExtent);
+            var officialForwardReach = forwardCenterDistance + forwardHalfExtent;
             var rotation = Quaternion.LookRotation(forward, Vector3.up);
 
             // The long slim box preserves the authored sword reach. A small point-blank sphere is
@@ -441,6 +453,13 @@ namespace ArknightsACT.Gameplay.Combat
                     continue;
 
                 if (!CanHit(target, processed))
+                    continue;
+                if (!OperatorRangeUtility.ContainsBasic(
+                        this,
+                        transform.position,
+                        forward,
+                        target.transform.position,
+                        officialForwardReach))
                     continue;
                 if (Mathf.Abs(target.transform.position.y - transform.position.y) > max25DHeightDifference)
                     continue;
@@ -498,7 +517,7 @@ namespace ArknightsACT.Gameplay.Combat
                 _entity,
                 _entity,
                 target,
-                baseAttack * definition.damageMultiplier * GetBasicAttackDamageMultiplier(),
+                ResolveBaseAttack() * definition.damageMultiplier * GetBasicAttackDamageMultiplier(),
                 DamageType.Physical,
                 knockback,
                 sourceId: definition.name, tags: DamageTags.BasicAttack);
@@ -538,6 +557,45 @@ namespace ArknightsACT.Gameplay.Combat
             return false;
         }
 
+        private void EnsureRuntimeStatsMigration()
+        {
+            if (_runtimeStats != null)
+                return;
+
+            _runtimeStats = GetComponent<OperatorRuntimeStats>();
+            if (_runtimeStats != null)
+                return;
+
+            // Compatibility path for already-generated scenes. Capture the legacy values before
+            // AddComponent invokes OperatorRuntimeStats.Awake (which starts from safe defaults),
+            // then restore the original health ratio after the authoritative base profile is set.
+            var health = _entity?.Health;
+            var combatStats = _entity?.Stats;
+            var maxHealth = health != null ? health.MaxHealth : 100f;
+            var healthRatio = health != null && health.MaxHealth > 0f
+                ? Mathf.Clamp01(health.CurrentHealth / health.MaxHealth)
+                : 1f;
+            var physicalDefense = combatStats != null ? combatStats.BasePhysicalDefense : 0f;
+            var artsResistance = combatStats != null ? combatStats.BaseArtsResistance : 0f;
+
+            _runtimeStats = gameObject.AddComponent<OperatorRuntimeStats>();
+            _runtimeStats.ConfigureCore(
+                maxHealth,
+                baseAttack,
+                physicalDefense,
+                artsResistance,
+                refillHealth: false);
+            if (health != null)
+                health.SetCurrentHealth(health.MaxHealth * healthRatio);
+        }
+
+        private float ResolveBaseAttack()
+        {
+            if (_runtimeStats == null)
+                EnsureRuntimeStatsMigration();
+            return _runtimeStats != null ? _runtimeStats.Attack : baseAttack;
+        }
+
         private float GetBasicAttackDamageMultiplier()
         {
             var multiplier = 1f;
@@ -550,7 +608,11 @@ namespace ArknightsACT.Gameplay.Combat
 
         private float GetBasicAttackRangeMultiplier()
         {
-            var multiplier = 1f;
+            if (_runtimeStats == null)
+                EnsureRuntimeStatsMigration();
+            var multiplier = _runtimeStats != null
+                ? _runtimeStats.BasicAttackRangeMultiplier
+                : 1f;
             var behaviours = GetComponents<MonoBehaviour>();
             for (var i = 0; i < behaviours.Length; i++)
                 if (behaviours[i] is IPlayerBasicAttackModifier modifier)

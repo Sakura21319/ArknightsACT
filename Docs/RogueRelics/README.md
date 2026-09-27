@@ -16,7 +16,7 @@
 
 完整当前机制、数据规模、技力系统、容器/背包行为与后续工作：
 
-`../SCAVENGING_RELIC_RUNTIME_HANDOFF_2026_09_20.md`
+`../SYSTEM_03_SCAVENGING_META_UI.md`
 
 ## 维护规则
 

@@ -8,10 +8,11 @@ using UnityEngine;
 namespace ArknightsACT.Gameplay.Enemies
 {
     /// <summary>
-    /// 2.5D/XZ enemy brain for the migrated main prototype. Initial acquisition requires the
-    /// player to be inside the forward cone with clear LOS. Once alerted, the enemy can remember
-    /// the last seen position briefly and use the lightweight navigation graph to reach ramps and
-    /// upper floors instead of walking straight into walls.
+    /// 2.5D/XZ enemy brain for the migrated main prototype. Idle enemies patrol a small local
+    /// guard area instead of globally hunting the player. Initial acquisition requires the player
+    /// to enter the forward cone with clear LOS, while taking damage immediately alerts the enemy.
+    /// Once alerted, the enemy remembers the last seen position briefly and uses the lightweight
+    /// navigation graph to reach ramps and upper floors instead of walking straight into walls.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(CharacterController), typeof(CombatEntity))]
@@ -29,6 +30,12 @@ namespace ArknightsACT.Gameplay.Enemies
         [SerializeField, Range(0.35f, 1.2f)] private float visionProbeHeight = 0.62f;
         [SerializeField, Range(0.05f, 0.35f)] private float visionProbeRadius = 0.16f;
         [SerializeField] private Vector3 initialForward = Vector3.back;
+
+        [Header("Patrol")]
+        [SerializeField] private bool patrolEnabled = true;
+        [SerializeField, Min(0.5f)] private float patrolRadius = 3.4f;
+        [SerializeField, Min(0.1f)] private float patrolPauseSeconds = 1.10f;
+        [SerializeField, Range(0.2f, 1f)] private float patrolSpeedMultiplier = 0.58f;
 
         [Header("Navigation")]
         [SerializeField, Min(0.05f)] private float pathRefreshSeconds = 0.35f;
@@ -59,6 +66,8 @@ namespace ArknightsACT.Gameplay.Enemies
         private PrototypeNavigationGraph25D _navigation;
         private Vector3 _forward;
         private Vector3 _lastKnownTargetPosition;
+        private Vector3 _homePosition;
+        private Vector3 _patrolDestination;
         private Coroutine _attackRoutine;
         private int _pathIndex;
         private float _lastVisibleAt = float.NegativeInfinity;
@@ -67,7 +76,11 @@ namespace ArknightsACT.Gameplay.Enemies
         private float _nextPathRefreshAt;
         private float _verticalVelocity;
         private float _nextBlockedRecoveryAt;
+        private float _nextPatrolAt;
+        private int _patrolStep;
         private bool _hasLastKnownTarget;
+        private bool _hasPatrolDestination;
+        private bool _homeInitialized;
 
         public event Action<int> AttackStarted;
 
@@ -88,6 +101,43 @@ namespace ArknightsACT.Gameplay.Enemies
             ResetForward();
         }
 
+        public void ApplyThreatProfile(EnemyRank rank)
+        {
+            switch (rank)
+            {
+                case EnemyRank.Elite:
+                    viewDistance *= 1.20f;
+                    viewAngle = Mathf.Min(170f, viewAngle + 12f);
+                    loseSightDelay = Mathf.Max(loseSightDelay, 5.5f);
+                    patrolRadius *= 1.10f;
+                    break;
+
+                case EnemyRank.Boss:
+                    viewDistance *= 1.65f;
+                    viewAngle = Mathf.Max(viewAngle, 130f);
+                    loseSightDelay = Mathf.Max(loseSightDelay, 9f);
+                    patrolEnabled = false;
+                    break;
+            }
+        }
+
+        public void ApplyOfficialCombatStats(
+            float officialAttack,
+            float officialAttackInterval,
+            float officialMoveSpeed,
+            float officialAttackRadius)
+        {
+            attackDamage = Mathf.Max(0.1f, officialAttack);
+            attackCooldown = Mathf.Max(0.1f, officialAttackInterval);
+            moveSpeed = Mathf.Max(0.1f, officialMoveSpeed);
+
+            if (archetype == PrototypeEnemyArchetype.Ranged && officialAttackRadius > 0f)
+            {
+                preferredRange = officialAttackRadius;
+                attackRange = officialAttackRadius;
+            }
+        }
+
         private void Awake()
         {
             _controller = GetComponent<CharacterController>();
@@ -96,10 +146,25 @@ namespace ArknightsACT.Gameplay.Enemies
             ApplyArchetypeDefaults();
             InitializePrototypeMitigation();
             ResetForward();
+
+            // Legacy room/debug spawners can instantiate enemy templates without going through
+            // RogueliteStageRuntimeController. Give those enemies the normal-rank baseline too.
+            if (GetComponent<EnemyThreatProfile25D>() == null)
+                gameObject.AddComponent<EnemyThreatProfile25D>().Configure(EnemyRank.Normal);
+        }
+
+        private void OnEnable()
+        {
+            _homePosition = transform.position;
+            _homeInitialized = true;
+            _hasPatrolDestination = false;
+            _nextPatrolAt = Time.time + 0.35f;
+            DamageSystem.DamageApplied += OnDamageApplied;
         }
 
         private void OnDisable()
         {
+            DamageSystem.DamageApplied -= OnDamageApplied;
             if (_attackRoutine != null)
             {
                 StopCoroutine(_attackRoutine);
@@ -109,6 +174,7 @@ namespace ArknightsACT.Gameplay.Enemies
             _pathIndex = 0;
             IsMoving = false;
             _nextBlockedRecoveryAt = 0f;
+            _hasPatrolDestination = false;
         }
 
         private void Update()
@@ -120,7 +186,9 @@ namespace ArknightsACT.Gameplay.Enemies
             AcquirePlayerCandidate();
             if (_target == null || _target.Health == null || _target.Health.IsDead)
             {
-                ClearAlertState(clearTarget: true);
+                if (IsAlerted)
+                    ClearAlertState(clearTarget: true);
+                UpdatePatrol();
                 return;
             }
 
@@ -129,7 +197,7 @@ namespace ArknightsACT.Gameplay.Enemies
             {
                 if (!visible)
                 {
-                    IsMoving = false;
+                    UpdatePatrol();
                     return;
                 }
 
@@ -143,6 +211,7 @@ namespace ArknightsACT.Gameplay.Enemies
             else if (Time.time - _lastVisibleAt > loseSightDelay)
             {
                 ClearAlertState(clearTarget: true);
+                UpdatePatrol();
                 return;
             }
 
@@ -426,11 +495,111 @@ namespace ArknightsACT.Gameplay.Enemies
             return true;
         }
 
+        private void OnDamageApplied(DamageContext context, DamageResult result)
+        {
+            if (_entity == null || !result.Applied || context.Target != _entity)
+                return;
+
+            var attacker = context.Owner != null && context.Owner.Team == Team.Player
+                ? context.Owner
+                : context.Source;
+            if (attacker == null || attacker.Team != Team.Player || attacker.Health == null || attacker.Health.IsDead)
+                return;
+
+            _target = attacker;
+            IsAlerted = true;
+            _hasPatrolDestination = false;
+            _lastVisibleAt = Time.time;
+            _lastKnownTargetPosition = attacker.transform.position;
+            _hasLastKnownTarget = true;
+            _path.Clear();
+            _pathIndex = 0;
+        }
+
+        private void UpdatePatrol()
+        {
+            if (!patrolEnabled || _controller == null)
+            {
+                IsMoving = false;
+                return;
+            }
+
+            if (!_homeInitialized)
+            {
+                _homePosition = transform.position;
+                _homeInitialized = true;
+            }
+
+            if (PlanarDistance(transform.position, _homePosition) > patrolRadius * 1.45f)
+            {
+                _patrolDestination = _homePosition;
+                _hasPatrolDestination = true;
+            }
+
+            if (_hasPatrolDestination)
+            {
+                if (PlanarDistance(transform.position, _patrolDestination) <= 0.48f)
+                {
+                    _hasPatrolDestination = false;
+                    _nextPatrolAt = Time.time + patrolPauseSeconds;
+                    IsMoving = false;
+                    return;
+                }
+
+                var point = ResolveChasePoint(_patrolDestination);
+                FaceToward(point);
+                Move(point - transform.position, patrolSpeedMultiplier);
+                return;
+            }
+
+            if (Time.time < _nextPatrolAt)
+            {
+                IsMoving = false;
+                return;
+            }
+
+            if (TryPickPatrolDestination(out var destination))
+            {
+                _patrolDestination = destination;
+                _hasPatrolDestination = true;
+                _patrolStep++;
+            }
+            else
+            {
+                _nextPatrolAt = Time.time + patrolPauseSeconds;
+                IsMoving = false;
+            }
+        }
+
+        private bool TryPickPatrolDestination(out Vector3 destination)
+        {
+            for (var attempt = 0; attempt < 8; attempt++)
+            {
+                var angle = (_patrolStep * 137.5f + attempt * 45f) * Mathf.Deg2Rad;
+                var radiusScale = 0.55f + 0.15f * (attempt % 4);
+                var candidate = _homePosition + new Vector3(
+                    Mathf.Cos(angle) * patrolRadius * radiusScale,
+                    0f,
+                    Mathf.Sin(angle) * patrolRadius * radiusScale);
+                candidate.y = transform.position.y;
+
+                if (!HasDirectWalkPath(candidate))
+                    continue;
+
+                destination = candidate;
+                return true;
+            }
+
+            destination = transform.position;
+            return false;
+        }
+
         private void RememberVisibleTarget()
         {
             _lastVisibleAt = Time.time;
             _lastKnownTargetPosition = _target.transform.position;
             _hasLastKnownTarget = true;
+            _hasPatrolDestination = false;
         }
 
         private void ClearAlertState(bool clearTarget)
@@ -440,6 +609,8 @@ namespace ArknightsACT.Gameplay.Enemies
             _hasLastKnownTarget = false;
             _path.Clear();
             _pathIndex = 0;
+            _hasPatrolDestination = false;
+            _nextPatrolAt = Time.time + 0.45f;
             if (clearTarget)
                 _target = null;
         }
@@ -454,7 +625,7 @@ namespace ArknightsACT.Gameplay.Enemies
             UpdateFacingSign();
         }
 
-        private void Move(Vector3 direction)
+        private void Move(Vector3 direction, float speedScale = 1f)
         {
             direction.y = 0f;
             if (direction.sqrMagnitude < 0.001f)
@@ -465,7 +636,7 @@ namespace ArknightsACT.Gameplay.Enemies
             direction.Normalize();
             var before = transform.position;
             var moveMultiplier = _entity?.Stats != null ? _entity.Stats.MoveSpeedMultiplier : 1f;
-            var requestedDistance = moveSpeed * moveMultiplier * Time.deltaTime;
+            var requestedDistance = moveSpeed * moveMultiplier * Mathf.Max(0f, speedScale) * Time.deltaTime;
             var flags = _controller.Move(direction * requestedDistance);
             var movedDistance = PlanarDistance(before, transform.position);
 
@@ -551,7 +722,7 @@ namespace ArknightsACT.Gameplay.Enemies
                     attackRange = 1.05f;
                     attackWindup = 0.12f;
                     attackRecovery = 0.12f;
-                    attackDamage = 4f;
+                    attackDamage = 360f;
                     attackCooldown = 0.58f;
                     viewDistance = 7.5f;
                     viewAngle = 95f;
@@ -561,7 +732,7 @@ namespace ArknightsACT.Gameplay.Enemies
                     preferredRange = 4.8f;
                     attackWindup = 0.32f;
                     attackRecovery = 0.20f;
-                    attackDamage = 4f;
+                    attackDamage = 380f;
                     attackCooldown = 1.05f;
                     viewDistance = 8.5f;
                     viewAngle = 75f;
@@ -571,7 +742,7 @@ namespace ArknightsACT.Gameplay.Enemies
                     attackRange = 1.25f;
                     attackWindup = 0.20f;
                     attackRecovery = 0.18f;
-                    attackDamage = 5f;
+                    attackDamage = 400f;
                     attackCooldown = 0.82f;
                     viewDistance = 7f;
                     viewAngle = 85f;

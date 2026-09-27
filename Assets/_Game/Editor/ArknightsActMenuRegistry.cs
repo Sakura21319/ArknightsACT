@@ -59,6 +59,14 @@ namespace ArknightsACT.Editor
                 LocalOperatorAssetImportUtility.UnpackedRoot);
         }
 
+        [UnityEditor.MenuItem("ArknightsACT/角色调试/数值自动验收", false, 48)]
+        private static void OpenOperatorNumericAcceptance() =>
+            OperatorNumericAcceptanceWindow.OpenAndRun();
+
+        [UnityEditor.MenuItem("ArknightsACT/角色调试/数值校验器", false, 49)]
+        private static void OpenOperatorNumericValidator() =>
+            OperatorNumericValidatorWindow.OpenAndRun();
+
         [UnityEditor.MenuItem("ArknightsACT/角色调试/霜星·冬痕调节", false, 50)]
         private static void OpenFrostNovaTuning() => FrostNovaTuningWindow.Open();
 

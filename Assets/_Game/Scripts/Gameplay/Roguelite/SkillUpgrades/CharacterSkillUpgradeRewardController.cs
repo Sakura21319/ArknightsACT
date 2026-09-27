@@ -23,6 +23,7 @@ namespace ArknightsACT.Gameplay.Roguelite.SkillUpgrades
 
         private readonly Queue<RewardRequest> _pendingRequests = new();
         private readonly List<CharacterSkillUpgradeDefinition> _choices = new();
+        private readonly List<CharacterSkillUpgradeDefinition> _runtimeMutations = new();
         private GameplayPauseService _pause;
         private RewardSelectionCoordinator _coordinator;
         private Action _completed;
@@ -36,6 +37,7 @@ namespace ArknightsACT.Gameplay.Roguelite.SkillUpgrades
         {
             inventory = targetInventory;
             pool = rewardPool;
+            EnsureMutationPool();
         }
 
         private void OnEnable()
@@ -43,6 +45,7 @@ namespace ArknightsACT.Gameplay.Roguelite.SkillUpgrades
             _pause = GameplayPauseService.Instance;
             _coordinator = RewardSelectionCoordinator.Instance ?? FindFirstObjectByType<RewardSelectionCoordinator>();
             BindActivePlayer();
+            EnsureMutationPool();
         }
 
         private void OnDisable()
@@ -51,6 +54,16 @@ namespace ArknightsACT.Gameplay.Roguelite.SkillUpgrades
             _coordinator?.Release(this);
             _completed = null;
             _pendingRequests.Clear();
+        }
+
+        private void OnDestroy()
+        {
+            for (var i = 0; i < _runtimeMutations.Count; i++)
+            {
+                if (_runtimeMutations[i] != null)
+                    Destroy(_runtimeMutations[i]);
+            }
+            _runtimeMutations.Clear();
         }
 
         public bool OpenReward(string title, int requestedChoiceCount, Action completed)
@@ -123,6 +136,7 @@ namespace ArknightsACT.Gameplay.Roguelite.SkillUpgrades
         private void BuildChoices(int wantedCount)
         {
             BindActivePlayer();
+            EnsureMutationPool();
             _choices.Clear();
             if (pool == null)
                 return;
@@ -154,6 +168,85 @@ namespace ArknightsACT.Gameplay.Roguelite.SkillUpgrades
                 _choices.Add(candidates[pickIndex]);
                 candidates.RemoveAt(pickIndex);
             }
+        }
+
+        private void EnsureMutationPool()
+        {
+            var combined = new List<CharacterSkillUpgradeDefinition>();
+            if (pool != null)
+            {
+                for (var i = 0; i < pool.Length; i++)
+                {
+                    if (pool[i] != null)
+                        combined.Add(pool[i]);
+                }
+            }
+
+            AddRuntimeMutation(
+                combined,
+                "chen_s1_echo_mutation",
+                "Chen",
+                "chen_skill1_echo_slash",
+                "拔刀·回响",
+                "【技能异变】赤霄·拔刀命中后 0.18 秒再次斩击，回响造成原伤害的 65%。",
+                0.65f);
+
+            AddRuntimeMutation(
+                combined,
+                "chen_s2_kill_refresh_mutation",
+                "Chen",
+                "chen_skill2_kill_refresh",
+                "绝影·无尽追猎",
+                "【技能异变】绝影斩击击杀目标时追加 1 次斩击，本次释放最多额外追加 4 次。",
+                4f);
+
+            pool = combined.ToArray();
+        }
+
+        private void AddRuntimeMutation(
+            List<CharacterSkillUpgradeDefinition> combined,
+            string id,
+            string characterId,
+            string effectId,
+            string displayName,
+            string description,
+            float value)
+        {
+            for (var i = 0; i < combined.Count; i++)
+            {
+                if (combined[i] != null && combined[i].Id == id)
+                    return;
+            }
+
+            CharacterSkillUpgradeDefinition definition = null;
+            for (var i = 0; i < _runtimeMutations.Count; i++)
+            {
+                if (_runtimeMutations[i] != null && _runtimeMutations[i].Id == id)
+                {
+                    definition = _runtimeMutations[i];
+                    break;
+                }
+            }
+
+            if (definition == null)
+            {
+                definition = ScriptableObject.CreateInstance<CharacterSkillUpgradeDefinition>();
+                definition.name = id + "_RuntimeMutation";
+                definition.hideFlags = HideFlags.HideAndDontSave;
+                definition.Configure(
+                    id,
+                    characterId,
+                    effectId,
+                    displayName,
+                    description,
+                    value,
+                    stackLimit: 1,
+                    weight: 1.25f,
+                    upgradeKind: CharacterSkillUpgradeKind.Mutation);
+                _runtimeMutations.Add(definition);
+            }
+
+            combined.Add(definition);
         }
 
         private void BindActivePlayer()
@@ -227,7 +320,10 @@ namespace ArknightsACT.Gameplay.Roguelite.SkillUpgrades
             {
                 var definition = _choices[i];
                 var stack = inventory.GetStackCount(definition);
-                var text = $"[{i + 1}] {definition.DisplayName}\n\n{definition.Description}\n\n层数：{stack + 1}/{definition.MaxStacks}";
+                var family = definition.Kind == CharacterSkillUpgradeKind.Mutation
+                    ? "技能异变"
+                    : "技能特化";
+                var text = $"[{i + 1}] {definition.DisplayName}\n<{family}>\n\n{definition.Description}\n\n层数：{stack + 1}/{definition.MaxStacks}";
                 if (GUI.Button(new Rect(startX + i * (cardWidth + gap), startY, cardWidth, cardHeight), text, cardStyle))
                     Choose(i);
             }

@@ -1,4 +1,3 @@
-using System.Reflection;
 using ArknightsACT.Combat;
 using ArknightsACT.Combat.Status;
 using ArknightsACT.Gameplay.Characters.Schwarz;
@@ -18,7 +17,11 @@ namespace ArknightsACT.Tests
             source.SetTeam(Team.Player);
 
             var talent = sourceGo.AddComponent<SchwarzArmorBreakTalent>();
-            SetPrivateField(talent, "baseProcChance", 1f);
+            talent.ConfigureOfficialBaseTalent(
+                procChance: 1f,
+                attackMultiplier: 1.6f,
+                defenseDownMagnitude: -0.2f,
+                defenseDownSeconds: 5f);
 
             var targetGo = new GameObject("SchwarzTalentTarget");
             targetGo.AddComponent<Health>().SetMaxHealth(300f);
@@ -47,13 +50,5 @@ namespace ArknightsACT.Tests
             Object.DestroyImmediate(targetGo);
         }
 
-        private static void SetPrivateField(object instance, string fieldName, float value)
-        {
-            var field = instance.GetType().GetField(
-                fieldName,
-                BindingFlags.Instance | BindingFlags.NonPublic);
-            Assert.That(field, Is.Not.Null, "Missing test field: " + fieldName);
-            field.SetValue(instance, value);
-        }
     }
 }

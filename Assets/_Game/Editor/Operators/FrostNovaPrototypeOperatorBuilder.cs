@@ -13,37 +13,30 @@ namespace ArknightsACT.Editor
         public void EnsureDefinitionAsset()
         {
             const string avatar = "UI/HUD/Operators/frostnova_default";
-            PrototypeOperatorDefinitionAssetUtility.Ensure(
+            var definition = PrototypeOperatorDefinitionAssetUtility.Ensure(
                 "Operator_FrostNova",
                 OperatorId,
                 "霜星",
                 "FROSTNOVA",
                 30,
                 new PlayableOperatorSkinDefinition(
-                    "default",
-                    "霜星",
-                    avatar,
-                    string.Empty,
-                    string.Empty,
-                    true),
-                new PlayableOperatorSkinDefinition(
                     "winter#1",
                     "冬痕",
                     avatar,
                     string.Empty,
-                    string.Empty),
-                new PlayableOperatorSkinDefinition(
-                    "new#1",
-                    "霜星·新",
-                    avatar,
                     string.Empty,
-                    string.Empty),
-                new PlayableOperatorSkinDefinition(
-                    "winter_new#1",
-                    "冬痕·新",
-                    avatar,
-                    string.Empty,
-                    string.Empty));
+                    true));
+
+            if (!FrostNovaWinterTraceCombatProfile.TryLoad(out var winterTrace))
+                throw new InvalidOperationException(
+                    "Missing FrostNovaWinterTraceCombatProfile.json.");
+
+            definition.ConfigureProgression(
+                FrostNovaWinterTraceCombatProfile.ProgressionSourceId,
+                FrostNovaWinterTraceCombatProfile.BuildProjectProgression(winterTrace));
+            definition.ConfigureSkillMastery(
+                FrostNovaWinterTraceCombatProfile.BuildSkillMasterySet(winterTrace));
+            UnityEditor.EditorUtility.SetDirty(definition);
         }
 
         public GameObject Build(
@@ -53,13 +46,16 @@ namespace ArknightsACT.Editor
         {
             if (skin == null)
                 throw new InvalidOperationException("FrostNova skin is missing.");
+            if (definition == null || !definition.HasE2Progression)
+                throw new InvalidOperationException("FrostNova WinterTrace progression is missing.");
 
             var variant = FrostNovaSkinVariantExtensions.FromSkinId(skin.SkinId);
             FrostNovaLocalAssetBootstrap.PrepareForBuild(variant);
             return FrostNovaPrototypePlayerFactory.Create25D(
                 FrostNovaPrototypeSceneBuilder.BuildAttackDefinitions(),
                 camera,
-                variant);
+                variant,
+                definition.E2Progression.Evaluate(1));
         }
 
         public void RefreshAssets(
@@ -86,7 +82,15 @@ namespace ArknightsACT.Editor
             if (FrostNovaExtractedFxSetup.HasImported(variant))
                 FrostNovaExtractedFxSetup.Configure(player, variant);
             FrostNovaLocalAssetBootstrap.ConfigureAudioProfile(player, variant);
-            PlayableOperatorPrototypeComposer.ApplyFormalCombatProfile(player, 125f, 2.0f, 20f);
+
+            if (definition != null && definition.HasE2Progression)
+            {
+                var progression = player.GetComponent<OperatorProgressionController>();
+                var level = progression != null ? progression.EliteLevel : 1;
+                PlayableOperatorPrototypeComposer.ApplyFormalCombatProfile(
+                    player,
+                    definition.E2Progression.Evaluate(level));
+            }
         }
     }
 }

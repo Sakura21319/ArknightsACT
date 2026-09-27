@@ -1,0 +1,39 @@
+{
+  "schema": "arknightsact.frostnova-wintertrace/v1",
+  "sourceId": "enemy_1510_frstar2",
+  "sourceLabel": "PRTS FrostNova, Winter's Scar",
+  "progressionPolicy": "Project Lv1 maps to PRTS enemy level 0; project Lv90 maps to PRTS enemy level 1; Lv30/Lv60 are linear interpolation checkpoints.",
+  "level0": {
+    "maxHealth": 30000,
+    "attack": 440,
+    "physicalDefense": 380,
+    "artsResistance": 50,
+    "attackInterval": 3.7,
+    "attackRadiusTiles": 2.0
+  },
+  "level1": {
+    "maxHealth": 45000,
+    "attack": 530,
+    "physicalDefense": 440,
+    "artsResistance": 50,
+    "attackInterval": 3.7,
+    "attackRadiusTiles": 2.0
+  },
+  "skill1": {
+    "sourceSkillId": "enemy_1510_frstar2:IceNova",
+    "displayName": "冰环",
+    "cooldownSeconds": 10.5,
+    "damageScale": 1.0,
+    "radiusTiles": 2.0,
+    "coldDurationSeconds": 10.0
+  },
+  "skill2": {
+    "sourceSkillId": "enemy_1510_frstar2:IceNovaReborn",
+    "displayName": "冰爆",
+    "cooldownSeconds": 10.5,
+    "damageScale": 1.0,
+    "radiusTiles": 3.3,
+    "coldDurationSeconds": 10.0
+  },
+  "basicAttackColdDurationSeconds": 5.0
+}

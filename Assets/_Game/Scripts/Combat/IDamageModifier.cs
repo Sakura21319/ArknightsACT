@@ -9,4 +9,9 @@ namespace ArknightsACT.Combat
         float ModifyOutgoingDamage(in DamageContext context, float currentDamage);
         float ModifyIncomingDamage(in DamageContext context, float currentDamage);
     }
+
+    public interface ILayeredDamageModifier : IDamageModifier
+    {
+        CombatStatModifierLayer ModifierLayer { get; }
+    }
 }

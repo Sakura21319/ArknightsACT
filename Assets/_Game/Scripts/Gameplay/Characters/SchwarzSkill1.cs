@@ -14,15 +14,14 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
     /// SchwarzArmorBreakTalent + CombatStats/Status pipeline.
     /// </summary>
     [RequireComponent(typeof(CombatEntity))]
-    public sealed class SchwarzSkill1 : MonoBehaviour, IPlayerSkill, IPlayerBasicAttackModifier, IPlayerSkillLifecycleState, IPlayerSpecialAttackAudioState, IPlayerSkillInterruptible
+    public sealed class SchwarzSkill1 : MonoBehaviour, IPlayerSkill, IPlayerBasicAttackModifier, IPlayerSkillLifecycleState, IPlayerSpecialAttackAudioState, IPlayerSkillInterruptible, IOperatorSkillMasteryTarget, ILayeredCombatStatModifier
     {
-        [SerializeField, Min(1f)] private float skillPointCost = 30f;
-        [SerializeField, Min(0f)] private float initialSkillPoints = 20f;
+        [SerializeField, Min(0f)] private float skillPointCost;
+        [SerializeField, Min(0f)] private float initialSkillPoints;
         [SerializeField, Min(0f)] private float naturalSkillPointPerSecond = 1f;
-        [SerializeField, Min(0.5f)] private float buffDuration = 40f;
+        [SerializeField, Min(0f)] private float buffDuration;
         [SerializeField] private bool debugInfiniteDuration = false;
-        [Tooltip("专三暮眼锐瞳：攻击力 +130%，即最终基础攻击倍率约 2.3x。")]
-        [SerializeField, Min(1f)] private float basicAttackDamageMultiplier = 2.30f;
+        [SerializeField, Min(0f)] private float officialAttackMultiplier;
 
         private CombatEntity _entity;
         private float _skillPoints;
@@ -32,8 +31,10 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
         private Coroutine _routine;
         private SchwarzSkill2 _skill3;
         private float _activeUntil;
+        private bool _officialSkillDataApplied;
 
         public int Slot => 1;
+        public int MasterySlot => 1;
         public string DisplayName => "暮眼锐瞳";
         public float SkillPointCost => Mathf.Max(1f, skillPointCost * _runtimeCostMultiplier);
         public float SkillPoints => Mathf.Clamp(_skillPoints, 0f, SkillPointCost);
@@ -57,11 +58,20 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
         public int AmmoRemaining => 0;
         public int AmmoCapacity => 0;
         public bool UseSpecialAttackAudio => IsBuffActive;
+        public CombatStatModifierLayer ModifierLayer => CombatStatModifierLayer.Temporary;
 
         public float BasicAttackDamageMultiplier =>
-            IsBuffActive ? basicAttackDamageMultiplier * _runtimeDamageMultiplier : 1f;
+            IsBuffActive ? _runtimeDamageMultiplier : 1f;
         public float BasicAttackRangeMultiplier => 1f;
         public float BasicAttackTimingMultiplier => 1f;
+
+        public void AccumulateStatModifiers(CombatStatType stat, ref float flat, ref float additivePercent)
+        {
+            if (!IsBuffActive)
+                return;
+            if (stat == CombatStatType.Attack)
+                additivePercent += Mathf.Max(0f, officialAttackMultiplier - 1f);
+        }
 
         public event Action CastStarted;
         public event Action BuffStarted;
@@ -93,7 +103,7 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
 
         public bool TryCast()
         {
-            if (IsBuffActive)
+            if (!_officialSkillDataApplied || IsBuffActive)
                 return false;
 
             if (IsCasting || (_skill3 != null && _skill3.IsBuffActive) ||
@@ -150,6 +160,37 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
             debugInfiniteDuration = false;
             if (IsBuffActive && float.IsPositiveInfinity(_activeUntil))
                 _activeUntil = Time.time + ActiveDurationSeconds;
+        }
+
+        public void ApplyMasterySnapshot(OperatorSkillMasterySnapshot snapshot)
+        {
+            if (snapshot == null)
+            {
+                _officialSkillDataApplied = false;
+                return;
+            }
+
+            skillPointCost = snapshot.SkillPointCost;
+            initialSkillPoints = Mathf.Clamp(
+                snapshot.InitialSkillPoints,
+                0f,
+                Mathf.Max(1f, skillPointCost));
+            buffDuration = snapshot.Duration;
+
+            var hasAttackBonus = snapshot.TryGetBlackboard("atk", out var attackBonus);
+            var hasTalentProc = snapshot.TryGetBlackboard("talent@prob", out var talentProc);
+            officialAttackMultiplier = hasAttackBonus
+                ? Mathf.Max(1f, 1f + attackBonus)
+                : 0f;
+            if (hasTalentProc)
+                GetComponent<SchwarzArmorBreakTalent>()?.SetSkill2ProcChance(talentProc);
+
+            _officialSkillDataApplied =
+                skillPointCost > 0f &&
+                buffDuration > 0f &&
+                hasAttackBonus &&
+                hasTalentProc;
+            _skillPoints = Mathf.Clamp(initialSkillPoints, 0f, SkillPointCost);
         }
 
         public void AddDamagePercent(float value) =>

@@ -58,12 +58,30 @@ namespace ArknightsACT.Gameplay.Characters
         [SerializeField] private string displayName;
         [SerializeField] private string englishName;
         [SerializeField] private int sortOrder;
+        [SerializeField] private string prtsCharacterId;
+        [SerializeField] private OperatorE2Progression e2Progression = new();
+        [SerializeField] private OperatorMetaProgressionPlan metaProgression = OperatorMetaProgressionPlan.CreateRecommendedDefault();
+        [SerializeField] private OperatorSkillMasterySet skillMastery = new();
+        [SerializeField] private OperatorSkillMasteryCostPlan skillMasteryCosts = OperatorSkillMasteryCostPlan.CreateRecommendedDefault();
         [SerializeField] private PlayableOperatorSkinDefinition[] skins = Array.Empty<PlayableOperatorSkinDefinition>();
 
         public string OperatorId => operatorId;
         public string DisplayName => displayName;
         public string EnglishName => englishName;
         public int SortOrder => sortOrder;
+        public string PrtsCharacterId => prtsCharacterId ?? string.Empty;
+        public OperatorE2Progression E2Progression => e2Progression;
+        public OperatorMetaProgressionPlan MetaProgression =>
+            metaProgression != null && metaProgression.HasData
+                ? metaProgression
+                : OperatorMetaProgressionPlan.RecommendedDefault;
+        public bool HasE2Progression => e2Progression != null && e2Progression.HasData;
+        public OperatorSkillMasterySet SkillMastery => skillMastery ?? new OperatorSkillMasterySet();
+        public bool HasSkillMastery => skillMastery != null && skillMastery.HasData;
+        public OperatorSkillMasteryCostPlan SkillMasteryCosts =>
+            skillMasteryCosts != null && skillMasteryCosts.HasData
+                ? skillMasteryCosts
+                : OperatorSkillMasteryCostPlan.RecommendedDefault;
         public IReadOnlyList<PlayableOperatorSkinDefinition> Skins => skins;
 
         public PlayableOperatorSkinDefinition DefaultSkin
@@ -115,6 +133,33 @@ namespace ArknightsACT.Gameplay.Characters
             englishName = english ?? string.Empty;
             sortOrder = order;
             skins = skinDefinitions ?? Array.Empty<PlayableOperatorSkinDefinition>();
+        }
+
+        public void ConfigureProgression(
+            string sourceCharacterId,
+            OperatorE2Progression progression)
+        {
+            prtsCharacterId = sourceCharacterId ?? string.Empty;
+            e2Progression = progression ?? new OperatorE2Progression();
+        }
+
+        public void ConfigureMetaProgression(OperatorMetaProgressionPlan progression)
+        {
+            metaProgression = progression != null && progression.HasData
+                ? progression
+                : OperatorMetaProgressionPlan.CreateRecommendedDefault();
+        }
+
+        public void ConfigureSkillMastery(OperatorSkillMasterySet progression)
+        {
+            skillMastery = progression ?? new OperatorSkillMasterySet();
+        }
+
+        public void ConfigureSkillMasteryCosts(OperatorSkillMasteryCostPlan costs)
+        {
+            skillMasteryCosts = costs != null && costs.HasData
+                ? costs
+                : OperatorSkillMasteryCostPlan.CreateRecommendedDefault();
         }
 #endif
     }

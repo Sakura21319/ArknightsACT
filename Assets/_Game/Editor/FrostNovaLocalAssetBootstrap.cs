@@ -43,10 +43,7 @@ namespace ArknightsACT.Editor
         private static void ImportAllFromMenu()
         {
             ImportCoreAssets(true);
-            foreach (FrostNovaSkinVariant skin in Enum.GetValues(typeof(FrostNovaSkinVariant)))
-                BuildPresentationPrefab(skin);
-
-            ImportEffectFamily(false);
+            BuildPresentationPrefab(FrostNovaSkinVariant.Winter);
             ImportEffectFamily(true);
             FrostNovaExtractedFxSetup.TryApplyToOpenScene();
 
@@ -54,7 +51,7 @@ namespace ArknightsACT.Editor
             AssetDatabase.Refresh();
             EditorUtility.DisplayDialog(
                 "ArknightsACT",
-                "霜星 4 套 Spine 与原皮/冬痕两组技能特效已重新导入。",
+                "霜星·冬痕 Spine 与冬痕技能特效已重新导入。",
                 "OK");
         }
 
@@ -112,15 +109,10 @@ namespace ArknightsACT.Editor
                 return;
             }
 
-            foreach (FrostNovaSkinVariant skin in Enum.GetValues(typeof(FrostNovaSkinVariant)))
-            {
-                var descriptor = GetDescriptor(skin);
-                var sourceSpine = skin.UsesNewSpine() ? SourceNewSpine : SourceOriginalSpine;
-                CopySpineSet(descriptor, sourceSpine, force);
-            }
+            var descriptor = GetDescriptor(FrostNovaSkinVariant.Winter);
+            CopySpineSet(descriptor, SourceOriginalSpine, force);
 
-            // No dedicated skin portraits are present in the package. All four presentations use
-            // the same FrostNova portrait until explicit portrait assets are provided.
+            // Winter currently reuses the shared FrostNova portrait until a dedicated portrait is provided.
             CopySprite(
                 SourcePortrait,
                 "Assets/_Game/Resources/UI/HUD/Operators/frostnova_default.png",
@@ -525,13 +517,7 @@ namespace ArknightsACT.Editor
         }
 
         internal static PrtsAssetDescriptor GetDescriptor(FrostNovaSkinVariant skin) =>
-            skin switch
-            {
-                FrostNovaSkinVariant.Winter => PrtsPrototypeAssetCatalog.FrostNovaWinter,
-                FrostNovaSkinVariant.DefaultNew => PrtsPrototypeAssetCatalog.FrostNovaDefaultNew,
-                FrostNovaSkinVariant.WinterNew => PrtsPrototypeAssetCatalog.FrostNovaWinterNew,
-                _ => PrtsPrototypeAssetCatalog.FrostNovaDefault
-            };
+            PrtsPrototypeAssetCatalog.FrostNovaWinter;
     }
 
     internal static class FrostNovaExtractedFxSetup

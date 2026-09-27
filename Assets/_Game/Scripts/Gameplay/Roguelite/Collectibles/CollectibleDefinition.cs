@@ -49,7 +49,13 @@ namespace ArknightsACT.Gameplay.Roguelite.Collectibles
         PhysicalDefenseFlat,
         ArtsResistancePercent,
         ArtsResistanceFlat,
-        EnemyPhysicalDefensePercent
+        EnemyPhysicalDefensePercent,
+        // P6 appended stat effects. Appending preserves all earlier serialized enum ids.
+        AttackPercent,
+        AttackFlat,
+        BasicAttackRangePercent,
+        SkillRangePercent,
+        AttackIntervalPercent
     }
 
     [System.Serializable]
@@ -212,6 +218,11 @@ namespace ArknightsACT.Gameplay.Roguelite.Collectibles
             CollectibleEffectType.ArtsResistancePercent => true,
             CollectibleEffectType.ArtsResistanceFlat => true,
             CollectibleEffectType.EnemyPhysicalDefensePercent => true,
+            CollectibleEffectType.AttackPercent => true,
+            CollectibleEffectType.AttackFlat => true,
+            CollectibleEffectType.BasicAttackRangePercent => true,
+            CollectibleEffectType.SkillRangePercent => true,
+            CollectibleEffectType.AttackIntervalPercent => true,
             _ => false
         };
 

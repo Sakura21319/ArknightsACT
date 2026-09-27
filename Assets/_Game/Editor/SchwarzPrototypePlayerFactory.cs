@@ -23,7 +23,8 @@ namespace ArknightsACT.Editor
         public static GameObject Create25D(
             AttackDefinition[] attacks,
             Camera camera,
-            SchwarzSkinVariant skin)
+            SchwarzSkinVariant skin,
+            OperatorBaseStats baseStats)
         {
             var go = new GameObject("Player_Schwarz");
             go.SetActive(false);
@@ -37,7 +38,7 @@ namespace ArknightsACT.Editor
             controller.stepOffset = 0.28f;
             controller.slopeLimit = 45f;
 
-            AddSharedGameplay(go, attacks, skin);
+            AddSharedGameplay(go, attacks, skin, baseStats);
             go.AddComponent<ScavengingInventory25D>();
 
             var motor = go.AddComponent<PlayerMotor25D>();
@@ -83,12 +84,13 @@ namespace ArknightsACT.Editor
         private static void AddSharedGameplay(
             GameObject go,
             AttackDefinition[] attacks,
-            SchwarzSkinVariant skin)
+            SchwarzSkinVariant skin,
+            OperatorBaseStats baseStats)
         {
             PlayableOperatorPrototypeComposer.AddFoundation(
                 go,
                 attacks,
-                18f,
+                baseStats.Attack,
                 OperatorProfession.Sniper,
                 CombatFeature.BasicAttack |
                 CombatFeature.ActiveSkills |
@@ -100,9 +102,12 @@ namespace ArknightsACT.Editor
                 AvatarResourceKey(skin),
                 "UI/Skills/Schwarz/s2",
                 "UI/Skills/Schwarz/s3",
-                maxHealth: 95f,
-                physicalDefense: 1.4f,
-                artsResistance: 0f);
+                maxHealth: baseStats.MaxHealth,
+                physicalDefense: baseStats.PhysicalDefense,
+                artsResistance: baseStats.ArtsResistance,
+                attackInterval: baseStats.AttackInterval,
+                basicAttackRange: baseStats.BasicAttackRange,
+                skillRange: baseStats.SkillRange);
 
             go.AddComponent<SchwarzRangedBasicAttack>();
             var skill1 = go.AddComponent<SchwarzSkill1>();

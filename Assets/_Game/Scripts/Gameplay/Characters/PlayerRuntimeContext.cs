@@ -75,7 +75,13 @@ namespace ArknightsACT.Gameplay.Characters
             DiscoverScenePlayers();
 
             if (activePlayer != null)
-                RegisterPlayer(activePlayer);
+            {
+                var activeIdentity = activePlayer.GetComponent<PlayableOperatorIdentity>();
+                if (activeIdentity != null && !activeIdentity.RuntimeSelectable)
+                    ReplaceUnavailableActivePlayer(activeIdentity);
+                else
+                    RegisterPlayer(activePlayer);
+            }
 
             Debug.Log(
                 $"[ArknightsACT/Player] Runtime operator registry initialized: {_registeredPlayers.Count} player(s).",
@@ -94,7 +100,7 @@ namespace ArknightsACT.Gameplay.Characters
             for (var i = 0; i < identities.Length; i++)
             {
                 var identity = identities[i];
-                if (identity == null)
+                if (identity == null || !identity.RuntimeSelectable)
                     continue;
 
                 var candidate = identity.gameObject;
@@ -113,6 +119,11 @@ namespace ArknightsACT.Gameplay.Characters
         {
             if (player == null || _registeredPlayers.Contains(player))
                 return;
+
+            var identity = player.GetComponent<PlayableOperatorIdentity>();
+            if (identity != null && !identity.RuntimeSelectable)
+                return;
+
             _registeredPlayers.Add(player);
         }
 
@@ -121,6 +132,43 @@ namespace ArknightsACT.Gameplay.Characters
             if (player == null)
                 return;
             _registeredPlayers.Remove(player);
+        }
+
+        private void ReplaceUnavailableActivePlayer(PlayableOperatorIdentity unavailableIdentity)
+        {
+            var previous = activePlayer;
+            Transform replacement = null;
+            for (var i = 0; i < _registeredPlayers.Count; i++)
+            {
+                var candidate = _registeredPlayers[i];
+                if (candidate == null)
+                    continue;
+                var candidateIdentity = candidate.GetComponent<PlayableOperatorIdentity>();
+                if (candidateIdentity == null || !candidateIdentity.RuntimeSelectable)
+                    continue;
+                if (unavailableIdentity != null &&
+                    !string.Equals(candidateIdentity.OperatorId, unavailableIdentity.OperatorId, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                replacement = candidate;
+                break;
+            }
+
+            if (replacement == null && _registeredPlayers.Count > 0)
+                replacement = _registeredPlayers[0];
+
+            activePlayer = replacement;
+            if (replacement == null)
+                return;
+
+            if (previous != null)
+            {
+                replacement.position = previous.position;
+                replacement.rotation = previous.rotation;
+                if (previous.gameObject.activeSelf)
+                    previous.gameObject.SetActive(false);
+            }
+            if (!replacement.gameObject.activeSelf)
+                replacement.gameObject.SetActive(true);
         }
 
         public bool TrySwitchTo(string operatorId, string skinId = null, bool preserveRunState = true)

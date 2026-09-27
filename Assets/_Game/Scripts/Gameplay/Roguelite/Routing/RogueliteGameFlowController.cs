@@ -21,7 +21,8 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
         Running,
         ExtractionDecision,
         Settlement,
-        WarehouseTrade
+        WarehouseTrade,
+        OperatorDevelopment
     }
 
     /// <summary>
@@ -127,6 +128,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             EnsurePlayerRuntime();
             SubscribePlayerRuntime();
             ResolveReferences();
+            ApplyMetaProgressionToRegisteredOperators();
             var shellUi = GetComponent<RogueliteShellUI>() ?? gameObject.AddComponent<RogueliteShellUI>();
             shellUi.Configure(this);
             SetState(RogueliteShellState.Home);
@@ -216,7 +218,10 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             if (Keyboard.current == null)
                 return;
 
-            if ((State == RogueliteShellState.WarehouseTrade || State == RogueliteShellState.OperationPreparation) && Keyboard.current.escapeKey.wasPressedThisFrame)
+            if ((State == RogueliteShellState.WarehouseTrade ||
+                 State == RogueliteShellState.OperationPreparation ||
+                 State == RogueliteShellState.OperatorDevelopment) &&
+                Keyboard.current.escapeKey.wasPressedThisFrame)
                 SetState(RogueliteShellState.Home);
             else if (State == RogueliteShellState.ExtractionDecision && Keyboard.current.escapeKey.wasPressedThisFrame)
                 CancelExtraction();
@@ -225,6 +230,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
         private void OnActivePlayerChanged(Transform previousPlayer, Transform nextPlayer)
         {
             BindPlayer(nextPlayer);
+            ApplyMetaProgression(nextPlayer);
         }
 
         private void BindPlayer(Transform nextPlayer)
@@ -289,8 +295,53 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             SetState(RogueliteShellState.Running);
         }
 
+        private void ApplyMetaProgressionToRegisteredOperators()
+        {
+            if (metaState == null)
+                return;
+
+            var runtime = PlayerRuntimeContext.Instance;
+            if (runtime == null)
+            {
+                ApplyMetaProgression(player);
+                return;
+            }
+
+            var operators = runtime.RegisteredPlayers;
+            for (var i = 0; i < operators.Count; i++)
+                ApplyMetaProgression(operators[i]);
+
+            ApplyMetaProgression(player);
+        }
+
+        private void ApplyMetaProgression(Transform operatorRoot)
+        {
+            if (operatorRoot == null || metaState == null)
+                return;
+
+            var identity = operatorRoot.GetComponent<PlayableOperatorIdentity>();
+            if (identity == null || string.IsNullOrWhiteSpace(identity.OperatorId))
+                return;
+
+            var progression = operatorRoot.GetComponent<OperatorProgressionController>();
+            if (progression != null && progression.HasProgression)
+            {
+                var level = metaState.GetOperatorEliteLevel(identity.OperatorId);
+                progression.SetEliteLevel(level, applyStats: true);
+            }
+
+            var mastery = operatorRoot.GetComponent<OperatorSkillMasteryController>();
+            if (mastery != null && mastery.HasData)
+            {
+                mastery.ApplyAll(
+                    metaState.GetOperatorSkillMastery(identity.OperatorId, 1),
+                    metaState.GetOperatorSkillMastery(identity.OperatorId, 2));
+            }
+        }
+
         private void ResetRegisteredOperatorsForNewRun()
         {
+            ApplyMetaProgressionToRegisteredOperators();
             var runtime = PlayerRuntimeContext.Instance;
             if (runtime == null)
             {
@@ -366,6 +417,12 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             _marketSellMode = true;
             _selectedMarketItem = null;
             SetState(RogueliteShellState.WarehouseTrade);
+        }
+
+        public void OpenOperatorDevelopment()
+        {
+            ResolveReferences();
+            SetState(RogueliteShellState.OperatorDevelopment);
         }
 
         public void ReturnHome() => SetState(RogueliteShellState.Home);

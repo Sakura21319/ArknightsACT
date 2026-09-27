@@ -22,6 +22,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
 
         private readonly Queue<int> _pendingLevels = new();
         private readonly List<LevelUpgradeDefinition> _choices = new();
+        private readonly List<LevelUpgradeDefinition> _runtimeFallbacks = new();
         private GameplayPauseService _pause;
         private RewardSelectionCoordinator _coordinator;
         private bool _isOpen;
@@ -44,11 +45,13 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
             combatProfile = profile;
             upgradePool = pool;
             player = playerTransform;
+            EnsureCoreUpgradePool();
             ResolvePresentationDependencies();
         }
 
         private void OnEnable()
         {
+            EnsureCoreUpgradePool();
             _pause = GameplayPauseService.Instance;
             _coordinator = RewardSelectionCoordinator.Instance ?? FindFirstObjectByType<RewardSelectionCoordinator>();
             ResolvePresentationDependencies();
@@ -63,6 +66,180 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
             Close();
             _coordinator?.Release(this);
             _pendingLevels.Clear();
+        }
+
+        private void OnDestroy()
+        {
+            for (var i = 0; i < _runtimeFallbacks.Count; i++)
+            {
+                if (_runtimeFallbacks[i] != null)
+                    Destroy(_runtimeFallbacks[i]);
+            }
+            _runtimeFallbacks.Clear();
+        }
+
+        private void EnsureCoreUpgradePool()
+        {
+            var combined = new List<LevelUpgradeDefinition>();
+            if (upgradePool != null)
+            {
+                for (var i = 0; i < upgradePool.Length; i++)
+                {
+                    var existing = upgradePool[i];
+                    if (existing != null && !ContainsUpgrade(combined, existing.Id))
+                        combined.Add(existing);
+                }
+            }
+
+            AddRuntimeFallback(
+                combined,
+                "level_armor_training",
+                "装甲强化",
+                "物理防御 +12%。最多强化 3 次。",
+                CombatFeature.None,
+                LevelUpgradeEffectType.PhysicalDefensePercent,
+                0.12f,
+                3,
+                1.00f);
+            AddRuntimeFallback(
+                combined,
+                "level_arts_guard",
+                "术式防护",
+                "法术抗性 +5。最多强化 3 次。",
+                CombatFeature.None,
+                LevelUpgradeEffectType.ArtsResistanceFlat,
+                5f,
+                3,
+                0.95f);
+            AddRuntimeFallback(
+                combined,
+                "level_mobility_training",
+                "机动训练",
+                "移动速度 +6%。最多强化 3 次。",
+                CombatFeature.None,
+                LevelUpgradeEffectType.MoveSpeedPercent,
+                0.06f,
+                3,
+                0.90f);
+            AddRuntimeFallback(
+                combined,
+                "level_attack_speed_training",
+                "快速整备",
+                "攻击速度 +8%。最多强化 3 次。",
+                CombatFeature.BasicAttack,
+                LevelUpgradeEffectType.AttackSpeedPercent,
+                0.08f,
+                3,
+                0.95f);
+
+            AddRuntimeFallback(
+                combined,
+                "level_overload_reaction",
+                "过载反应",
+                "【联动】需要“灼烧 + 连锁”。电弧命中后引爆 2.8m 范围，造成相当于本次基础伤害 40% 的 Arts 伤害。",
+                CombatFeature.None,
+                LevelUpgradeEffectType.OverloadExplosion,
+                0.40f,
+                1,
+                1.10f,
+                LevelUpgradeArchetype.Synergy,
+                RunBuildTag.Burn | RunBuildTag.Chain,
+                RunBuildTag.Overload);
+
+            AddRuntimeFallback(
+                combined,
+                "level_originium_overclock",
+                "源石超频协议",
+                "【危险协议】所有伤害 +25%，技力恢复 +35%；每次成功释放技能损失 4% 最大生命值（不会因此直接死亡）。",
+                CombatFeature.ActiveSkills,
+                LevelUpgradeEffectType.OriginiumOverclock,
+                0.25f,
+                1,
+                0.34f,
+                LevelUpgradeArchetype.DangerousProtocol,
+                RunBuildTag.None,
+                RunBuildTag.Risk | RunBuildTag.Skill);
+
+            AddRuntimeFallback(
+                combined,
+                "level_blood_debt",
+                "血债协议",
+                "【危险协议】生命低于 35% 时伤害与攻击速度 +45%；但本局受到的伤害 +20%。",
+                CombatFeature.BasicAttack,
+                LevelUpgradeEffectType.BloodDebt,
+                0.45f,
+                1,
+                0.30f,
+                LevelUpgradeArchetype.DangerousProtocol,
+                RunBuildTag.None,
+                RunBuildTag.Risk | RunBuildTag.Hunt);
+
+            upgradePool = combined.ToArray();
+        }
+
+        private void AddRuntimeFallback(
+            List<LevelUpgradeDefinition> pool,
+            string id,
+            string displayName,
+            string description,
+            CombatFeature requiredFeatures,
+            LevelUpgradeEffectType effectType,
+            float value,
+            int maxStacks,
+            float weight,
+            LevelUpgradeArchetype archetype = LevelUpgradeArchetype.Foundation,
+            RunBuildTag requiredTags = RunBuildTag.None,
+            RunBuildTag grantedTags = RunBuildTag.None)
+        {
+            if (ContainsUpgrade(pool, id))
+                return;
+
+            LevelUpgradeDefinition definition = null;
+            for (var i = 0; i < _runtimeFallbacks.Count; i++)
+            {
+                var candidate = _runtimeFallbacks[i];
+                if (candidate != null && candidate.Id == id)
+                {
+                    definition = candidate;
+                    break;
+                }
+            }
+
+            if (definition == null)
+            {
+                definition = ScriptableObject.CreateInstance<LevelUpgradeDefinition>();
+                definition.name = id + "_RuntimeFallback";
+                definition.hideFlags = HideFlags.HideAndDontSave;
+                definition.Configure(
+                    id,
+                    displayName,
+                    description,
+                    requiredFeatures,
+                    effectType,
+                    value,
+                    maxStacks,
+                    weight,
+                    archetype,
+                    requiredTags,
+                    grantedTags);
+                _runtimeFallbacks.Add(definition);
+            }
+
+            pool.Add(definition);
+        }
+
+        private static bool ContainsUpgrade(List<LevelUpgradeDefinition> pool, string id)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+                return false;
+
+            for (var i = 0; i < pool.Count; i++)
+            {
+                var candidate = pool[i];
+                if (candidate != null && candidate.Id == id)
+                    return true;
+            }
+            return false;
         }
 
         private void OnLevelIncreased(int level)
@@ -91,7 +268,12 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
             BuildChoices();
             if (_choices.Count == 0)
             {
-                Debug.LogWarning("[ArknightsACT/Progression] No valid level-up choices remain.", this);
+                // Never consume a level-up without a reward. Once the finite upgrade pool is
+                // exhausted, convert the level into a small amount of in-run currency.
+                runState?.AddIngots(2);
+                Debug.LogWarning(
+                    "[ArknightsACT/Progression] No valid level-up choices remain; granted 2 ingots instead.",
+                    this);
                 _coordinator?.Release(this);
                 TryOpenNext();
                 return;
@@ -148,12 +330,21 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
             }
 
             var wanted = Mathf.Min(Mathf.Clamp(choiceCount, 1, 3), candidates.Count);
+            var usedCategories = new HashSet<LevelUpgradeCategory>();
             for (var i = 0; i < wanted; i++)
             {
-                var picked = WeightedPick(candidates);
+                // Prefer different reward families in the same three-choice screen. This avoids
+                // rolls such as "three damage cards" while still falling back to the full pool
+                // when only one category remains.
+                var diversified = candidates.FindAll(
+                    definition => definition != null && !usedCategories.Contains(definition.Category));
+                var source = diversified.Count > 0 ? diversified : candidates;
+                var picked = WeightedPick(source);
                 if (picked == null)
                     break;
+
                 _choices.Add(picked);
+                usedCategories.Add(picked.Category);
                 candidates.Remove(picked);
             }
         }
@@ -275,7 +466,13 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
             {
                 var definition = _choices[i];
                 var current = inventory.GetStackCount(definition);
-                var text = $"[{i + 1}]  {definition.DisplayName}\n\n{definition.Description}\n\n等级：{current + 1}/{definition.MaxStacks}";
+                var family = definition.Archetype switch
+                {
+                    LevelUpgradeArchetype.Synergy => "联动",
+                    LevelUpgradeArchetype.DangerousProtocol => "危险协议",
+                    _ => "战术强化"
+                };
+                var text = $"[{i + 1}]  {definition.DisplayName}\n<{family}>\n\n{definition.Description}\n\n等级：{current + 1}/{definition.MaxStacks}";
                 var rect = new Rect(startX + i * (cardWidth + gap), startY, cardWidth, cardHeight);
                 if (GUI.Button(rect, text, cardStyle))
                     Choose(i);

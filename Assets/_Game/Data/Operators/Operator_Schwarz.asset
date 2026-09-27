@@ -16,6 +16,253 @@ MonoBehaviour:
   displayName: "\u9ED1"
   englishName: SCHWARZ
   sortOrder: 20
+  prtsCharacterId: char_340_shwaz
+  e2Progression:
+    maxLevel: 90
+    rangeId: 3-6
+    snapshots:
+    - level: 1
+      stats:
+        maxHealth: 1393
+        attack: 646
+        physicalDefense: 164
+        artsResistance: 0
+        attackInterval: 1.6
+        basicAttackRange: 1
+        skillRange: 1
+    - level: 30
+      stats:
+        maxHealth: 1536
+        attack: 709
+        physicalDefense: 184
+        artsResistance: 0
+        attackInterval: 1.6
+        basicAttackRange: 1
+        skillRange: 1
+    - level: 60
+      stats:
+        maxHealth: 1685
+        attack: 775
+        physicalDefense: 204
+        artsResistance: 0
+        attackInterval: 1.6
+        basicAttackRange: 1
+        skillRange: 1
+    - level: 90
+      stats:
+        maxHealth: 1833
+        attack: 840
+        physicalDefense: 225
+        artsResistance: 0
+        attackInterval: 1.6
+        basicAttackRange: 1
+        skillRange: 1
+  metaProgression:
+    levelSteps:
+    - fromLevel: 1
+      targetLevel: 30
+      lmdCost: 20000
+      materials:
+      - itemId: rogue_3_relic_legacy_54
+        amount: 2
+    - fromLevel: 30
+      targetLevel: 60
+      lmdCost: 45000
+      materials:
+      - itemId: rogue_3_relic_legacy_55
+        amount: 2
+    - fromLevel: 60
+      targetLevel: 90
+      lmdCost: 90000
+      materials:
+      - itemId: rogue_4_relic_legacy_187
+        amount: 1
+  skillMastery:
+    skills:
+    - gameplaySlot: 1
+      sourceSkillIndex: 2
+      sourceSkillId: skchr_shwaz_2
+      snapshots:
+      - masteryLevel: 0
+        sourceLevel: 7
+        sourceSkillId: skchr_shwaz_2
+        displayName: "\u66AE\u773C\u9510\u77B3"
+        rangeId: 
+        description: "\u653B\u51FB\u529B<@ba.vup>+{atk:0%}</>\uFF0C\u5929\u8D4B\u7684\u53D1\u52A8\u6982\u7387\u63D0\u9AD8\u81F3<@ba.vup>{talent@prob:0%}</>"
+        skillPointCost: 34
+        initialSkillPoints: 16
+        duration: 36
+        skillPointRecoveryType: 0
+        sourceSkillPointRecoveryType: INCREASE_WITH_TIME
+        blackboard:
+        - key: atk
+          value: 1
+          valueString: 
+        - key: talent@prob
+          value: 0.45
+          valueString: 
+      - masteryLevel: 1
+        sourceLevel: 8
+        sourceSkillId: skchr_shwaz_2
+        displayName: "\u66AE\u773C\u9510\u77B3"
+        rangeId: 
+        description: "\u653B\u51FB\u529B<@ba.vup>+{atk:0%}</>\uFF0C\u5929\u8D4B\u7684\u53D1\u52A8\u6982\u7387\u63D0\u9AD8\u81F3<@ba.vup>{talent@prob:0%}</>"
+        skillPointCost: 33
+        initialSkillPoints: 17
+        duration: 37
+        skillPointRecoveryType: 0
+        sourceSkillPointRecoveryType: INCREASE_WITH_TIME
+        blackboard:
+        - key: atk
+          value: 1.1
+          valueString: 
+        - key: talent@prob
+          value: 0.45
+          valueString: 
+      - masteryLevel: 2
+        sourceLevel: 9
+        sourceSkillId: skchr_shwaz_2
+        displayName: "\u66AE\u773C\u9510\u77B3"
+        rangeId: 
+        description: "\u653B\u51FB\u529B<@ba.vup>+{atk:0%}</>\uFF0C\u5929\u8D4B\u7684\u53D1\u52A8\u6982\u7387\u63D0\u9AD8\u81F3<@ba.vup>{talent@prob:0%}</>"
+        skillPointCost: 32
+        initialSkillPoints: 18
+        duration: 38
+        skillPointRecoveryType: 0
+        sourceSkillPointRecoveryType: INCREASE_WITH_TIME
+        blackboard:
+        - key: atk
+          value: 1.2
+          valueString: 
+        - key: talent@prob
+          value: 0.45
+          valueString: 
+      - masteryLevel: 3
+        sourceLevel: 10
+        sourceSkillId: skchr_shwaz_2
+        displayName: "\u66AE\u773C\u9510\u77B3"
+        rangeId: 
+        description: "\u653B\u51FB\u529B<@ba.vup>+{atk:0%}</>\uFF0C\u5929\u8D4B\u7684\u53D1\u52A8\u6982\u7387\u63D0\u9AD8\u81F3<@ba.vup>{talent@prob:0%}</>"
+        skillPointCost: 30
+        initialSkillPoints: 20
+        duration: 40
+        skillPointRecoveryType: 0
+        sourceSkillPointRecoveryType: INCREASE_WITH_TIME
+        blackboard:
+        - key: atk
+          value: 1.3
+          valueString: 
+        - key: talent@prob
+          value: 0.5
+          valueString: 
+    - gameplaySlot: 2
+      sourceSkillIndex: 3
+      sourceSkillId: skchr_shwaz_3
+      snapshots:
+      - masteryLevel: 0
+        sourceLevel: 7
+        sourceSkillId: skchr_shwaz_3
+        displayName: "\u6218\u672F\u7684\u7EC8\u7ED3"
+        rangeId: 3-2
+        description: "\u653B\u51FB\u8303\u56F4\u6539\u4E3A\u524D\u65B9<@ba.rem>3\u683C</>\uFF0C\u653B\u51FB\u95F4\u9694<@ba.vdown>\u7565\u5FAE\u589E\u5927</>\uFF0C\u653B\u51FB\u529B<@ba.vup>+{atk:0%}</>\uFF0C\u5929\u8D4B\u7684\u53D1\u52A8\u6982\u7387\u63D0\u9AD8\u81F3<@ba.vup>{talent@prob:0%}</>"
+        skillPointCost: 29
+        initialSkillPoints: 9
+        duration: 21
+        skillPointRecoveryType: 0
+        sourceSkillPointRecoveryType: INCREASE_WITH_TIME
+        blackboard:
+        - key: atk
+          value: 1.4
+          valueString: 
+        - key: base_attack_time
+          value: 0.4
+          valueString: 
+        - key: talent@prob
+          value: 1
+          valueString: 
+      - masteryLevel: 1
+        sourceLevel: 8
+        sourceSkillId: skchr_shwaz_3
+        displayName: "\u6218\u672F\u7684\u7EC8\u7ED3"
+        rangeId: 4-1
+        description: "\u653B\u51FB\u8303\u56F4\u6539\u4E3A\u524D\u65B9<@ba.rem>4\u683C</>\uFF0C\u653B\u51FB\u95F4\u9694<@ba.vdown>\u7565\u5FAE\u589E\u5927</>\uFF0C\u653B\u51FB\u529B<@ba.vup>+{atk:0%}</>\uFF0C\u5929\u8D4B\u7684\u53D1\u52A8\u6982\u7387\u63D0\u9AD8\u81F3<@ba.vup>{talent@prob:0%}</>"
+        skillPointCost: 28
+        initialSkillPoints: 10
+        duration: 22
+        skillPointRecoveryType: 0
+        sourceSkillPointRecoveryType: INCREASE_WITH_TIME
+        blackboard:
+        - key: atk
+          value: 1.5
+          valueString: 
+        - key: base_attack_time
+          value: 0.4
+          valueString: 
+        - key: talent@prob
+          value: 1
+          valueString: 
+      - masteryLevel: 2
+        sourceLevel: 9
+        sourceSkillId: skchr_shwaz_3
+        displayName: "\u6218\u672F\u7684\u7EC8\u7ED3"
+        rangeId: 4-1
+        description: "\u653B\u51FB\u8303\u56F4\u6539\u4E3A\u524D\u65B9<@ba.rem>4\u683C</>\uFF0C\u653B\u51FB\u95F4\u9694<@ba.vdown>\u7565\u5FAE\u589E\u5927</>\uFF0C\u653B\u51FB\u529B<@ba.vup>+{atk:0%}</>\uFF0C\u5929\u8D4B\u7684\u53D1\u52A8\u6982\u7387\u63D0\u9AD8\u81F3<@ba.vup>{talent@prob:0%}</>"
+        skillPointCost: 27
+        initialSkillPoints: 11
+        duration: 23
+        skillPointRecoveryType: 0
+        sourceSkillPointRecoveryType: INCREASE_WITH_TIME
+        blackboard:
+        - key: atk
+          value: 1.6
+          valueString: 
+        - key: base_attack_time
+          value: 0.4
+          valueString: 
+        - key: talent@prob
+          value: 1
+          valueString: 
+      - masteryLevel: 3
+        sourceLevel: 10
+        sourceSkillId: skchr_shwaz_3
+        displayName: "\u6218\u672F\u7684\u7EC8\u7ED3"
+        rangeId: 4-1
+        description: "\u653B\u51FB\u8303\u56F4\u6539\u4E3A\u524D\u65B9<@ba.rem>4\u683C</>\uFF0C\u653B\u51FB\u95F4\u9694<@ba.vdown>\u7565\u5FAE\u589E\u5927</>\uFF0C\u653B\u51FB\u529B<@ba.vup>+{atk:0%}</>\uFF0C\u5929\u8D4B\u7684\u53D1\u52A8\u6982\u7387\u63D0\u9AD8\u81F3<@ba.vup>{talent@prob:0%}</>"
+        skillPointCost: 25
+        initialSkillPoints: 12
+        duration: 25
+        skillPointRecoveryType: 0
+        sourceSkillPointRecoveryType: INCREASE_WITH_TIME
+        blackboard:
+        - key: atk
+          value: 1.8
+          valueString: 
+        - key: base_attack_time
+          value: 0.4
+          valueString: 
+        - key: talent@prob
+          value: 1
+          valueString: 
+  skillMasteryCosts:
+    steps:
+    - fromMastery: 0
+      targetMastery: 1
+      lmdCost: 30000
+      materials:
+      - itemId: rogue_5_relic_legacy_11
+        amount: 2
+    - fromMastery: 1
+      targetMastery: 2
+      lmdCost: 60000
+      materials:
+      - itemId: rogue_3_relic_legacy_57
+        amount: 2
+    - fromMastery: 2
+      targetMastery: 3
+      lmdCost: 120000
+      materials:
+      - itemId: relic_24
+        amount: 1
   skins:
   - skinId: default
     displayName: "\u539F\u7248"
@@ -23,15 +270,18 @@ MonoBehaviour:
     skill1IconResourceKey: UI/Skills/Schwarz/s2
     skill2IconResourceKey: UI/Skills/Schwarz/s3
     isDefault: 1
+    isReserved: 0
   - skinId: snow#1
     displayName: Snow
     avatarResourceKey: UI/HUD/Operators/schwarz_snow
     skill1IconResourceKey: UI/Skills/Schwarz/s2
     skill2IconResourceKey: UI/Skills/Schwarz/s3
     isDefault: 0
+    isReserved: 0
   - skinId: striker#1
     displayName: Striker
     avatarResourceKey: UI/HUD/Operators/schwarz_striker
     skill1IconResourceKey: UI/Skills/Schwarz/s2
     skill2IconResourceKey: UI/Skills/Schwarz/s3
     isDefault: 0
+    isReserved: 0

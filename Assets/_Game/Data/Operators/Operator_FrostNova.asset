@@ -11,37 +11,283 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e82f4cbd944dcc641a152d63c82805c7, type: 3}
   m_Name: Operator_FrostNova
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   operatorId: FrostNova
   displayName: "\u971C\u661F"
   englishName: FROSTNOVA
   sortOrder: 30
+  prtsCharacterId: enemy_1510_frstar2#wintertrace
+  e2Progression:
+    maxLevel: 90
+    rangeId: 
+    snapshots:
+    - level: 1
+      stats:
+        maxHealth: 30000
+        attack: 440
+        physicalDefense: 380
+        artsResistance: 50
+        attackInterval: 3.7
+        basicAttackRange: 1
+        skillRange: 1
+    - level: 30
+      stats:
+        maxHealth: 34887.64
+        attack: 469.32584
+        physicalDefense: 399.55057
+        artsResistance: 50
+        attackInterval: 3.7
+        basicAttackRange: 1
+        skillRange: 1
+    - level: 60
+      stats:
+        maxHealth: 39943.82
+        attack: 499.66293
+        physicalDefense: 419.77527
+        artsResistance: 50
+        attackInterval: 3.7
+        basicAttackRange: 1
+        skillRange: 1
+    - level: 90
+      stats:
+        maxHealth: 45000
+        attack: 530
+        physicalDefense: 440
+        artsResistance: 50
+        attackInterval: 3.7
+        basicAttackRange: 1
+        skillRange: 1
+  metaProgression:
+    levelSteps:
+    - fromLevel: 1
+      targetLevel: 30
+      lmdCost: 20000
+      materials:
+      - itemId: rogue_3_relic_legacy_54
+        amount: 2
+    - fromLevel: 30
+      targetLevel: 60
+      lmdCost: 45000
+      materials:
+      - itemId: rogue_3_relic_legacy_55
+        amount: 2
+    - fromLevel: 60
+      targetLevel: 90
+      lmdCost: 90000
+      materials:
+      - itemId: rogue_4_relic_legacy_187
+        amount: 1
+  skillMastery:
+    skills:
+    - gameplaySlot: 1
+      sourceSkillIndex: 1
+      sourceSkillId: enemy_1510_frstar2:IceNova
+      snapshots:
+      - masteryLevel: 0
+        sourceLevel: 7
+        sourceSkillId: enemy_1510_frstar2:IceNova
+        displayName: "\u51B0\u73AF"
+        rangeId: 
+        description: WinterTrace uses the same official enemy value at Skill7/M1/M2/M3
+          because the source enemy has no mastery tiers.
+        skillPointCost: 10.5
+        initialSkillPoints: 0
+        duration: 0
+        skillPointRecoveryType: 0
+        sourceSkillPointRecoveryType: ENEMY_COOLDOWN_ADAPTED_TO_SP
+        blackboard:
+        - key: damage_scale
+          value: 1
+          valueString: 
+        - key: radius_tiles
+          value: 2
+          valueString: 
+        - key: cold_duration
+          value: 10
+          valueString: 
+      - masteryLevel: 1
+        sourceLevel: 8
+        sourceSkillId: enemy_1510_frstar2:IceNova
+        displayName: "\u51B0\u73AF"
+        rangeId: 
+        description: WinterTrace uses the same official enemy value at Skill7/M1/M2/M3
+          because the source enemy has no mastery tiers.
+        skillPointCost: 10.5
+        initialSkillPoints: 0
+        duration: 0
+        skillPointRecoveryType: 0
+        sourceSkillPointRecoveryType: ENEMY_COOLDOWN_ADAPTED_TO_SP
+        blackboard:
+        - key: damage_scale
+          value: 1
+          valueString: 
+        - key: radius_tiles
+          value: 2
+          valueString: 
+        - key: cold_duration
+          value: 10
+          valueString: 
+      - masteryLevel: 2
+        sourceLevel: 9
+        sourceSkillId: enemy_1510_frstar2:IceNova
+        displayName: "\u51B0\u73AF"
+        rangeId: 
+        description: WinterTrace uses the same official enemy value at Skill7/M1/M2/M3
+          because the source enemy has no mastery tiers.
+        skillPointCost: 10.5
+        initialSkillPoints: 0
+        duration: 0
+        skillPointRecoveryType: 0
+        sourceSkillPointRecoveryType: ENEMY_COOLDOWN_ADAPTED_TO_SP
+        blackboard:
+        - key: damage_scale
+          value: 1
+          valueString: 
+        - key: radius_tiles
+          value: 2
+          valueString: 
+        - key: cold_duration
+          value: 10
+          valueString: 
+      - masteryLevel: 3
+        sourceLevel: 10
+        sourceSkillId: enemy_1510_frstar2:IceNova
+        displayName: "\u51B0\u73AF"
+        rangeId: 
+        description: WinterTrace uses the same official enemy value at Skill7/M1/M2/M3
+          because the source enemy has no mastery tiers.
+        skillPointCost: 10.5
+        initialSkillPoints: 0
+        duration: 0
+        skillPointRecoveryType: 0
+        sourceSkillPointRecoveryType: ENEMY_COOLDOWN_ADAPTED_TO_SP
+        blackboard:
+        - key: damage_scale
+          value: 1
+          valueString: 
+        - key: radius_tiles
+          value: 2
+          valueString: 
+        - key: cold_duration
+          value: 10
+          valueString: 
+    - gameplaySlot: 2
+      sourceSkillIndex: 2
+      sourceSkillId: enemy_1510_frstar2:IceNovaReborn
+      snapshots:
+      - masteryLevel: 0
+        sourceLevel: 7
+        sourceSkillId: enemy_1510_frstar2:IceNovaReborn
+        displayName: "\u51B0\u7206"
+        rangeId: 
+        description: WinterTrace uses the same official enemy value at Skill7/M1/M2/M3
+          because the source enemy has no mastery tiers.
+        skillPointCost: 10.5
+        initialSkillPoints: 0
+        duration: 0
+        skillPointRecoveryType: 0
+        sourceSkillPointRecoveryType: ENEMY_COOLDOWN_ADAPTED_TO_SP
+        blackboard:
+        - key: damage_scale
+          value: 1
+          valueString: 
+        - key: radius_tiles
+          value: 3.3
+          valueString: 
+        - key: cold_duration
+          value: 10
+          valueString: 
+      - masteryLevel: 1
+        sourceLevel: 8
+        sourceSkillId: enemy_1510_frstar2:IceNovaReborn
+        displayName: "\u51B0\u7206"
+        rangeId: 
+        description: WinterTrace uses the same official enemy value at Skill7/M1/M2/M3
+          because the source enemy has no mastery tiers.
+        skillPointCost: 10.5
+        initialSkillPoints: 0
+        duration: 0
+        skillPointRecoveryType: 0
+        sourceSkillPointRecoveryType: ENEMY_COOLDOWN_ADAPTED_TO_SP
+        blackboard:
+        - key: damage_scale
+          value: 1
+          valueString: 
+        - key: radius_tiles
+          value: 3.3
+          valueString: 
+        - key: cold_duration
+          value: 10
+          valueString: 
+      - masteryLevel: 2
+        sourceLevel: 9
+        sourceSkillId: enemy_1510_frstar2:IceNovaReborn
+        displayName: "\u51B0\u7206"
+        rangeId: 
+        description: WinterTrace uses the same official enemy value at Skill7/M1/M2/M3
+          because the source enemy has no mastery tiers.
+        skillPointCost: 10.5
+        initialSkillPoints: 0
+        duration: 0
+        skillPointRecoveryType: 0
+        sourceSkillPointRecoveryType: ENEMY_COOLDOWN_ADAPTED_TO_SP
+        blackboard:
+        - key: damage_scale
+          value: 1
+          valueString: 
+        - key: radius_tiles
+          value: 3.3
+          valueString: 
+        - key: cold_duration
+          value: 10
+          valueString: 
+      - masteryLevel: 3
+        sourceLevel: 10
+        sourceSkillId: enemy_1510_frstar2:IceNovaReborn
+        displayName: "\u51B0\u7206"
+        rangeId: 
+        description: WinterTrace uses the same official enemy value at Skill7/M1/M2/M3
+          because the source enemy has no mastery tiers.
+        skillPointCost: 10.5
+        initialSkillPoints: 0
+        duration: 0
+        skillPointRecoveryType: 0
+        sourceSkillPointRecoveryType: ENEMY_COOLDOWN_ADAPTED_TO_SP
+        blackboard:
+        - key: damage_scale
+          value: 1
+          valueString: 
+        - key: radius_tiles
+          value: 3.3
+          valueString: 
+        - key: cold_duration
+          value: 10
+          valueString: 
+  skillMasteryCosts:
+    steps:
+    - fromMastery: 0
+      targetMastery: 1
+      lmdCost: 30000
+      materials:
+      - itemId: rogue_5_relic_legacy_11
+        amount: 2
+    - fromMastery: 1
+      targetMastery: 2
+      lmdCost: 60000
+      materials:
+      - itemId: rogue_3_relic_legacy_57
+        amount: 2
+    - fromMastery: 2
+      targetMastery: 3
+      lmdCost: 120000
+      materials:
+      - itemId: relic_24
+        amount: 1
   skins:
-  - skinId: default
-    displayName: "\u971C\u661F"
-    avatarResourceKey: UI/HUD/Operators/frostnova_default
-    skill1IconResourceKey:
-    skill2IconResourceKey:
-    isDefault: 1
-    isReserved: 0
   - skinId: winter#1
     displayName: "\u51AC\u75D5"
     avatarResourceKey: UI/HUD/Operators/frostnova_default
-    skill1IconResourceKey:
-    skill2IconResourceKey:
-    isDefault: 0
-    isReserved: 0
-  - skinId: new#1
-    displayName: "\u971C\u661F\u00B7\u65B0"
-    avatarResourceKey: UI/HUD/Operators/frostnova_default
-    skill1IconResourceKey:
-    skill2IconResourceKey:
-    isDefault: 0
-    isReserved: 0
-  - skinId: winter_new#1
-    displayName: "\u51AC\u75D5\u00B7\u65B0"
-    avatarResourceKey: UI/HUD/Operators/frostnova_default
-    skill1IconResourceKey:
-    skill2IconResourceKey:
-    isDefault: 0
+    skill1IconResourceKey: 
+    skill2IconResourceKey: 
+    isDefault: 1
     isReserved: 0

@@ -127,7 +127,14 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
                 forward,
                 minimumForwardDot,
                 forwardPenaltyWeight: 2f,
-                extraFilter: candidate => HasClearLine(attacker, candidate, origin),
+                extraFilter: candidate =>
+                    OperatorRangeUtility.Contains(
+                        ResolveCurrentRangeId(),
+                        transform.position,
+                        forward,
+                        candidate.transform.position,
+                        range) &&
+                    HasClearLine(attacker, candidate, origin),
                 out var target)
                 ? target
                 : null;
@@ -151,6 +158,12 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
             var forward = ResolveForward(_locomotion);
             var dot = Vector3.Dot(forward, delta.normalized);
             return dot >= minimumForwardDot &&
+                   OperatorRangeUtility.Contains(
+                       ResolveCurrentRangeId(),
+                       transform.position,
+                       forward,
+                       target.transform.position,
+                       range) &&
                    HasClearLine(attacker, target, transform.position + Vector3.up * 0.76f);
         }
 
@@ -196,9 +209,25 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
             return true;
         }
 
+        private string ResolveCurrentRangeId()
+        {
+            var skill3 = GetComponent<SchwarzSkill2>();
+            if (skill3 != null && skill3.IsBuffActive)
+            {
+                var skillRangeId = OperatorRangeUtility.ResolveSkillRangeId(this, 2);
+                if (!string.IsNullOrWhiteSpace(skillRangeId))
+                    return skillRangeId;
+            }
+
+            return OperatorRangeUtility.ResolveBasicRangeId(this);
+        }
+
         private float GetCurrentRangeMultiplier()
         {
-            var multiplier = 1f;
+            var runtimeStats = GetComponent<OperatorRuntimeStats>();
+            var multiplier = runtimeStats != null
+                ? runtimeStats.BasicAttackRangeMultiplier
+                : 1f;
             var behaviours = GetComponents<MonoBehaviour>();
             for (var i = 0; i < behaviours.Length; i++)
                 if (behaviours[i] is IPlayerBasicAttackModifier modifier)

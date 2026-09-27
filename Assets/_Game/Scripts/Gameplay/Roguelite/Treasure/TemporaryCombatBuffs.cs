@@ -6,9 +6,10 @@ using UnityEngine;
 namespace ArknightsACT.Gameplay.Roguelite.Treasure
 {
     [DisallowMultipleComponent]
-    public sealed class TemporaryCombatBuffs : MonoBehaviour, IDamageModifier, IPlayerSwitchStateTransfer
+    public sealed class TemporaryCombatBuffs : MonoBehaviour, ILayeredDamageModifier, IPlayerSwitchStateTransfer
     {
         private readonly List<BuffEntry> _damageBuffs = new();
+        public CombatStatModifierLayer ModifierLayer => CombatStatModifierLayer.Temporary;
 
         public void AddAllDamagePercent(float percent, float durationSeconds)
         {

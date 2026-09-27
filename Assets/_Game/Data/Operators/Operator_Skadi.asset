@@ -16,6 +16,253 @@ MonoBehaviour:
   displayName: "\u65AF\u5361\u8482"
   englishName: SKADI
   sortOrder: 50
+  prtsCharacterId: char_263_skadi
+  e2Progression:
+    maxLevel: 90
+    rangeId: 1-1
+    snapshots:
+    - level: 1
+      stats:
+        maxHealth: 2938
+        attack: 842
+        physicalDefense: 220
+        artsResistance: 0
+        attackInterval: 1.5
+        basicAttackRange: 1
+        skillRange: 1
+    - level: 30
+      stats:
+        maxHealth: 3240
+        attack: 898
+        physicalDefense: 234
+        artsResistance: 0
+        attackInterval: 1.5
+        basicAttackRange: 1
+        skillRange: 1
+    - level: 60
+      stats:
+        maxHealth: 3553
+        attack: 957
+        physicalDefense: 249
+        artsResistance: 0
+        attackInterval: 1.5
+        basicAttackRange: 1
+        skillRange: 1
+    - level: 90
+      stats:
+        maxHealth: 3866
+        attack: 1015
+        physicalDefense: 263
+        artsResistance: 0
+        attackInterval: 1.5
+        basicAttackRange: 1
+        skillRange: 1
+  metaProgression:
+    levelSteps:
+    - fromLevel: 1
+      targetLevel: 30
+      lmdCost: 20000
+      materials:
+      - itemId: rogue_3_relic_legacy_54
+        amount: 2
+    - fromLevel: 30
+      targetLevel: 60
+      lmdCost: 45000
+      materials:
+      - itemId: rogue_3_relic_legacy_55
+        amount: 2
+    - fromLevel: 60
+      targetLevel: 90
+      lmdCost: 90000
+      materials:
+      - itemId: rogue_4_relic_legacy_187
+        amount: 1
+  skillMastery:
+    skills:
+    - gameplaySlot: 1
+      sourceSkillIndex: 2
+      sourceSkillId: skchr_skadi_2
+      snapshots:
+      - masteryLevel: 0
+        sourceLevel: 7
+        sourceSkillId: skchr_skadi_2
+        displayName: "\u8DC3\u6D6A\u51FB"
+        rangeId: 
+        description: "\u90E8\u7F72\u540E<@ba.vup>{duration}</>\u79D2\u5185\u653B\u51FB\u529B<@ba.vup>+{atk:0%}</>"
+        skillPointCost: 0
+        initialSkillPoints: 0
+        duration: 0
+        skillPointRecoveryType: 0
+        sourceSkillPointRecoveryType: 
+        blackboard:
+        - key: atk
+          value: 1.2
+          valueString: 
+        - key: duration
+          value: 25
+          valueString: 
+      - masteryLevel: 1
+        sourceLevel: 8
+        sourceSkillId: skchr_skadi_2
+        displayName: "\u8DC3\u6D6A\u51FB"
+        rangeId: 
+        description: "\u90E8\u7F72\u540E<@ba.vup>{duration}</>\u79D2\u5185\u653B\u51FB\u529B<@ba.vup>+{atk:0%}</>"
+        skillPointCost: 0
+        initialSkillPoints: 0
+        duration: 0
+        skillPointRecoveryType: 0
+        sourceSkillPointRecoveryType: 
+        blackboard:
+        - key: atk
+          value: 1.35
+          valueString: 
+        - key: duration
+          value: 27
+          valueString: 
+      - masteryLevel: 2
+        sourceLevel: 9
+        sourceSkillId: skchr_skadi_2
+        displayName: "\u8DC3\u6D6A\u51FB"
+        rangeId: 
+        description: "\u90E8\u7F72\u540E<@ba.vup>{duration}</>\u79D2\u5185\u653B\u51FB\u529B<@ba.vup>+{atk:0%}</>"
+        skillPointCost: 0
+        initialSkillPoints: 0
+        duration: 0
+        skillPointRecoveryType: 0
+        sourceSkillPointRecoveryType: 
+        blackboard:
+        - key: atk
+          value: 1.5
+          valueString: 
+        - key: duration
+          value: 28
+          valueString: 
+      - masteryLevel: 3
+        sourceLevel: 10
+        sourceSkillId: skchr_skadi_2
+        displayName: "\u8DC3\u6D6A\u51FB"
+        rangeId: 
+        description: "\u90E8\u7F72\u540E<@ba.vup>{duration}</>\u79D2\u5185\u653B\u51FB\u529B<@ba.vup>+{atk:0%}</>"
+        skillPointCost: 0
+        initialSkillPoints: 0
+        duration: 0
+        skillPointRecoveryType: 0
+        sourceSkillPointRecoveryType: 
+        blackboard:
+        - key: atk
+          value: 1.7
+          valueString: 
+        - key: duration
+          value: 30
+          valueString: 
+    - gameplaySlot: 2
+      sourceSkillIndex: 3
+      sourceSkillId: skchr_skadi_3
+      snapshots:
+      - masteryLevel: 0
+        sourceLevel: 7
+        sourceSkillId: skchr_skadi_3
+        displayName: "\u6D8C\u6F6E\u60B2\u6B4C"
+        rangeId: 
+        description: "\u653B\u51FB\u529B\u3001\u9632\u5FA1\u529B\u548C\u751F\u547D\u4E0A\u9650\u5404<@ba.vup>+{atk:0%}</>"
+        skillPointCost: 90
+        initialSkillPoints: 60
+        duration: 41
+        skillPointRecoveryType: 0
+        sourceSkillPointRecoveryType: INCREASE_WITH_TIME
+        blackboard:
+        - key: atk
+          value: 1
+          valueString: 
+        - key: def
+          value: 1
+          valueString: 
+        - key: max_hp
+          value: 1
+          valueString: 
+      - masteryLevel: 1
+        sourceLevel: 8
+        sourceSkillId: skchr_skadi_3
+        displayName: "\u6D8C\u6F6E\u60B2\u6B4C"
+        rangeId: 
+        description: "\u653B\u51FB\u529B\u3001\u9632\u5FA1\u529B\u548C\u751F\u547D\u4E0A\u9650\u5404<@ba.vup>+{atk:0%}</>"
+        skillPointCost: 90
+        initialSkillPoints: 63
+        duration: 44
+        skillPointRecoveryType: 0
+        sourceSkillPointRecoveryType: INCREASE_WITH_TIME
+        blackboard:
+        - key: atk
+          value: 1.1
+          valueString: 
+        - key: def
+          value: 1.1
+          valueString: 
+        - key: max_hp
+          value: 1.1
+          valueString: 
+      - masteryLevel: 2
+        sourceLevel: 9
+        sourceSkillId: skchr_skadi_3
+        displayName: "\u6D8C\u6F6E\u60B2\u6B4C"
+        rangeId: 
+        description: "\u653B\u51FB\u529B\u3001\u9632\u5FA1\u529B\u548C\u751F\u547D\u4E0A\u9650\u5404<@ba.vup>+{atk:0%}</>"
+        skillPointCost: 90
+        initialSkillPoints: 66
+        duration: 47
+        skillPointRecoveryType: 0
+        sourceSkillPointRecoveryType: INCREASE_WITH_TIME
+        blackboard:
+        - key: atk
+          value: 1.2
+          valueString: 
+        - key: def
+          value: 1.2
+          valueString: 
+        - key: max_hp
+          value: 1.2
+          valueString: 
+      - masteryLevel: 3
+        sourceLevel: 10
+        sourceSkillId: skchr_skadi_3
+        displayName: "\u6D8C\u6F6E\u60B2\u6B4C"
+        rangeId: 
+        description: "\u653B\u51FB\u529B\u3001\u9632\u5FA1\u529B\u548C\u751F\u547D\u4E0A\u9650\u5404<@ba.vup>+{atk:0%}</>"
+        skillPointCost: 90
+        initialSkillPoints: 70
+        duration: 50
+        skillPointRecoveryType: 0
+        sourceSkillPointRecoveryType: INCREASE_WITH_TIME
+        blackboard:
+        - key: atk
+          value: 1.3
+          valueString: 
+        - key: def
+          value: 1.3
+          valueString: 
+        - key: max_hp
+          value: 1.3
+          valueString: 
+  skillMasteryCosts:
+    steps:
+    - fromMastery: 0
+      targetMastery: 1
+      lmdCost: 30000
+      materials:
+      - itemId: rogue_5_relic_legacy_11
+        amount: 2
+    - fromMastery: 1
+      targetMastery: 2
+      lmdCost: 60000
+      materials:
+      - itemId: rogue_3_relic_legacy_57
+        amount: 2
+    - fromMastery: 2
+      targetMastery: 3
+      lmdCost: 120000
+      materials:
+      - itemId: relic_24
+        amount: 1
   skins:
   - skinId: default
     displayName: "\u539F\u7248"

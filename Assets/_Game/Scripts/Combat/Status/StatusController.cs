@@ -5,7 +5,7 @@ using UnityEngine;
 namespace ArknightsACT.Combat.Status
 {
     [DisallowMultipleComponent]
-    public sealed class StatusController : MonoBehaviour, ICombatStatModifier, ICombatActionBlockSource, IDamageModifier
+    public sealed class StatusController : MonoBehaviour, ILayeredCombatStatModifier, ICombatActionBlockSource, ILayeredDamageModifier
     {
         private readonly Dictionary<string, ActiveStatusInstance> _active =
             new(StringComparer.OrdinalIgnoreCase);
@@ -38,6 +38,7 @@ namespace ArknightsACT.Combat.Status
         }
 
         public IReadOnlyCollection<ActiveStatusInstance> ActiveStatuses => _active.Values;
+        public CombatStatModifierLayer ModifierLayer => CombatStatModifierLayer.Temporary;
 
         private void Awake()
         {

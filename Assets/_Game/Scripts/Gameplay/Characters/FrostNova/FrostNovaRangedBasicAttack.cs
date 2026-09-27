@@ -2,6 +2,7 @@ using System;
 using ArknightsACT.Combat;
 using ArknightsACT.Gameplay.Characters;
 using ArknightsACT.Gameplay.Combat;
+using ArknightsACT.Combat.Status;
 using UnityEngine;
 
 namespace ArknightsACT.Gameplay.Characters.FrostNova
@@ -23,6 +24,7 @@ namespace ArknightsACT.Gameplay.Characters.FrostNova
         private FrostNovaTuningProfile _tuning;
         private CombatEntity _pendingTarget;
         private bool _hasPendingTarget;
+        private float _officialColdDurationSeconds;
 
         public float CurrentVisualRange => baseRange;
 
@@ -31,6 +33,8 @@ namespace ArknightsACT.Gameplay.Characters.FrostNova
             _entity = GetComponent<CombatEntity>();
             _locomotion = FindLocomotion();
             RefreshTuning();
+            if (FrostNovaWinterTraceCombatProfile.TryLoad(out var winterTrace))
+                _officialColdDurationSeconds = Mathf.Max(0f, winterTrace.basicAttackColdDurationSeconds);
         }
 
         public void RefreshTuning()
@@ -116,6 +120,16 @@ namespace ArknightsACT.Gameplay.Characters.FrostNova
             {
                 hitTarget = null;
                 return false;
+            }
+
+            if (_officialColdDurationSeconds > 0f && hitTarget.Status != null)
+            {
+                hitTarget.Status.Apply(
+                    CombatStatusIds.Cold,
+                    duration: _officialColdDurationSeconds,
+                    source: attacker,
+                    owner: hitTarget,
+                    sourceId: "FrostNova_Winter_BasicCold");
             }
 
             return true;

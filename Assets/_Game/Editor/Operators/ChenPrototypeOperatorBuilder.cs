@@ -13,7 +13,7 @@ namespace ArknightsACT.Editor
 
         public void EnsureDefinitionAsset()
         {
-            PrototypeOperatorDefinitionAssetUtility.Ensure(
+            var definition = PrototypeOperatorDefinitionAssetUtility.Ensure(
                 "Operator_Chen",
                 OperatorId,
                 "陈",
@@ -26,6 +26,8 @@ namespace ArknightsACT.Editor
                     "UI/Skills/chen_badao",
                     "UI/Skills/chen_jueying",
                     true));
+            PrtsOperatorProgressionImporter.TryRefreshDefinition(definition, "char_010_chen");
+            PrtsOperatorSkillMasteryImporter.TryRefreshDefinition(definition, "char_010_chen", 2, 3);
         }
 
         public GameObject Build(
@@ -33,9 +35,13 @@ namespace ArknightsACT.Editor
             PlayableOperatorDefinition definition,
             PlayableOperatorSkinDefinition skin)
         {
+            if (definition == null || !definition.HasE2Progression)
+                throw new System.InvalidOperationException("Chen is missing official E2 progression data.");
+
             return ChenPrototypePlayerFactory.Create25D(
                 PrototypeSceneBuilder.BuildChenAttackDefinitions(),
-                camera);
+                camera,
+                definition.E2Progression.Evaluate(1));
         }
 
         public void RefreshAssets(
@@ -58,7 +64,15 @@ namespace ArknightsACT.Editor
             PrtsOriginalSpineFxSetup.PrepareDownloadedChen();
             if (ChenExtractedFxSetup.HasImportedEffects())
                 ChenExtractedFxSetup.Configure(player);
-            PlayableOperatorPrototypeComposer.ApplyFormalCombatProfile(player, 100f, 2.2f, 5f);
+
+            if (definition != null && definition.HasE2Progression)
+            {
+                var progression = player.GetComponent<OperatorProgressionController>();
+                var level = progression != null ? progression.EliteLevel : 1;
+                PlayableOperatorPrototypeComposer.ApplyFormalCombatProfile(
+                    player,
+                    definition.E2Progression.Evaluate(level));
+            }
         }
     }
 }

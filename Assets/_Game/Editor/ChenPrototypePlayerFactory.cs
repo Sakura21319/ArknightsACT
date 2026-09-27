@@ -28,7 +28,7 @@ namespace ArknightsACT.Editor
         private const string CustomFxSlashTexturePath =
             "Assets/_Game/Art/FX/Chen/ChenCustomSlash.png";
 
-        public static GameObject Create(AttackDefinition[] attacks, float spawnY)
+        public static GameObject Create(AttackDefinition[] attacks, float spawnY, OperatorBaseStats baseStats)
         {
             var go = new GameObject("Player_Chen");
             go.transform.position = new Vector3(0f, spawnY, 0f);
@@ -63,7 +63,7 @@ namespace ArknightsACT.Editor
             collider.direction = CapsuleDirection2D.Vertical;
             collider.size = new Vector2(0.72f, 1.45f);
 
-            AddSharedGameplay(go, attacks);
+            AddSharedGameplay(go, attacks, baseStats);
             go.AddComponent<PlayerMotor2D>();
             go.AddComponent<ChenPresentationDriver2D>();
             PrepareCustomFxMountPoint(go);
@@ -74,7 +74,7 @@ namespace ArknightsACT.Editor
             return go;
         }
 
-        public static GameObject Create25D(AttackDefinition[] attacks, Camera camera)
+        public static GameObject Create25D(AttackDefinition[] attacks, Camera camera, OperatorBaseStats baseStats)
         {
             var go = new GameObject("Player_Chen");
             go.SetActive(false);
@@ -88,7 +88,7 @@ namespace ArknightsACT.Editor
             controller.stepOffset = 0.28f;
             controller.slopeLimit = 45f;
 
-            AddSharedGameplay(go, attacks);
+            AddSharedGameplay(go, attacks, baseStats);
             go.AddComponent<ScavengingInventory25D>();
 
             var motor = go.AddComponent<PlayerMotor25D>();
@@ -183,12 +183,15 @@ namespace ArknightsACT.Editor
             retarget.Configure(combatPresentation.transform, motionSource.transform, "Move");
         }
 
-        private static void AddSharedGameplay(GameObject go, AttackDefinition[] attacks)
+        private static void AddSharedGameplay(
+            GameObject go,
+            AttackDefinition[] attacks,
+            OperatorBaseStats baseStats)
         {
             PlayableOperatorPrototypeComposer.AddFoundation(
                 go,
                 attacks,
-                10f,
+                baseStats.Attack,
                 OperatorProfession.Guard,
                 CombatFeature.BasicAttack |
                 CombatFeature.ActiveSkills |
@@ -201,8 +204,12 @@ namespace ArknightsACT.Editor
                 "UI/HUD/chen_avatar",
                 "UI/Skills/chen_badao",
                 "UI/Skills/chen_jueying",
-                physicalDefense: 2.2f,
-                artsResistance: 5f);
+                maxHealth: baseStats.MaxHealth,
+                physicalDefense: baseStats.PhysicalDefense,
+                artsResistance: baseStats.ArtsResistance,
+                attackInterval: baseStats.AttackInterval,
+                basicAttackRange: baseStats.BasicAttackRange,
+                skillRange: baseStats.SkillRange);
 
             go.AddComponent<ChenSkill1>();
             go.AddComponent<ChenSkill2>();

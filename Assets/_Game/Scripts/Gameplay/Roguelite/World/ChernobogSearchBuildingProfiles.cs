@@ -39,6 +39,12 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             new(ChernobogSearchBuildingKind.ArchiveOffice, "管制档案室", "ARCHIVE", 1, 2, .15, new[] { SalvageContainerKind.FilingCabinet, SalvageContainerKind.OfficeDesk }, SalvageContainerKind.ArchiveVault, .18),
             new(ChernobogSearchBuildingKind.AbandonedHouse, "空置民房", "VACANT", 1, 1, .65, new[] { SalvageContainerKind.BedsideDrawer, SalvageContainerKind.Suitcase }, SalvageContainerKind.PersonalSafe, .01)
         };
+        public static ChernobogSearchBuildingProfile Get(ChernobogSearchBuildingKind kind)
+        {
+            foreach (var profile in Profiles)
+                if (profile.Kind == kind) return profile;
+            return Profiles[0];
+        }
         public static ChernobogSearchBuildingProfile Select(ChernobogDistrictType district, Random random)
         {
             var choices = district switch

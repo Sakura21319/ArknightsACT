@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using ArknightsACT.Combat;
 using ArknightsACT.Gameplay.Characters;
+using ArknightsACT.Gameplay.Enemies;
 using ArknightsACT.Gameplay.Feedback;
 using ArknightsACT.Gameplay.Navigation;
 using ArknightsACT.Gameplay.Roguelite.Collectibles;
@@ -683,16 +684,31 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             var center = GetChunkCenter(runtime.Data.Coordinate);
             if (type == RogueliteBlockType.Boss)
             {
-                SpawnEnemy(runtime, 3, center + new Vector3(0f, 0.03f, 1.4f), ResolveBossHealthMultiplier(), 2.0f, 0);
+                SpawnEnemy(
+                    runtime,
+                    3,
+                    center + new Vector3(0f, 0.03f, 1.4f),
+                    1.0f,
+                    0,
+                    EnemyRank.Boss);
                 if (stageMap.StageIndex >= 2)
-                    SpawnEnemy(runtime, stageMap.StageIndex == 2 ? 1 : 2, center + new Vector3(-4.1f, 0.03f, -2.8f), 1f + 0.18f * (stageMap.StageIndex - 1), 1.25f, 1);
+                {
+                    SpawnEnemy(
+                        runtime,
+                        stageMap.StageIndex == 2 ? 1 : 2,
+                        center + new Vector3(-4.1f, 0.03f, -2.8f),
+                        1.25f,
+                        1,
+                        EnemyRank.Normal);
+                }
                 return;
             }
 
             var emergency = type == RogueliteBlockType.EmergencyCombat;
             var baseCount = 2 + stageMap.StageIndex;
             var enemyCount = Mathf.Clamp(baseCount + (emergency ? 1 : 0) + CityZoneRules.ExtraEnemies(runtime.Data.Zone), 3, 8);
-            var healthMultiplier = (1f + (stageMap.StageIndex - 1) * 0.22f) * (emergency ? 1.35f : 1f) * CityZoneRules.HealthMultiplier(runtime.Data.Zone);
+            // Combat stats come from the selected PRTS enemy level without project multipliers.
+            // Encounter difficulty is composed through enemy selection/count/rank and reward pressure.
             var experienceMultiplier = (emergency ? 1.5f : 1f) * (runtime.Data.Zone == CityZone.Core ? 1.5f : 1f);
             var offsets = stageMap.UsesCityLots ? new[]
             {
@@ -706,11 +722,46 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             {
                 var available = stageMap.StageIndex == 1 && !emergency ? 2 : 3;
                 var templateIndex = i % Mathf.Min(available, enemyTemplates.Length);
-                SpawnEnemy(runtime, templateIndex, center + offsets[i % offsets.Length], healthMultiplier, experienceMultiplier, i);
+                var rank = ResolveEnemyRank(runtime, emergency, i);
+
+                // Rank must select a real enemy data source rather than fabricate stronger
+                // numbers on an ordinary enemy. Heavy Defender is the current authored elite.
+                var encounterTemplateIndex = rank == EnemyRank.Elite && enemyTemplates.Length > 3
+                    ? 3
+                    : templateIndex;
+                SpawnEnemy(
+                    runtime,
+                    encounterTemplateIndex,
+                    center + offsets[i % offsets.Length],
+                    experienceMultiplier,
+                    i,
+                    rank);
             }
         }
 
-        private void SpawnEnemy(BlockRuntime runtime, int templateIndex, Vector3 position, float healthMultiplier, float expMultiplier, int serial)
+        private EnemyRank ResolveEnemyRank(BlockRuntime runtime, bool emergency, int serial)
+        {
+            if (emergency)
+            {
+                if (serial == 0 || (stageMap.StageIndex >= 3 && serial == 1))
+                    return EnemyRank.Elite;
+                return EnemyRank.Normal;
+            }
+
+            // Core districts begin mixing one elite into ordinary encounters from stage 2.
+            if (runtime.Data.Zone == CityZone.Core && stageMap.StageIndex >= 2 && serial == 0)
+                return EnemyRank.Elite;
+
+            return EnemyRank.Normal;
+        }
+
+        private void SpawnEnemy(
+            BlockRuntime runtime,
+            int templateIndex,
+            Vector3 position,
+            float expMultiplier,
+            int serial,
+            EnemyRank rank = EnemyRank.Normal)
         {
             if (enemyTemplates == null || templateIndex < 0 || templateIndex >= enemyTemplates.Length)
                 return;
@@ -719,15 +770,28 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                 return;
 
             var instance = Instantiate(template, position, Quaternion.identity);
-            instance.name = $"Stage{stageMap.StageIndex}_Block{runtime.Data.Index:00}_{template.name}_{serial + 1}";
+            instance.name = $"Stage{stageMap.StageIndex}_Block{runtime.Data.Index:00}_{rank}_{template.name}_{serial + 1}";
             instance.transform.SetParent(runtime.ContentRoot, true);
 
-            var health = instance.GetComponent<Health>();
-            if (health != null)
-                health.SetMaxHealth(health.MaxHealth * Mathf.Max(0.1f, healthMultiplier));
+            var officialStats = instance.GetComponent<EnemyOfficialStats25D>() ??
+                                instance.AddComponent<EnemyOfficialStats25D>();
+            var riskLevel = RogueliteGameFlowController.Instance != null
+                ? RogueliteGameFlowController.Instance.SelectedRiskLevel
+                : 0;
+            officialStats.ConfigureRoguelike(
+                ResolveEnemySourceId(templateIndex),
+                level: 0,
+                floor: Mathf.Max(1, stageMap.StageIndex),
+                difficulty: riskLevel,
+                enemyRank: rank);
+
             var experience = instance.GetComponent<EnemyExperienceReward>();
             if (experience != null)
                 experience.SetRewardMultiplier(expMultiplier);
+
+            var threat = instance.GetComponent<EnemyThreatProfile25D>() ??
+                         instance.AddComponent<EnemyThreatProfile25D>();
+            threat.Configure(rank);
 
             instance.SetActive(true);
             IgnoreActorCollision(instance, player != null ? player.gameObject : null);
@@ -743,13 +807,15 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                 runtime.Enemies.Add(entity);
         }
 
-        private float ResolveBossHealthMultiplier()
+        private static string ResolveEnemySourceId(int templateIndex)
         {
-            return stageMap.StageIndex switch
+            return templateIndex switch
             {
-                1 => 2.0f,
-                2 => 2.4f,
-                _ => 2.8f
+                0 => "enemy_1002_nsabr",  // 士兵
+                1 => "enemy_1000_gopro",  // 猎狗
+                2 => "enemy_1003_ncbow",  // 弩手
+                3 => "enemy_1006_shield", // 重装防御者
+                _ => string.Empty
             };
         }
 

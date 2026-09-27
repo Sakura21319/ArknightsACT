@@ -1,3 +1,4 @@
+using System.Collections;
 using ArknightsACT.Gameplay.Navigation;
 using UnityEngine;
 
@@ -7,9 +8,15 @@ namespace ArknightsACT.Gameplay.Roguelite.World
     public sealed class CityVerticalRoute : MonoBehaviour
     {
         public Vector3[] Points { get; private set; }
-        public void Configure(Vector3[] points) => Points = points;
-        private void Start()
+        private int _deferFrames = 1;
+        public void Configure(Vector3[] points, int deferFrames = 1)
         {
+            Points = points;
+            _deferFrames = Mathf.Max(0, deferFrames);
+        }
+        private IEnumerator Start()
+        {
+            for (var frame = 0; frame < _deferFrames; frame++) yield return null;
             Physics.SyncTransforms();
             // Joining upper landings to nearby roofs by line of sight would create routes through air.
             PrototypeNavigationGraph25D.Instance?.AppendRoomRoute(Points, 1);

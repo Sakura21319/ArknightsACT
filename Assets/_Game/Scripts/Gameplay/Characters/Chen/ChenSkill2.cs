@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using ArknightsACT.Combat;
+using ArknightsACT.Combat.Status;
 using ArknightsACT.Gameplay.Abilities;
 using ArknightsACT.Gameplay.Characters;
 using ArknightsACT.Gameplay.Feedback;
@@ -9,29 +10,34 @@ using UnityEngine;
 namespace ArknightsACT.Gameplay.Characters.Chen
 {
     [RequireComponent(typeof(CombatEntity))]
-    public sealed class ChenSkill2 : MonoBehaviour, IPlayerSkill, IPlayerInvulnerabilitySource, IPlayerSkillInterruptible
+    public sealed class ChenSkill2 : MonoBehaviour, IPlayerSkill, IPlayerInvulnerabilitySource, IPlayerSkillInterruptible, IOperatorSkillMasteryTarget
     {
         [Header("Skill points")]
-        [SerializeField, Min(1f)] private float skillPointCost = 30f;
-        [SerializeField, Min(0f)] private float initialSkillPoints = 20f;
+        [SerializeField, Min(0f)] private float skillPointCost;
+        [SerializeField, Min(0f)] private float initialSkillPoints;
         [SerializeField, Min(0f)] private float naturalSkillPointPerSecond = 1f;
         [SerializeField, Min(0f)] private float startupSeconds = 0.28f;
-        [SerializeField, Min(1)] private int strikeCount = 10;
+        [SerializeField, Min(1)] private int strikeCount = 1;
         [SerializeField, Min(0.02f)] private float strikeInterval = 0.12f;
-        [SerializeField, Min(0f)] private float strikeDamage = 11f;
-        [SerializeField, Min(0f)] private float finalDamage = 30f;
+        [SerializeField, Min(0f)] private float masteryAttackScale;
+        [SerializeField] private string masteryRangeId = string.Empty;
+        [SerializeField, Min(0f)] private float finalStrikeStunSeconds;
         [SerializeField, Min(0.5f)] private float targetingRadius = 5.5f;
         [SerializeField, Min(0.1f)] private float castLockSeconds = 2.1f;
         [SerializeField, Min(0.1f)] private float max25DHeightDifference = 1.35f;
 
         private CombatEntity _entity;
+        private OperatorRuntimeStats _operatorStats;
         private PlayerMotor25D _motor25D;
         private float _skillPoints;
         private int _bonusStrikeCount;
         private float _runtimeFinalDamageMultiplier = 1f;
         private float _runtimeRadiusMultiplier = 1f;
+        private int _killRefreshStrikeCap;
+        private bool _officialSkillDataApplied;
 
         public int Slot => 2;
+        public int MasterySlot => 2;
         public string DisplayName => "赤霄·绝影";
         public float SkillPointCost => Mathf.Max(1f, skillPointCost);
         public float SkillPoints => Mathf.Clamp(_skillPoints, 0f, SkillPointCost);
@@ -42,6 +48,8 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             : Mathf.Max(0f, SkillPointCost - SkillPoints) / NaturalSkillPointPerSecond;
         public bool IsCasting { get; private set; }
         public bool IsInvulnerable => IsCasting;
+        public int StrikeCount => Mathf.Max(1, strikeCount);
+        public float FinalStrikeStunSeconds => Mathf.Max(0f, finalStrikeStunSeconds);
 
         /// <summary>
         /// Raised when the gameplay portion of Jueying has released its cast lock. Presentation
@@ -59,13 +67,14 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         private void Awake()
         {
             _entity = GetComponent<CombatEntity>();
+            _operatorStats = GetComponent<OperatorRuntimeStats>();
             _motor25D = GetComponent<PlayerMotor25D>();
             _skillPoints = Mathf.Clamp(initialSkillPoints, 0f, SkillPointCost);
         }
 
         public bool TryCast()
         {
-            if (IsCasting || SkillPoints + 0.0001f < SkillPointCost || _entity?.Health == null || _entity.Health.IsDead)
+            if (!_officialSkillDataApplied || IsCasting || SkillPoints + 0.0001f < SkillPointCost || _entity?.Health == null || _entity.Health.IsDead)
                 return false;
             if (FindNearestTarget() == null)
                 return false;
@@ -102,11 +111,49 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         public void AddStrikeCount(int value) =>
             _bonusStrikeCount = Mathf.Clamp(_bonusStrikeCount + Mathf.Max(0, value), 0, 12);
 
+        public void ApplyMasterySnapshot(OperatorSkillMasterySnapshot snapshot)
+        {
+            if (snapshot == null)
+            {
+                _officialSkillDataApplied = false;
+                return;
+            }
+
+            skillPointCost = snapshot.SkillPointCost;
+            initialSkillPoints = Mathf.Clamp(
+                snapshot.InitialSkillPoints,
+                0f,
+                Mathf.Max(1f, skillPointCost));
+            masteryRangeId = snapshot.RangeId ?? string.Empty;
+
+            var hasAttackScale = snapshot.TryGetBlackboard("atk_scale", out var attackScale);
+            var hasTimes = snapshot.TryGetBlackboard("times", out var times);
+            var hasStun = snapshot.TryGetBlackboard("stun", out var stun);
+            masteryAttackScale = hasAttackScale ? Mathf.Max(0f, attackScale) : 0f;
+            strikeCount = hasTimes ? Mathf.Max(1, Mathf.RoundToInt(times)) : 1;
+            finalStrikeStunSeconds = hasStun ? Mathf.Max(0f, stun) : 0f;
+
+            _officialSkillDataApplied =
+                skillPointCost > 0f &&
+                masteryAttackScale > 0f &&
+                hasTimes &&
+                hasStun &&
+                !string.IsNullOrWhiteSpace(masteryRangeId);
+            _skillPoints = Mathf.Clamp(initialSkillPoints, 0f, SkillPointCost);
+        }
+
         public void AddFinalDamagePercent(float value) =>
             _runtimeFinalDamageMultiplier = Mathf.Clamp(_runtimeFinalDamageMultiplier + Mathf.Max(0f, value), 1f, 4f);
 
         public void AddTargetingRadiusPercent(float value) =>
             _runtimeRadiusMultiplier = Mathf.Clamp(_runtimeRadiusMultiplier + Mathf.Max(0f, value), 1f, 2.5f);
+
+        public void EnableKillRefresh(int maxExtraStrikes)
+        {
+            _killRefreshStrikeCap = Mathf.Max(
+                _killRefreshStrikeCap,
+                Mathf.Clamp(maxExtraStrikes, 1, 8));
+        }
 
         public void ResetRunModifiers()
         {
@@ -115,6 +162,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             _bonusStrikeCount = 0;
             _runtimeFinalDamageMultiplier = 1f;
             _runtimeRadiusMultiplier = 1f;
+            _killRefreshStrikeCap = 0;
             _skillPoints = Mathf.Clamp(initialSkillPoints, 0f, SkillPointCost);
             CastEnded?.Invoke();
         }
@@ -137,7 +185,10 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                 yield return new WaitForSeconds(startupSeconds);
 
             var totalStrikes = Mathf.Max(1, strikeCount + _bonusStrikeCount);
-            for (var i = 0; i < totalStrikes && _entity?.Health != null && !_entity.Health.IsDead; i++)
+            var refreshedStrikes = 0;
+            for (var i = 0;
+                 i < totalStrikes + refreshedStrikes && _entity?.Health != null && !_entity.Health.IsDead;
+                 i++)
             {
                 var target = FindNearestTarget();
                 // Jueying is a target-driven skill. Do not keep the cast lock or spawn empty
@@ -145,8 +196,13 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                 if (target == null)
                     break;
 
-                var isFinal = i == totalStrikes - 1;
-                var damage = isFinal ? finalDamage * _runtimeFinalDamageMultiplier : strikeDamage;
+                var isFinal = i == totalStrikes + refreshedStrikes - 1;
+                if (!_officialSkillDataApplied || masteryAttackScale <= 0f || _operatorStats == null)
+                    break;
+                var officialDamage = _operatorStats.Attack * masteryAttackScale;
+                var damage = isFinal
+                    ? officialDamage * _runtimeFinalDamageMultiplier
+                    : officialDamage;
                 var knockback = Vector2.zero;
                 if (_motor25D == null)
                 {
@@ -163,9 +219,25 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                     knockback,
                     sourceId: isFinal ? "Chen_Skill2_Final" : "Chen_Skill2_Strike",
                     tags: DamageTags.Skill);
-                if (DamageSystem.Apply(context).Applied)
+                var result = DamageSystem.Apply(context);
+                if (result.Applied)
                 {
+                    if (result.Killed && refreshedStrikes < _killRefreshStrikeCap)
+                        refreshedStrikes++;
+
                     target.GetComponentInChildren<HitFlash2D>()?.Flash();
+                    if (isFinal &&
+                        finalStrikeStunSeconds > 0f &&
+                        target.Health != null &&
+                        !target.Health.IsDead)
+                    {
+                        target.Status?.Apply(
+                            CombatStatusIds.Stun,
+                            finalStrikeStunSeconds,
+                            _entity,
+                            _entity,
+                            sourceId: "Chen_Skill2_FinalStun");
+                    }
                     HitStopService.Instance?.Request(isFinal ? 0.040f : 0.012f);
                     CameraShake2D.Instance?.Shake(isFinal ? 0.10f : 0.025f, 0.04f);
                 }
@@ -174,7 +246,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                 // because combat rules rejected the damage application.
                 StrikeResolved?.Invoke(i, target.transform, isFinal);
 
-                if (i < totalStrikes - 1)
+                if (i < totalStrikes + refreshedStrikes - 1)
                 {
                     // Do not spend another strike interval in an already-cleared room. The last
                     // hit can kill the final target, so check before yielding instead of waiting
@@ -208,7 +280,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
 
         private CombatEntity FindNearestTarget2D()
         {
-            var radius = targetingRadius * _runtimeRadiusMultiplier;
+            var radius = targetingRadius * ResolveSkillRangeMultiplier();
             var colliders = Physics2D.OverlapCircleAll(transform.position, radius);
             CombatEntity best = null;
             var bestSqr = float.PositiveInfinity;
@@ -233,7 +305,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
 
         private CombatEntity FindNearestTarget25D()
         {
-            var radius = targetingRadius * _runtimeRadiusMultiplier;
+            var radius = targetingRadius * ResolveSkillRangeMultiplier();
             var colliders = Physics.OverlapSphere(transform.position, radius, ~0, QueryTriggerInteraction.Ignore);
             CombatEntity best = null;
             var bestSqr = float.PositiveInfinity;
@@ -290,13 +362,34 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             return true;
         }
 
+        private float ResolveSkillRangeMultiplier()
+        {
+            var pipeline = _operatorStats != null
+                ? _operatorStats.GetSkillRangeMultiplier(MasterySlot)
+                : 1f;
+            return Mathf.Clamp(pipeline * _runtimeRadiusMultiplier, 0.25f, 4f);
+        }
+
         private bool CanTarget(CombatEntity candidate)
         {
-            return candidate != null &&
-                   candidate != _entity &&
-                   candidate.Team != _entity.Team &&
-                   candidate.Health != null &&
-                   !candidate.Health.IsDead;
+            if (candidate == null ||
+                candidate == _entity ||
+                candidate.Team == _entity.Team ||
+                candidate.Health == null ||
+                candidate.Health.IsDead)
+                return false;
+
+            if (_motor25D == null || string.IsNullOrWhiteSpace(masteryRangeId))
+                return true;
+
+            var forward = _motor25D.PlanarForward;
+            var worldReach = targetingRadius * ResolveSkillRangeMultiplier();
+            return OperatorRangeUtility.Contains(
+                masteryRangeId,
+                transform.position,
+                forward,
+                candidate.transform.position,
+                worldReach);
         }
     }
 }

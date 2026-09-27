@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using ArknightsACT.Combat;
 using ArknightsACT.Gameplay.Abilities;
 using ArknightsACT.Gameplay.Characters;
+using ArknightsACT.Gameplay.Presentation;
 using UnityEngine;
 
 namespace ArknightsACT.Gameplay.Characters.Wisadel
@@ -18,30 +19,31 @@ namespace ArknightsACT.Gameplay.Characters.Wisadel
         IPlayerSkillInterruptible,
         IPlayerRunResettable,
         IPlayerSkillAmmoConsumer,
-        IPlayerControlLockSource
+        IPlayerControlLockSource,
+        IOperatorSkillMasteryTarget,
+        ILayeredCombatStatModifier
     {
         [SerializeField, Range(1, 2)] private int slot = 1;
         [SerializeField] private string displayName = "Wisadel Skill";
-        [SerializeField, Min(1f)] private float skillPointCost = 25f;
-        [SerializeField, Min(0f)] private float initialSkillPoints = 10f;
+        [SerializeField, Min(0f)] private float skillPointCost;
+        [SerializeField, Min(0f)] private float initialSkillPoints;
         [SerializeField, Min(0f)] private float naturalSkillPointPerSecond = 1f;
         [SerializeField, Min(0f)] private float startupSeconds = 0.55f;
 
         [Header("Skill 2 - continuous auto target")]
-        [SerializeField, Min(0.5f)] private float activeDurationSeconds = 25f;
-        // PRTS / game data at M3: base interval 2.1s + S2 base_attack_time(-0.7) = 1.4s.
-        [SerializeField, Min(0.1f)] private float autoAttackIntervalSeconds = 1.4f;
-        // Overdrive keeps the 1.4s attack cycle, but each attack becomes a 4-shot burst.
-        // The imported Skill_2_Loop is 1.4s raw / 2x project playback = 0.7s, so 0.175s
-        // spaces four visible shots across that effective loop.
-        [SerializeField, Range(1, 4)] private int overloadBurstCount = 4;
-        [SerializeField, Min(0.01f)] private float overloadBurstShotIntervalSeconds = 0.175f;
+        [SerializeField, Min(0f)] private float activeDurationSeconds;
+        [SerializeField, Min(0)] private int overloadBurstCount;
+        [Tooltip("Authored ACT world-space calibration. Official range shape and run range modifiers are applied on top.")]
         [SerializeField, Min(1f)] private float autoTargetRange = 12f;
+        [Tooltip("Authored ACT splash/world-space calibration, not an operator progression stat.")]
         [SerializeField, Min(0.1f)] private float autoImpactRadius = 3.8f;
-        [SerializeField, Min(0f)] private float autoDamagePerShot = 94f;
+        [SerializeField, Min(0f)] private float masteryAttackBonus;
+        [SerializeField] private float masteryAttackIntervalFlatDelta;
+        [SerializeField, Min(0f)] private float masteryOverloadAttackScale;
+        [SerializeField, Min(0f)] private float masterySkill3AttackScale;
 
         [Header("Skill 3 - ammo")]
-        [SerializeField, Min(1)] private int ammoCapacity = 6;
+        [SerializeField, Min(0)] private int ammoCapacity;
 
         private CombatEntity _entity;
         private Coroutine _routine;
@@ -49,26 +51,35 @@ namespace ArknightsACT.Gameplay.Characters.Wisadel
         private float _activeUntil;
         private float _overloadStartsAt;
         private int _ammoRemaining;
+        private bool _officialSkillDataApplied;
 
         public int Slot => slot;
+        public int MasterySlot => slot;
         public string DisplayName => displayName;
         public float CooldownRemaining => NaturalSkillPointPerSecond <= 0f
             ? (SkillPointRatio >= 1f ? 0f : float.PositiveInfinity)
             : Mathf.Max(0f, SkillPointCost - SkillPoints) / NaturalSkillPointPerSecond;
         public float SkillPoints => Mathf.Clamp(_skillPoints, 0f, SkillPointCost);
-        public float SkillPointCost => Mathf.Max(1f, skillPointCost);
-        public float SkillPointRatio => Mathf.Clamp01(SkillPoints / SkillPointCost);
+        public float SkillPointCost => Mathf.Max(0f, skillPointCost);
+        public float SkillPointRatio =>
+            SkillPointCost > 0.0001f
+                ? Mathf.Clamp01(SkillPoints / SkillPointCost)
+                : 0f;
         public float NaturalSkillPointPerSecond => Mathf.Max(0f, naturalSkillPointPerSecond);
         public bool IsCasting { get; private set; }
         public bool IsActive { get; private set; }
         public bool IsAutoAttacking { get; private set; }
         public bool IsOverloaded { get; private set; }
+        public bool HasOfficialSkillData => _officialSkillDataApplied;
+        public int OverloadBurstCount =>
+            slot == 1 ? Mathf.Max(0, overloadBurstCount) : 0;
+        public CombatStatModifierLayer ModifierLayer => CombatStatModifierLayer.Temporary;
 
         public PlayerSkillLifecycleType LifecycleType =>
             slot == 2 ? PlayerSkillLifecycleType.Ammo : PlayerSkillLifecycleType.Duration;
 
         public float ActiveDurationSeconds =>
-            slot == 1 ? Mathf.Max(0.5f, activeDurationSeconds) : 0f;
+            slot == 1 ? Mathf.Max(0f, activeDurationSeconds) : 0f;
 
         public float Skill2StageDurationSeconds =>
             slot == 1 ? ActiveDurationSeconds * 0.5f : 0f;
@@ -82,16 +93,58 @@ namespace ArknightsACT.Gameplay.Characters.Wisadel
             slot == 2 && IsActive ? Mathf.Max(0, _ammoRemaining) : 0;
 
         public int AmmoCapacity =>
-            slot == 2 ? Mathf.Max(1, ammoCapacity) : 0;
+            slot == 2 ? Mathf.Max(0, ammoCapacity) : 0;
 
         public bool ConsumeAmmoOnBasicAttackStarted => slot == 2;
         public int LastAmmoConsumedFrame { get; private set; } = -1;
+        public float Skill3AttackBonusMultiplier =>
+            slot == 2 ? Mathf.Max(0f, 1f + masteryAttackBonus) : 1f;
+        public float Skill3BasicAttackDamageMultiplier =>
+            slot == 2 ? Mathf.Max(0f, masterySkill3AttackScale) : 1f;
+        public float Skill3AttackIntervalSeconds
+        {
+            get
+            {
+                if (slot != 2 || !_officialSkillDataApplied)
+                    return 0f;
+
+                var runtimeStats = GetComponent<OperatorRuntimeStats>();
+                if (runtimeStats == null)
+                    return 0f;
+                if (IsActive)
+                    return runtimeStats.AttackInterval;
+
+                // Preview the official S3 interval before activation without hardcoding an M3
+                // result. Other resolved interval/ASPD modifiers still participate.
+                var speed = Mathf.Max(0.05f, runtimeStats.AttackSpeedMultiplier);
+                var resolvedPreSkillInterval = runtimeStats.AttackInterval * speed;
+                return Mathf.Max(
+                    0.05f,
+                    (resolvedPreSkillInterval + masteryAttackIntervalFlatDelta) / speed);
+            }
+        }
 
         // S2 owns attacks but allows movement/dash. S3 is an ammo stance: it roots the player
         // while active but still allows basic-attack input so each shot can consume ammunition.
         public bool BlocksMovement => slot == 2 && (IsCasting || IsActive);
         public bool BlocksDash => slot == 2 && (IsCasting || IsActive);
         public bool BlocksBasicAttack => slot == 1 && (IsCasting || IsActive);
+
+        public void AccumulateStatModifiers(CombatStatType stat, ref float flat, ref float additivePercent)
+        {
+            if (!IsActive)
+                return;
+
+            switch (stat)
+            {
+                case CombatStatType.Attack:
+                    additivePercent += Mathf.Max(0f, masteryAttackBonus);
+                    break;
+                case CombatStatType.AttackInterval:
+                    flat += masteryAttackIntervalFlatDelta;
+                    break;
+            }
+        }
 
         /// <summary>Raised after startup when the duration/ammo state actually begins.</summary>
         public event Action<int> ActiveStarted;
@@ -121,31 +174,27 @@ namespace ArknightsACT.Gameplay.Characters.Wisadel
         /// <summary>Raised when S2 expires or the last S3 round is consumed.</summary>
         public event Action<int> CastFinished;
 
-        public void ConfigurePrototype(
+        public void ConfigureRuntimeSlot(
             int skillSlot,
             string name,
-            float pointCost,
-            float initialPoints,
-            float startup,
-            float durationSeconds,
-            int maximumAmmo)
+            float startup)
         {
             slot = Mathf.Clamp(skillSlot, 1, 2);
             displayName = name ?? string.Empty;
-            skillPointCost = Mathf.Max(1f, pointCost);
-            initialSkillPoints = Mathf.Clamp(initialPoints, 0f, skillPointCost);
             startupSeconds = Mathf.Max(0f, startup);
-            activeDurationSeconds = Mathf.Max(0.5f, durationSeconds);
-            ammoCapacity = Mathf.Max(1, maximumAmmo);
 
-            // Current Wisadel prototype is authored against S2 M3 timing. Keep this explicit so
-            // old serialized scene instances do not retain the pre-PRTS 0.35s prototype cadence.
-            if (slot == 1)
-            {
-                autoAttackIntervalSeconds = 1.4f;
-                overloadBurstCount = 4;
-                overloadBurstShotIntervalSeconds = 0.175f;
-            }
+            // Official combat values are supplied only by ApplyMasterySnapshot.
+            skillPointCost = 0f;
+            initialSkillPoints = 0f;
+            activeDurationSeconds = 0f;
+            masteryAttackBonus = 0f;
+            masteryAttackIntervalFlatDelta = 0f;
+            masteryOverloadAttackScale = 0f;
+            masterySkill3AttackScale = 0f;
+            overloadBurstCount = 0;
+            ammoCapacity = 0;
+            _officialSkillDataApplied = false;
+            _skillPoints = 0f;
         }
 
         private void Awake()
@@ -182,7 +231,8 @@ namespace ArknightsACT.Gameplay.Characters.Wisadel
 
         public bool TryCast()
         {
-            if (IsCasting || IsActive || IsSiblingBusy() ||
+            if (!_officialSkillDataApplied ||
+                IsCasting || IsActive || IsSiblingBusy() ||
                 SkillPoints + 0.0001f < SkillPointCost ||
                 _entity?.Health == null || _entity.Health.IsDead)
                 return false;
@@ -215,6 +265,107 @@ namespace ArknightsACT.Gameplay.Characters.Wisadel
         {
             if (seconds > 0f && !IsActive)
                 GainSkillPoints(seconds * Mathf.Max(0.01f, NaturalSkillPointPerSecond));
+        }
+
+        public void ApplyMasterySnapshot(OperatorSkillMasterySnapshot snapshot)
+        {
+            _officialSkillDataApplied = false;
+            if (snapshot == null)
+                return;
+
+            if (!string.IsNullOrWhiteSpace(snapshot.DisplayName))
+                displayName = snapshot.DisplayName;
+
+            skillPointCost = snapshot.SkillPointCost;
+            initialSkillPoints = Mathf.Clamp(
+                snapshot.InitialSkillPoints,
+                0f,
+                Mathf.Max(0f, skillPointCost));
+
+            var hasAttackBonus = snapshot.TryGetBlackboard("atk", out var attackBonus);
+            var hasAttackTime = snapshot.TryGetBlackboard(
+                "base_attack_time",
+                out var baseAttackTimeDelta);
+            masteryAttackBonus = hasAttackBonus ? attackBonus : 0f;
+            masteryAttackIntervalFlatDelta = hasAttackTime ? baseAttackTimeDelta : 0f;
+
+            if (slot == 1)
+            {
+                activeDurationSeconds = snapshot.Duration;
+                var hasOverloadScale = snapshot.TryGetBlackboard(
+                    "attack@atk_scale_ol",
+                    out var overloadScale);
+                masteryOverloadAttackScale =
+                    hasOverloadScale ? Mathf.Max(0f, overloadScale) : 0f;
+
+                var hasBurstCount = TryExtractBurstCountFromOfficialDescription(
+                    snapshot.Description,
+                    out var burstCount);
+                overloadBurstCount = hasBurstCount ? Mathf.Max(1, burstCount) : 0;
+
+                _officialSkillDataApplied =
+                    skillPointCost > 0f &&
+                    activeDurationSeconds > 0f &&
+                    hasAttackBonus &&
+                    hasAttackTime &&
+                    hasOverloadScale &&
+                    hasBurstCount;
+            }
+            else
+            {
+                activeDurationSeconds = 0f;
+                overloadBurstCount = 0;
+                masteryOverloadAttackScale = 0f;
+
+                var hasAttackScale = snapshot.TryGetBlackboard(
+                    "attack@atk_scale_3",
+                    out var attackScale);
+                var hasAmmo = snapshot.TryGetBlackboard(
+                    "attack@trigger_time",
+                    out var ammo);
+                masterySkill3AttackScale =
+                    hasAttackScale ? Mathf.Max(0f, attackScale) : 0f;
+                ammoCapacity =
+                    hasAmmo ? Mathf.Max(0, Mathf.RoundToInt(ammo)) : 0;
+
+                _officialSkillDataApplied =
+                    skillPointCost > 0f &&
+                    hasAttackBonus &&
+                    hasAttackTime &&
+                    hasAttackScale &&
+                    hasAmmo &&
+                    ammoCapacity > 0;
+            }
+
+            _skillPoints = Mathf.Clamp(initialSkillPoints, 0f, SkillPointCost);
+        }
+
+        private static bool TryExtractBurstCountFromOfficialDescription(
+            string description,
+            out int burstCount)
+        {
+            burstCount = 0;
+            if (string.IsNullOrWhiteSpace(description))
+                return false;
+
+            var marker = description.IndexOf("连发", StringComparison.Ordinal);
+            if (marker <= 0)
+                return false;
+
+            var end = marker - 1;
+            while (end >= 0 && !char.IsDigit(description[end]))
+                end--;
+            if (end < 0)
+                return false;
+
+            var start = end;
+            while (start > 0 && char.IsDigit(description[start - 1]))
+                start--;
+
+            return int.TryParse(
+                       description.Substring(start, end - start + 1),
+                       out burstCount) &&
+                   burstCount > 0;
         }
 
         public bool TryConsumeAmmo()
@@ -298,9 +449,9 @@ namespace ArknightsACT.Gameplay.Characters.Wisadel
         {
             IsCasting = false;
 
-            // S2 has two equal phases inside one authored duration. PRTS/game data keeps the
-            // M3 attack cycle at 1.4s (2.1 base - 0.7); overdrive changes one cycle into a four-shot
-            // burst instead of shortening the whole cycle to the old prototype's 0.175s cadence.
+            // S2 has two equal phases inside one authored duration. The current mastery
+            // snapshot supplies attack-time delta and overdrive damage scale; the official
+            // description supplies the burst count. Presentation duration determines shot spacing.
             var nextAttackAt = Time.time;
             while (IsActive && Time.time < _activeUntil)
             {
@@ -338,7 +489,7 @@ namespace ArknightsACT.Gameplay.Characters.Wisadel
                         AutoAttackStopped?.Invoke(slot);
                     }
 
-                    nextAttackAt = cycleStartedAt + Mathf.Max(0.1f, autoAttackIntervalSeconds);
+                    nextAttackAt = cycleStartedAt + ResolveSkill2AttackInterval();
                 }
 
                 yield return null;
@@ -348,11 +499,19 @@ namespace ArknightsACT.Gameplay.Characters.Wisadel
                 EndActiveState(false);
         }
 
+        private float ResolveSkill2AttackInterval()
+        {
+            var runtimeStats = GetComponent<OperatorRuntimeStats>();
+            return runtimeStats != null
+                ? Mathf.Max(0.1f, runtimeStats.AttackInterval)
+                : float.PositiveInfinity;
+        }
+
         private IEnumerator FireSkill2OverloadBurst(CombatEntity firstTarget)
         {
             var target = firstTarget;
-            var burstCount = Mathf.Clamp(overloadBurstCount, 1, 4);
-            var shotInterval = Mathf.Max(0.01f, overloadBurstShotIntervalSeconds);
+            var burstCount = Mathf.Max(1, overloadBurstCount);
+            var shotInterval = ResolveOverloadBurstShotInterval(burstCount);
 
             for (var shot = 0; shot < burstCount; shot++)
             {
@@ -373,9 +532,28 @@ namespace ArknightsACT.Gameplay.Characters.Wisadel
             }
         }
 
+        private float ResolveOverloadBurstShotInterval(int burstCount)
+        {
+            burstCount = Mathf.Max(1, burstCount);
+            var presentation = GetComponentInChildren<SpineCharacterPresentation2D>(true);
+            if (presentation != null &&
+                presentation.TryGetAnimationDuration("Skill_2_Loop", out var duration) &&
+                duration > 0f)
+                return Mathf.Max(0.01f, duration / burstCount);
+
+            var cycle = ResolveSkill2AttackInterval();
+            return float.IsPositiveInfinity(cycle)
+                ? 0.01f
+                : Mathf.Max(0.01f, cycle / burstCount);
+        }
+
         private void FireSkill2AutoShot(CombatEntity target)
         {
             if (target == null)
+                return;
+
+            var runtimeStats = GetComponent<OperatorRuntimeStats>();
+            if (runtimeStats == null)
                 return;
 
             var center = target.transform.position;
@@ -399,11 +577,14 @@ namespace ArknightsACT.Gameplay.Characters.Wisadel
                     !processed.Add(candidate))
                     continue;
 
+                var officialDamage = runtimeStats.Attack *
+                    (IsOverloaded ? Mathf.Max(0f, masteryOverloadAttackScale) : 1f);
+
                 DamageSystem.Apply(new DamageContext(
                     _entity,
                     _entity,
                     candidate,
-                    Mathf.Max(0f, autoDamagePerShot),
+                    officialDamage,
                     DamageType.Physical,
                     Vector2.zero,
                     sourceId: "Wisadel_Skill2_Auto",
@@ -419,9 +600,14 @@ namespace ArknightsACT.Gameplay.Characters.Wisadel
             if (_entity == null)
                 return false;
 
+            var runtimeStats = GetComponent<OperatorRuntimeStats>();
+            var rangeMultiplier = runtimeStats != null
+                ? runtimeStats.GetSkillRangeMultiplier(slot)
+                : 1f;
+            var maxRange = Mathf.Max(1f, autoTargetRange * rangeMultiplier);
             var colliders = Physics.OverlapSphere(
                 transform.position,
-                Mathf.Max(1f, autoTargetRange),
+                maxRange,
                 ~0,
                 QueryTriggerInteraction.Ignore);
             var processed = new HashSet<CombatEntity>();

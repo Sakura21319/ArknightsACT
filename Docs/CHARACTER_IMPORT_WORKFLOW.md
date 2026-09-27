@@ -1,8 +1,10 @@
 # 可玩角色素材绑定流程（Agent 直绑版）
 
-更新时间：2026-09-24
+更新时间：2026-09-26
 
 本文是新增可玩角色时给本地 Agent / Codex / 其他执行 Agent 使用的 **source of truth**。
+
+当前角色/战斗/数值架构先读 `SYSTEM_02_CHARACTERS_COMBAT_NUMERICS.md`；资源边界与表现规则先读 `SYSTEM_05_ASSET_IMPORT_PRESENTATION_AUDIO.md`。本文件只保留“如何把一个新导出包真正接入工程”的操作流程。正式玩法当前不依赖局内 TAB 切换，相关切换兼容只作为 Prototype/测试边界。
 
 这份文档描述的是“素材已经由用户从明日方舟本体导出后，Agent 如何把素材真正绑定进 ArknightsACT”的流程。不要把“素材导出”和“Unity 工程绑定”混成一个自动导入流程。
 
@@ -573,10 +575,10 @@ default 按 F9 时不会 fallback 到其它动作；因为原始 default build S
   - `skill_03_hit*` 是实际敌人命中层；
   - `skill_03_buff*` 挂角色自身直到弹药耗尽。
 
-Wisadel 的完整重扫和当前绑定表见：
+Wisadel 的 FX 绑定约定（皮肤分离、trail 资产代表弹道飞行）见：
 
 ```text
-Docs/WISADEL_FX_BINDING_2026_09_24.md
+Docs/SYSTEM_05_ASSET_IMPORT_PRESENTATION_AUDIO.md   （### Wisadel 小节）
 ```
 
 ### Offset

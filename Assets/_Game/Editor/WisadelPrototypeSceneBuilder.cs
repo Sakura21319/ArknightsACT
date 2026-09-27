@@ -11,11 +11,12 @@ namespace ArknightsACT.Editor
 
         internal static AttackDefinition[] BuildAttackDefinitions()
         {
+            const float basicAttackScale = 1f;
             return new[]
             {
-                GetOrCreateAttack("Wisadel_Basic_A", 0.24f, 0.04f, 0.31f, 1.00f),
-                GetOrCreateAttack("Wisadel_Basic_B", 0.23f, 0.04f, 0.32f, 1.10f),
-                GetOrCreateAttack("Wisadel_Basic_C", 0.26f, 0.04f, 0.36f, 1.20f)
+                GetOrCreateAttack("Wisadel_Basic_A", 0.24f, 0.04f, 0.31f, basicAttackScale),
+                GetOrCreateAttack("Wisadel_Basic_B", 0.23f, 0.04f, 0.32f, basicAttackScale),
+                GetOrCreateAttack("Wisadel_Basic_C", 0.26f, 0.04f, 0.36f, basicAttackScale)
             };
         }
 

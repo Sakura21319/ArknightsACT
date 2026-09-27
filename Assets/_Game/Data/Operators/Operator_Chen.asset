@@ -16,6 +16,253 @@ MonoBehaviour:
   displayName: "\u9648"
   englishName: CH'EN
   sortOrder: 10
+  prtsCharacterId: char_010_chen
+  e2Progression:
+    maxLevel: 90
+    rangeId: 1-1
+    snapshots:
+    - level: 1
+      stats:
+        maxHealth: 2188
+        attack: 469
+        physicalDefense: 288
+        artsResistance: 0
+        attackInterval: 1.3
+        basicAttackRange: 1
+        skillRange: 1
+    - level: 30
+      stats:
+        maxHealth: 2413
+        attack: 515
+        physicalDefense: 309
+        artsResistance: 0
+        attackInterval: 1.3
+        basicAttackRange: 1
+        skillRange: 1
+    - level: 60
+      stats:
+        maxHealth: 2647
+        attack: 562
+        physicalDefense: 330
+        artsResistance: 0
+        attackInterval: 1.3
+        basicAttackRange: 1
+        skillRange: 1
+    - level: 90
+      stats:
+        maxHealth: 2880
+        attack: 610
+        physicalDefense: 352
+        artsResistance: 0
+        attackInterval: 1.3
+        basicAttackRange: 1
+        skillRange: 1
+  metaProgression:
+    levelSteps:
+    - fromLevel: 1
+      targetLevel: 30
+      lmdCost: 20000
+      materials:
+      - itemId: rogue_3_relic_legacy_54
+        amount: 2
+    - fromLevel: 30
+      targetLevel: 60
+      lmdCost: 45000
+      materials:
+      - itemId: rogue_3_relic_legacy_55
+        amount: 2
+    - fromLevel: 60
+      targetLevel: 90
+      lmdCost: 90000
+      materials:
+      - itemId: rogue_4_relic_legacy_187
+        amount: 1
+  skillMastery:
+    skills:
+    - gameplaySlot: 1
+      sourceSkillIndex: 2
+      sourceSkillId: skchr_chen_2
+      snapshots:
+      - masteryLevel: 0
+        sourceLevel: 7
+        sourceSkillId: skchr_chen_2
+        displayName: "\u8D64\u9704\xB7\u62D4\u5200"
+        rangeId: 3-12
+        description: "\u5BF9\u524D\u65B9\u8303\u56F4\u5185\u6700\u591A<@ba.vup>{max_target}</>\u540D\u654C\u4EBA\u9020\u6210\u76F8\u5F53\u4E8E\u653B\u51FB\u529B<@ba.vup>{atk_scale:0%}</>\u7684<@ba.rem>\u7269\u7406</>\u548C\u76F8\u5F53\u4E8E\u653B\u51FB\u529B<@ba.vup>{atk_scale:0%}</>\u7684<@ba.rem>\u6CD5\u672F</>\u4F24\u5BB3"
+        skillPointCost: 25
+        initialSkillPoints: 14
+        duration: 0
+        skillPointRecoveryType: 1
+        sourceSkillPointRecoveryType: INCREASE_WHEN_ATTACK
+        blackboard:
+        - key: atk_scale
+          value: 4.1
+          valueString: 
+        - key: max_target
+          value: 6
+          valueString: 
+      - masteryLevel: 1
+        sourceLevel: 8
+        sourceSkillId: skchr_chen_2
+        displayName: "\u8D64\u9704\xB7\u62D4\u5200"
+        rangeId: 3-12
+        description: "\u5BF9\u524D\u65B9\u8303\u56F4\u5185\u6700\u591A<@ba.vup>{max_target}</>\u540D\u654C\u4EBA\u9020\u6210\u76F8\u5F53\u4E8E\u653B\u51FB\u529B<@ba.vup>{atk_scale:0%}</>\u7684<@ba.rem>\u7269\u7406</>\u548C\u76F8\u5F53\u4E8E\u653B\u51FB\u529B<@ba.vup>{atk_scale:0%}</>\u7684<@ba.rem>\u6CD5\u672F</>\u4F24\u5BB3"
+        skillPointCost: 23
+        initialSkillPoints: 15
+        duration: 0
+        skillPointRecoveryType: 1
+        sourceSkillPointRecoveryType: INCREASE_WHEN_ATTACK
+        blackboard:
+        - key: atk_scale
+          value: 4.4
+          valueString: 
+        - key: max_target
+          value: 6
+          valueString: 
+      - masteryLevel: 2
+        sourceLevel: 9
+        sourceSkillId: skchr_chen_2
+        displayName: "\u8D64\u9704\xB7\u62D4\u5200"
+        rangeId: 3-12
+        description: "\u5BF9\u524D\u65B9\u8303\u56F4\u5185\u6700\u591A<@ba.vup>{max_target}</>\u540D\u654C\u4EBA\u9020\u6210\u76F8\u5F53\u4E8E\u653B\u51FB\u529B<@ba.vup>{atk_scale:0%}</>\u7684<@ba.rem>\u7269\u7406</>\u548C\u76F8\u5F53\u4E8E\u653B\u51FB\u529B<@ba.vup>{atk_scale:0%}</>\u7684<@ba.rem>\u6CD5\u672F</>\u4F24\u5BB3"
+        skillPointCost: 21
+        initialSkillPoints: 16
+        duration: 0
+        skillPointRecoveryType: 1
+        sourceSkillPointRecoveryType: INCREASE_WHEN_ATTACK
+        blackboard:
+        - key: atk_scale
+          value: 4.7
+          valueString: 
+        - key: max_target
+          value: 6
+          valueString: 
+      - masteryLevel: 3
+        sourceLevel: 10
+        sourceSkillId: skchr_chen_2
+        displayName: "\u8D64\u9704\xB7\u62D4\u5200"
+        rangeId: 3-12
+        description: "\u5BF9\u524D\u65B9\u8303\u56F4\u5185\u6700\u591A<@ba.vup>{max_target}</>\u540D\u654C\u4EBA\u9020\u6210\u76F8\u5F53\u4E8E\u653B\u51FB\u529B<@ba.vup>{atk_scale:0%}</>\u7684<@ba.rem>\u7269\u7406</>\u548C\u76F8\u5F53\u4E8E\u653B\u51FB\u529B<@ba.vup>{atk_scale:0%}</>\u7684<@ba.rem>\u6CD5\u672F</>\u4F24\u5BB3"
+        skillPointCost: 20
+        initialSkillPoints: 20
+        duration: 0
+        skillPointRecoveryType: 1
+        sourceSkillPointRecoveryType: INCREASE_WHEN_ATTACK
+        blackboard:
+        - key: atk_scale
+          value: 5
+          valueString: 
+        - key: max_target
+          value: 7
+          valueString: 
+    - gameplaySlot: 2
+      sourceSkillIndex: 3
+      sourceSkillId: skchr_chen_3
+      snapshots:
+      - masteryLevel: 0
+        sourceLevel: 7
+        sourceSkillId: skchr_chen_3
+        displayName: "\u8D64\u9704\xB7\u7EDD\u5F71"
+        rangeId: x-1
+        description: "\u5411\u5468\u56F4\u5BFB\u627E\u6700\u8FD1\u7684\u654C\u65B9\u76EE\u6807\uFF0C\u5BF9\u5176\u53D1\u52A8<@ba.vup>{times}</>\u6B21\u8FDE\u7EED\u65A9\u51FB\uFF0C\u6BCF\u6B21\u9020\u6210\u76F8\u5F53\u4E8E\u653B\u51FB\u529B<@ba.vup>{atk_scale:0%}</>\u7684\u7269\u7406\u4F24\u5BB3\uFF0C\u5E76\u5728\u6700\u540E\u4E00\u51FB\u65F6\u4F7F\u76EE\u6807<$ba.stun>\u6655\u7729</><@ba.vup>{stun}</>\u79D2"
+        skillPointCost: 36
+        initialSkillPoints: 10
+        duration: 0
+        skillPointRecoveryType: 1
+        sourceSkillPointRecoveryType: INCREASE_WHEN_ATTACK
+        blackboard:
+        - key: atk_scale
+          value: 2.6
+          valueString: 
+        - key: times
+          value: 10
+          valueString: 
+        - key: stun
+          value: 3
+          valueString: 
+      - masteryLevel: 1
+        sourceLevel: 8
+        sourceSkillId: skchr_chen_3
+        displayName: "\u8D64\u9704\xB7\u7EDD\u5F71"
+        rangeId: x-1
+        description: "\u5411\u5468\u56F4\u5BFB\u627E\u6700\u8FD1\u7684\u654C\u65B9\u76EE\u6807\uFF0C\u5BF9\u5176\u53D1\u52A8<@ba.vup>{times}</>\u6B21\u8FDE\u7EED\u65A9\u51FB\uFF0C\u6BCF\u6B21\u9020\u6210\u76F8\u5F53\u4E8E\u653B\u51FB\u529B<@ba.vup>{atk_scale:0%}</>\u7684\u7269\u7406\u4F24\u5BB3\uFF0C\u5E76\u5728\u6700\u540E\u4E00\u51FB\u65F6\u4F7F\u76EE\u6807<$ba.stun>\u6655\u7729</><@ba.vup>{stun}</>\u79D2"
+        skillPointCost: 34
+        initialSkillPoints: 13
+        duration: 0
+        skillPointRecoveryType: 1
+        sourceSkillPointRecoveryType: INCREASE_WHEN_ATTACK
+        blackboard:
+        - key: atk_scale
+          value: 2.8
+          valueString: 
+        - key: times
+          value: 10
+          valueString: 
+        - key: stun
+          value: 3
+          valueString: 
+      - masteryLevel: 2
+        sourceLevel: 9
+        sourceSkillId: skchr_chen_3
+        displayName: "\u8D64\u9704\xB7\u7EDD\u5F71"
+        rangeId: x-1
+        description: "\u5411\u5468\u56F4\u5BFB\u627E\u6700\u8FD1\u7684\u654C\u65B9\u76EE\u6807\uFF0C\u5BF9\u5176\u53D1\u52A8<@ba.vup>{times}</>\u6B21\u8FDE\u7EED\u65A9\u51FB\uFF0C\u6BCF\u6B21\u9020\u6210\u76F8\u5F53\u4E8E\u653B\u51FB\u529B<@ba.vup>{atk_scale:0%}</>\u7684\u7269\u7406\u4F24\u5BB3\uFF0C\u5E76\u5728\u6700\u540E\u4E00\u51FB\u65F6\u4F7F\u76EE\u6807<$ba.stun>\u6655\u7729</><@ba.vup>{stun}</>\u79D2"
+        skillPointCost: 32
+        initialSkillPoints: 16
+        duration: 0
+        skillPointRecoveryType: 1
+        sourceSkillPointRecoveryType: INCREASE_WHEN_ATTACK
+        blackboard:
+        - key: atk_scale
+          value: 3
+          valueString: 
+        - key: times
+          value: 10
+          valueString: 
+        - key: stun
+          value: 3
+          valueString: 
+      - masteryLevel: 3
+        sourceLevel: 10
+        sourceSkillId: skchr_chen_3
+        displayName: "\u8D64\u9704\xB7\u7EDD\u5F71"
+        rangeId: x-1
+        description: "\u5411\u5468\u56F4\u5BFB\u627E\u6700\u8FD1\u7684\u654C\u65B9\u76EE\u6807\uFF0C\u5BF9\u5176\u53D1\u52A8<@ba.vup>{times}</>\u6B21\u8FDE\u7EED\u65A9\u51FB\uFF0C\u6BCF\u6B21\u9020\u6210\u76F8\u5F53\u4E8E\u653B\u51FB\u529B<@ba.vup>{atk_scale:0%}</>\u7684\u7269\u7406\u4F24\u5BB3\uFF0C\u5E76\u5728\u6700\u540E\u4E00\u51FB\u65F6\u4F7F\u76EE\u6807<$ba.stun>\u6655\u7729</><@ba.vup>{stun}</>\u79D2"
+        skillPointCost: 30
+        initialSkillPoints: 20
+        duration: 0
+        skillPointRecoveryType: 1
+        sourceSkillPointRecoveryType: INCREASE_WHEN_ATTACK
+        blackboard:
+        - key: atk_scale
+          value: 3.2
+          valueString: 
+        - key: times
+          value: 10
+          valueString: 
+        - key: stun
+          value: 4
+          valueString: 
+  skillMasteryCosts:
+    steps:
+    - fromMastery: 0
+      targetMastery: 1
+      lmdCost: 30000
+      materials:
+      - itemId: rogue_5_relic_legacy_11
+        amount: 2
+    - fromMastery: 1
+      targetMastery: 2
+      lmdCost: 60000
+      materials:
+      - itemId: rogue_3_relic_legacy_57
+        amount: 2
+    - fromMastery: 2
+      targetMastery: 3
+      lmdCost: 120000
+      materials:
+      - itemId: relic_24
+        amount: 1
   skins:
   - skinId: default
     displayName: "\u9ED8\u8BA4"
@@ -23,3 +270,4 @@ MonoBehaviour:
     skill1IconResourceKey: UI/Skills/chen_badao
     skill2IconResourceKey: UI/Skills/chen_jueying
     isDefault: 1
+    isReserved: 0

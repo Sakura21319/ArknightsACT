@@ -34,10 +34,13 @@ namespace ArknightsACT.Editor
             string skill2IconResourceKey,
             float maxHealth = 100f,
             float physicalDefense = 1f,
-            float artsResistance = 0f)
+            float artsResistance = 0f,
+            float attackInterval = 1f,
+            float basicAttackRange = 1f,
+            float skillRange = 1f)
         {
-            var health = go.GetComponent<Health>() ?? go.AddComponent<Health>();
-            health.SetMaxHealth(maxHealth);
+            if (go.GetComponent<Health>() == null)
+                go.AddComponent<Health>();
 
             if (go.GetComponent<StatusController>() == null)
                 go.AddComponent<StatusController>();
@@ -45,9 +48,17 @@ namespace ArknightsACT.Editor
             var entity = go.GetComponent<CombatEntity>() ?? go.AddComponent<CombatEntity>();
             entity.SetTeam(Team.Player);
 
-            var stats = go.GetComponent<CombatStats>() ?? go.AddComponent<CombatStats>();
-            stats.SetBasePhysicalDefense(physicalDefense);
-            stats.SetBaseArtsResistance(artsResistance);
+            // One authoritative base-stat component owns player HP/ATK/DEF/RES. CombatStats remains
+            // the shared modifier resolver used by statuses, relics and future in-run progression.
+            var runtimeStats = go.GetComponent<OperatorRuntimeStats>() ?? go.AddComponent<OperatorRuntimeStats>();
+            runtimeStats.ConfigureBase(
+                maxHealth,
+                baseAttackDamage,
+                physicalDefense,
+                artsResistance,
+                attackInterval,
+                basicAttackRange,
+                skillRange);
 
             if (go.GetComponent<PlayerInputReader>() == null)
                 go.AddComponent<PlayerInputReader>();
@@ -84,15 +95,27 @@ namespace ArknightsACT.Editor
             if (go == null)
                 return;
 
-            var health = go.GetComponent<Health>() ?? go.AddComponent<Health>();
-            health.SetMaxHealth(maxHealth, refill: !Application.isPlaying);
+            var attack = go.GetComponent<PlayerAttackController>();
+            var configuredAttack = attack != null ? attack.ConfiguredBaseAttack : 10f;
+            ApplyFormalCombatProfile(
+                go,
+                new OperatorBaseStats(
+                    maxHealth,
+                    configuredAttack,
+                    physicalDefense,
+                    artsResistance));
+        }
 
-            var stats = go.GetComponent<CombatStats>() ?? go.AddComponent<CombatStats>();
-            stats.SetBasePhysicalDefense(physicalDefense);
-            stats.SetBaseArtsResistance(artsResistance);
+        public static void ApplyFormalCombatProfile(GameObject go, OperatorBaseStats baseStats)
+        {
+            if (go == null)
+                return;
+
+            var runtimeStats = go.GetComponent<OperatorRuntimeStats>() ?? go.AddComponent<OperatorRuntimeStats>();
+            runtimeStats.ConfigureBasePreserveHealthRatio(baseStats);
 
             var profile = go.GetComponent<PlayerCombatProfile>() ?? go.AddComponent<PlayerCombatProfile>();
-            profile.ConfigureMitigation(physicalDefense, artsResistance);
+            profile.ConfigureMitigation(baseStats.PhysicalDefense, baseStats.ArtsResistance);
         }
 
         public static void CompleteGameplay(GameObject go)

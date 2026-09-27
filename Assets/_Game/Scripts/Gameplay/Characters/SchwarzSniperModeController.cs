@@ -26,7 +26,6 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
         [Header("Targeting")]
         [SerializeField, Min(20f)] private float screenTargetRadiusPixels = 140f;
         [SerializeField, Min(20f)] private float clickAssistRadiusPixels = 220f;
-        [SerializeField, Min(0.1f)] private float baseShotInterval = 0.72f;
 
         [Header("Scope")]
         [SerializeField, Range(0.24f, 0.49f)] private float scopeRadiusScreenHeight = 0.30f;
@@ -39,6 +38,7 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
         private SchwarzRangedBasicAttack _ranged;
         private PlayerMotor25D _motor;
         private CombatEntity _entity;
+        private OperatorRuntimeStats _runtimeStats;
 
         private Camera _camera;
         private CameraFollow25D _cameraFollow;
@@ -69,6 +69,7 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
             _ranged = GetComponent<SchwarzRangedBasicAttack>();
             _motor = GetComponent<PlayerMotor25D>();
             _entity = GetComponent<CombatEntity>();
+            _runtimeStats = GetComponent<OperatorRuntimeStats>();
             ResolveCamera();
             BuildScopeUI();
             // The scope textures are relatively expensive to generate. Build them while the
@@ -151,7 +152,10 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
             var intervalMultiplier = _skill3 != null
                 ? Mathf.Max(0.1f, _skill3.BasicAttackTimingMultiplier)
                 : 1f;
-            _nextShotAt = Time.unscaledTime + baseShotInterval * intervalMultiplier;
+            var baseInterval = _runtimeStats != null
+                ? Mathf.Max(0.1f, _runtimeStats.AttackInterval)
+                : 1f;
+            _nextShotAt = Time.unscaledTime + baseInterval * intervalMultiplier;
 
             var distance = Vector3.Distance(
                 transform.position + Vector3.up * 0.66f,
@@ -431,7 +435,19 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
 
             var delta = candidate.transform.position - transform.position;
             delta.y = 0f;
-            return delta.magnitude <= maxRange;
+            if (delta.magnitude > maxRange)
+                return false;
+
+            var forward = _motor != null ? _motor.PlanarForward : Vector3.forward;
+            var rangeId = OperatorRangeUtility.ResolveSkillRangeId(this, 2);
+            if (string.IsNullOrWhiteSpace(rangeId))
+                rangeId = OperatorRangeUtility.ResolveBasicRangeId(this);
+            return OperatorRangeUtility.Contains(
+                rangeId,
+                transform.position,
+                forward,
+                candidate.transform.position,
+                maxRange);
         }
 
         private float ResolveMaxRange() =>

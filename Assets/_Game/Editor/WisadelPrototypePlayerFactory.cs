@@ -15,7 +15,8 @@ namespace ArknightsACT.Editor
         internal static GameObject Create25D(
             AttackDefinition[] attacks,
             Camera camera,
-            string skinId)
+            string skinId,
+            OperatorBaseStats baseStats)
         {
             var game9 = string.Equals(skinId, "game#9", System.StringComparison.OrdinalIgnoreCase);
             var descriptor = game9
@@ -37,7 +38,7 @@ namespace ArknightsACT.Editor
             PlayableOperatorPrototypeComposer.AddFoundation(
                 player,
                 attacks,
-                15f,
+                baseStats.Attack,
                 OperatorProfession.Sniper,
                 CombatFeature.BasicAttack |
                 CombatFeature.ActiveSkills |
@@ -49,15 +50,18 @@ namespace ArknightsACT.Editor
                 game9 ? "UI/HUD/Operators/wisadel_game_9" : "UI/HUD/Operators/wisadel_default",
                 "UI/Skills/Wisadel/s2",
                 "UI/Skills/Wisadel/s3",
-                maxHealth: 105f,
-                physicalDefense: 1.5f,
-                artsResistance: 0f);
+                maxHealth: baseStats.MaxHealth,
+                physicalDefense: baseStats.PhysicalDefense,
+                artsResistance: baseStats.ArtsResistance,
+                attackInterval: baseStats.AttackInterval,
+                basicAttackRange: baseStats.BasicAttackRange,
+                skillRange: baseStats.SkillRange);
 
             player.AddComponent<WisadelRangedBasicAttack>();
             var skill2 = player.AddComponent<WisadelSkill>();
-            skill2.ConfigurePrototype(1, "Hell's Siege", 24f, 10f, 0.62f, 25f, 1);
+            skill2.ConfigureRuntimeSlot(1, "饱和复仇", 0.62f);
             var skill3 = player.AddComponent<WisadelSkill>();
-            skill3.ConfigurePrototype(2, "Final Will", 32f, 12f, 0.72f, 0.5f, 6);
+            skill3.ConfigureRuntimeSlot(2, "爆裂黎明", 0.72f);
             PlayableOperatorPrototypeComposer.CompleteGameplay(player);
             player.AddComponent<ScavengingInventory25D>();
 

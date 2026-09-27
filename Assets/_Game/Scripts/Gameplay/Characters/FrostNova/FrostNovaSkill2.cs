@@ -10,32 +10,37 @@ namespace ArknightsACT.Gameplay.Characters.FrostNova
 {
     [DisallowMultipleComponent]
     [RequireComponent(typeof(CombatEntity))]
-    public sealed class FrostNovaSkill2 : MonoBehaviour, IPlayerSkill, IPlayerSkillInterruptible, IPlayerRunResettable
+    public sealed class FrostNovaSkill2 : MonoBehaviour, IPlayerSkill, IPlayerSkillInterruptible, IPlayerRunResettable, IOperatorSkillMasteryTarget
     {
         [Header("Skill points")]
-        [SerializeField, Min(1f)] private float skillPointCost = 35f;
-        [SerializeField, Min(0f)] private float initialSkillPoints = 15f;
+        [SerializeField, Min(0f)] private float skillPointCost;
+        [SerializeField, Min(0f)] private float initialSkillPoints;
         [SerializeField, Min(0f)] private float naturalSkillPointPerSecond = 1f;
-        [SerializeField, Min(0f)] private float startupSeconds = 0.82f;
-        [SerializeField, Min(1)] private int pulseCount = 3;
-        [SerializeField, Min(0.05f)] private float pulseInterval = 0.48f;
-        [SerializeField, Min(0.1f)] private float radius = 6.0f;
-        [SerializeField, Min(0f)] private float artsDamagePerPulse = 34f;
-        [SerializeField] private string displayName = "冰霜领域";
-        [SerializeField] private string damageSourceId = "FrostNova_Skill2_FrostField";
-        [SerializeField] private bool autoTarget = true;
+        [SerializeField, Min(0f)] private float startupSeconds = 0.90f;
+        [SerializeField, Min(0.1f)] private float radius = 7.0f;
+        [SerializeField, Min(0f)] private float officialDamageScale;
+        [SerializeField, Min(0f)] private float officialColdDurationSeconds;
+        [SerializeField, Min(0f)] private float officialRadiusTiles;
+        [SerializeField] private string displayName = "冰爆";
+        [SerializeField] private string damageSourceId = "FrostNova_Winter_Skill3_IceBurst";
+        [SerializeField] private bool autoTarget;
         [SerializeField, Min(1f)] private float targetSearchRange = 12f;
 
         private CombatEntity _entity;
         private Coroutine _routine;
         private CombatEntity _lockedTarget;
         private float _skillPoints;
+        private bool _officialSkillDataApplied;
 
         public int Slot => 2;
+        public int MasterySlot => 2;
         public string DisplayName => displayName;
-        public float SkillPointCost => Mathf.Max(1f, skillPointCost);
+        public bool HasOfficialSkillData => _officialSkillDataApplied;
+        public float SkillPointCost => Mathf.Max(0f, skillPointCost);
         public float SkillPoints => Mathf.Clamp(_skillPoints, 0f, SkillPointCost);
-        public float SkillPointRatio => Mathf.Clamp01(SkillPoints / SkillPointCost);
+        public float SkillPointRatio => SkillPointCost > 0.0001f
+            ? Mathf.Clamp01(SkillPoints / SkillPointCost)
+            : 0f;
         public float NaturalSkillPointPerSecond => Mathf.Max(0f, naturalSkillPointPerSecond);
         public float CooldownRemaining => NaturalSkillPointPerSecond <= 0f
             ? (SkillPointRatio >= 1f ? 0f : float.PositiveInfinity)
@@ -48,28 +53,50 @@ namespace ArknightsACT.Gameplay.Characters.FrostNova
 
         public void ConfigureForSkin(FrostNovaSkinVariant skin)
         {
-            if (skin.UsesWinterSkillSet())
-            {
-                displayName = "冰爆";
-                damageSourceId = "FrostNova_Winter_Skill3_IceBurst";
-                startupSeconds = 0.90f;
-                pulseCount = 2;
-                pulseInterval = 0.42f;
-                radius = 7.0f;
-                artsDamagePerPulse = 52f;
-                autoTarget = false;
-                return;
-            }
-
-            displayName = "冰霜领域";
-            damageSourceId = "FrostNova_Skill2_FrostField";
-            startupSeconds = 0.82f;
-            pulseCount = 3;
-            pulseInterval = 0.48f;
-            radius = 6.0f;
-            artsDamagePerPulse = 34f;
-            autoTarget = true;
+            displayName = "冰爆";
+            damageSourceId = "FrostNova_Winter_Skill3_IceBurst";
+            startupSeconds = 0.90f;
+            radius = 7.0f;
+            autoTarget = false;
             targetSearchRange = 12f;
+
+            skillPointCost = 0f;
+            initialSkillPoints = 0f;
+            officialDamageScale = 0f;
+            officialColdDurationSeconds = 0f;
+            officialRadiusTiles = 0f;
+            _officialSkillDataApplied = false;
+            _skillPoints = 0f;
+        }
+
+        public void ApplyMasterySnapshot(OperatorSkillMasterySnapshot snapshot)
+        {
+            _officialSkillDataApplied = false;
+            if (snapshot == null)
+                return;
+
+            if (!string.IsNullOrWhiteSpace(snapshot.DisplayName))
+                displayName = snapshot.DisplayName;
+
+            skillPointCost = snapshot.SkillPointCost;
+            initialSkillPoints = Mathf.Clamp(
+                snapshot.InitialSkillPoints,
+                0f,
+                Mathf.Max(0f, skillPointCost));
+
+            var hasDamage = snapshot.TryGetBlackboard("damage_scale", out var damageScale);
+            var hasCold = snapshot.TryGetBlackboard("cold_duration", out var coldDuration);
+            var hasRadius = snapshot.TryGetBlackboard("radius_tiles", out var radiusTiles);
+            officialDamageScale = hasDamage ? Mathf.Max(0f, damageScale) : 0f;
+            officialColdDurationSeconds = hasCold ? Mathf.Max(0f, coldDuration) : 0f;
+            officialRadiusTiles = hasRadius ? Mathf.Max(0f, radiusTiles) : 0f;
+
+            _officialSkillDataApplied =
+                skillPointCost > 0f &&
+                officialDamageScale > 0f &&
+                officialColdDurationSeconds > 0f &&
+                officialRadiusTiles > 0f;
+            _skillPoints = Mathf.Clamp(initialSkillPoints, 0f, SkillPointCost);
         }
 
         private void Awake()
@@ -85,7 +112,8 @@ namespace ArknightsACT.Gameplay.Characters.FrostNova
 
         public bool TryCast()
         {
-            if (IsCasting ||
+            if (!_officialSkillDataApplied ||
+                IsCasting ||
                 SkillPoints + 0.0001f < SkillPointCost ||
                 _entity?.Health == null ||
                 _entity.Health.IsDead)
@@ -97,7 +125,7 @@ namespace ArknightsACT.Gameplay.Characters.FrostNova
                 FrostNovaCombatUtility.TryFindNearestEnemy(
                     _entity,
                     transform.position,
-                    targetSearchRange,
+                    targetSearchRange * ResolveSkillRangeMultiplier(),
                     out _lockedTarget);
             }
 
@@ -167,29 +195,26 @@ namespace ArknightsACT.Gameplay.Characters.FrostNova
             if (startupSeconds > 0f)
                 yield return new WaitForSeconds(startupSeconds);
 
-            var count = Mathf.Max(1, pulseCount);
-            for (var i = 0; i < count; i++)
-            {
-                var center =
-                    _lockedTarget != null &&
-                    _lockedTarget.Health != null &&
-                    !_lockedTarget.Health.IsDead
-                        ? _lockedTarget.transform.position
-                        : transform.position;
+            var center =
+                _lockedTarget != null &&
+                _lockedTarget.Health != null &&
+                !_lockedTarget.Health.IsDead
+                    ? _lockedTarget.transform.position
+                    : transform.position;
 
+            var runtimeStats = GetComponent<OperatorRuntimeStats>();
+            if (runtimeStats != null)
+            {
                 FrostNovaCombatUtility.DamageEnemiesInRadius(
                     _entity,
                     center,
-                    radius,
-                    artsDamagePerPulse,
+                    radius * ResolveSkillRangeMultiplier(),
+                    runtimeStats.Attack * officialDamageScale,
                     damageSourceId,
                     CombatStatusIds.Cold,
-                    4f);
-                Pulse?.Invoke(center, i);
-
-                if (i + 1 < count)
-                    yield return new WaitForSeconds(pulseInterval);
+                    officialColdDurationSeconds);
             }
+            Pulse?.Invoke(center, 0);
 
             var presentation = GetComponent<FrostNovaPresentationDriver25D>();
             var remainingVisual = presentation != null
@@ -202,6 +227,14 @@ namespace ArknightsACT.Gameplay.Characters.FrostNova
             _routine = null;
             _lockedTarget = null;
             CastEnded?.Invoke();
+        }
+
+        private float ResolveSkillRangeMultiplier()
+        {
+            var runtimeStats = GetComponent<OperatorRuntimeStats>();
+            return runtimeStats != null
+                ? Mathf.Max(0f, runtimeStats.GetSkillRangeMultiplier(2))
+                : 1f;
         }
 
         private void OnDisable()

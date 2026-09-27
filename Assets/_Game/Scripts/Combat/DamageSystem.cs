@@ -199,10 +199,33 @@ namespace ArknightsACT.Combat
                 return damage;
 
             var behaviours = entity.GetComponents<MonoBehaviour>();
+            damage = ApplyOutgoingModifierLayer(behaviours, context, damage, CombatStatModifierLayer.MetaProgression);
+            damage = ApplyOutgoingModifierLayer(behaviours, context, damage, CombatStatModifierLayer.RunPermanent);
+            damage = ApplyOutgoingModifierLayer(behaviours, context, damage, CombatStatModifierLayer.CollectibleEquipment);
+            damage = ApplyOutgoingModifierLayer(behaviours, context, damage, CombatStatModifierLayer.Temporary);
+            return damage;
+        }
+
+        private static float ApplyOutgoingModifierLayer(
+            MonoBehaviour[] behaviours,
+            in DamageContext context,
+            float damage,
+            CombatStatModifierLayer layer)
+        {
             for (var i = 0; i < behaviours.Length; i++)
             {
-                if (behaviours[i] is IDamageModifier modifier)
-                    damage = modifier.ModifyOutgoingDamage(context, damage);
+                if (behaviours[i] is not IDamageModifier modifier)
+                    continue;
+                if (modifier is ILayeredDamageModifier layered)
+                {
+                    if (layered.ModifierLayer != layer)
+                        continue;
+                }
+                else if (layer != CombatStatModifierLayer.Temporary)
+                {
+                    continue;
+                }
+                damage = modifier.ModifyOutgoingDamage(context, damage);
             }
             return damage;
         }
@@ -213,10 +236,33 @@ namespace ArknightsACT.Combat
                 return damage;
 
             var behaviours = entity.GetComponents<MonoBehaviour>();
+            damage = ApplyIncomingModifierLayer(behaviours, context, damage, CombatStatModifierLayer.MetaProgression);
+            damage = ApplyIncomingModifierLayer(behaviours, context, damage, CombatStatModifierLayer.RunPermanent);
+            damage = ApplyIncomingModifierLayer(behaviours, context, damage, CombatStatModifierLayer.CollectibleEquipment);
+            damage = ApplyIncomingModifierLayer(behaviours, context, damage, CombatStatModifierLayer.Temporary);
+            return damage;
+        }
+
+        private static float ApplyIncomingModifierLayer(
+            MonoBehaviour[] behaviours,
+            in DamageContext context,
+            float damage,
+            CombatStatModifierLayer layer)
+        {
             for (var i = 0; i < behaviours.Length; i++)
             {
-                if (behaviours[i] is IDamageModifier modifier)
-                    damage = modifier.ModifyIncomingDamage(context, damage);
+                if (behaviours[i] is not IDamageModifier modifier)
+                    continue;
+                if (modifier is ILayeredDamageModifier layered)
+                {
+                    if (layered.ModifierLayer != layer)
+                        continue;
+                }
+                else if (layer != CombatStatModifierLayer.Temporary)
+                {
+                    continue;
+                }
+                damage = modifier.ModifyIncomingDamage(context, damage);
             }
             return damage;
         }

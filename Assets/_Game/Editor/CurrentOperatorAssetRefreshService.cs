@@ -152,6 +152,16 @@ namespace ArknightsACT.Editor
                 return;
 
             RefreshCurrent(force: false, reason: "script reload");
+
+            var definitions = PrototypeOperatorRegistry.GetDefinitions();
+            var progressionSynced = PrtsOperatorProgressionImporter.SyncOpenScenePlayers(definitions);
+            var masterySynced = PrtsOperatorSkillMasteryImporter.SyncOpenScenePlayers(definitions);
+            if (progressionSynced > 0 || masterySynced > 0)
+            {
+                var scene = SceneManager.GetActiveScene();
+                if (scene.IsValid() && scene.isLoaded)
+                    EditorSceneManager.MarkSceneDirty(scene);
+            }
         }
 
         public static void RefreshCurrent(bool force, string reason = "manual")
@@ -202,6 +212,8 @@ namespace ArknightsACT.Editor
                     string.Equals(sceneIdentity.SkinId, skin.SkinId, StringComparison.OrdinalIgnoreCase))
                 {
                     builder.RefreshExisting(sceneIdentity.gameObject, definition, skin);
+                    PrtsOperatorProgressionImporter.SyncPlayerProgression(sceneIdentity.gameObject, definition);
+                    PrtsOperatorSkillMasteryImporter.SyncPlayerSkillMastery(sceneIdentity.gameObject, definition);
                     EditorUtility.SetDirty(sceneIdentity.gameObject);
 
                     var scene = SceneManager.GetActiveScene();

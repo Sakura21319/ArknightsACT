@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ArknightsACT.Gameplay.Characters;
 using ArknightsACT.Gameplay.Roguelite.Collectibles;
 using ArknightsACT.Gameplay.Roguelite.Treasure;
 using UnityEngine;
@@ -39,10 +40,32 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
         private GameObject _extraction;
         private GameObject _settlement;
         private GameObject _warehouse;
+        private GameObject _operatorDevelopment;
 
         private Text _homeLmd;
         private Text _homeIngots;
         private Text _homeCommander;
+
+        private Text _operatorLmd;
+        private Text _operatorIngots;
+        private Transform _operatorList;
+        private readonly List<GameObject> _operatorDynamicCards = new();
+        private string _selectedOperatorId;
+        private Image _operatorAvatar;
+        private Text _operatorName;
+        private Text _operatorLevel;
+        private Text _operatorStats;
+        private Text _operatorNextStats;
+        private Text _operatorCost;
+        private Text _operatorMastery;
+        private Button _operatorSkill1MasteryButton;
+        private Button _operatorSkill2MasteryButton;
+        private Text _operatorSkill1MasteryLabel;
+        private Text _operatorSkill2MasteryLabel;
+        private Text _operatorNotice;
+        private string _operatorLastNotice = string.Empty;
+        private Button _operatorUpgradeButton;
+        private Text _operatorUpgradeLabel;
 
         private Text _prepAreaTitle;
         private Text _prepAreaDescription;
@@ -146,6 +169,10 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                 _selectedItem = null;
                 _warehouseSearch?.SetTextWithoutNotify(string.Empty);
             }
+            else if (state == RogueliteShellState.OperatorDevelopment)
+            {
+                _operatorLastNotice = string.Empty;
+            }
             RefreshState();
         }
 
@@ -181,6 +208,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             _extraction = BuildExtraction(canvasGo.transform);
             _settlement = BuildSettlement(canvasGo.transform);
             _warehouse = BuildWarehouse(canvasGo.transform);
+            _operatorDevelopment = BuildOperatorDevelopment(canvasGo.transform);
 
             _built = true;
         }
@@ -234,9 +262,9 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             AddAccentBar(warehouse.transform, 0, 0, 8, 165, Cyan);
             CreateText(warehouse.transform, "物资管理与买卖", 16, FontStyle.Normal, new Color(0.32f, 0.35f, 0.37f), 760, 72, 190, 28, TextAnchor.MiddleRight);
 
-            var squad = CreateActionButton(root.transform, "编队", "SQUAD", 855, 700, 475, 142, new Color(0.91f, 0.92f, 0.925f), Muted, 30, darkText: true);
-            squad.interactable = false;
-            CreateText(squad.transform, "预留", 15, FontStyle.Normal, Muted, 365, 55, 72, 28, TextAnchor.MiddleRight);
+            var squad = CreateActionButton(root.transform, "干员养成", "OPERATOR DEVELOPMENT", 855, 700, 475, 142, new Color(0.91f, 0.92f, 0.925f), Cyan, 30, darkText: true);
+            squad.onClick.AddListener(_flow.OpenOperatorDevelopment);
+            CreateText(squad.transform, "等级 / 技能", 15, FontStyle.Normal, Muted, 330, 55, 108, 28, TextAnchor.MiddleRight);
 
             var mission = CreateActionButton(root.transform, "任务", "MISSION", 1370, 700, 475, 142, new Color(0.91f, 0.92f, 0.925f), Muted, 30, darkText: true);
             mission.interactable = false;
@@ -465,6 +493,838 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             return root;
         }
 
+        private GameObject BuildOperatorDevelopment(Transform parent)
+        {
+            var root = CreateRoot("OperatorDevelopment", parent, Paper);
+            AddTopBar(
+                root.transform,
+                "干员养成",
+                "OPERATOR DEVELOPMENT",
+                dark: false,
+                showIngots: false,
+                out _operatorLmd,
+                out _operatorIngots);
+
+            var listPanel = CreatePanel(
+                root.transform,
+                "Operators",
+                28,
+                110,
+                500,
+                930,
+                new Color(0.84f, 0.855f, 0.865f, 1f),
+                Cyan);
+            CreateText(listPanel.transform, "干员", 30, FontStyle.Bold, Ink, 24, 20, 210, 44);
+            CreateText(
+                listPanel.transform,
+                "同一干员的不同皮肤共享养成进度",
+                13,
+                FontStyle.Normal,
+                Muted,
+                24,
+                59,
+                420,
+                24);
+            _operatorList = CreateRect("OperatorList", listPanel.transform, 24, 104, 452, 720).transform;
+
+            var back = CreateFlatButton(
+                listPanel.transform,
+                "‹  返回主页",
+                24,
+                838,
+                452,
+                58,
+                new Color(0.74f, 0.76f, 0.77f),
+                Ink);
+            back.onClick.AddListener(_flow.ReturnHome);
+
+            var detail = CreatePanel(
+                root.transform,
+                "Detail",
+                548,
+                110,
+                1344,
+                930,
+                new Color(0.955f, 0.96f, 0.965f, 1f),
+                Orange);
+
+            var avatarFrame = CreatePanel(
+                detail.transform,
+                "AvatarFrame",
+                42,
+                52,
+                278,
+                278,
+                new Color(0.84f, 0.855f, 0.865f, 1f),
+                Cyan);
+            _operatorAvatar = CreateImage(avatarFrame.transform, "Avatar", 24, 24, 230, 230, Color.white);
+            _operatorAvatar.preserveAspect = true;
+
+            _operatorName = CreateText(detail.transform, "选择干员", 42, FontStyle.Bold, Ink, 360, 54, 530, 58);
+            _operatorLevel = CreateText(detail.transform, "精二 Lv.1", 27, FontStyle.Bold, Orange, 362, 120, 360, 42);
+            CreateText(detail.transform, "BASE ATTRIBUTES", 12, FontStyle.Bold, Muted, 362, 171, 220, 22);
+
+            var current = CreatePanel(
+                detail.transform,
+                "CurrentStats",
+                360,
+                206,
+                420,
+                252,
+                White,
+                Cyan);
+            CreateText(current.transform, "当前属性", 22, FontStyle.Bold, Ink, 22, 18, 180, 34);
+            _operatorStats = CreateText(
+                current.transform,
+                string.Empty,
+                18,
+                FontStyle.Normal,
+                InkSoft,
+                22,
+                64,
+                370,
+                172);
+
+            var next = CreatePanel(
+                detail.transform,
+                "NextStats",
+                806,
+                206,
+                490,
+                252,
+                new Color(0.91f, 0.92f, 0.925f, 1f),
+                Orange);
+            CreateText(next.transform, "下一级里程碑", 22, FontStyle.Bold, Ink, 22, 18, 250, 34);
+            _operatorNextStats = CreateText(
+                next.transform,
+                string.Empty,
+                18,
+                FontStyle.Normal,
+                InkSoft,
+                22,
+                64,
+                440,
+                172);
+
+            var cost = CreatePanel(
+                detail.transform,
+                "UpgradeCost",
+                42,
+                492,
+                802,
+                268,
+                new Color(0.89f, 0.90f, 0.905f, 1f),
+                Cyan);
+            CreateText(cost.transform, "升级消耗", 24, FontStyle.Bold, Ink, 22, 18, 200, 36);
+            _operatorCost = CreateText(
+                cost.transform,
+                string.Empty,
+                18,
+                FontStyle.Normal,
+                InkSoft,
+                22,
+                66,
+                752,
+                176);
+            _operatorCost.horizontalOverflow = HorizontalWrapMode.Wrap;
+
+            var mastery = CreatePanel(
+                detail.transform,
+                "Mastery",
+                870,
+                492,
+                426,
+                268,
+                new Color(0.89f, 0.90f, 0.905f, 1f),
+                Orange);
+            CreateText(mastery.transform, "技能专精", 24, FontStyle.Bold, Ink, 22, 18, 200, 36);
+            _operatorMastery = CreateText(
+                mastery.transform,
+                string.Empty,
+                13,
+                FontStyle.Normal,
+                InkSoft,
+                22,
+                56,
+                378,
+                58);
+
+            _operatorSkill1MasteryButton = CreateFlatButton(
+                mastery.transform,
+                "技能 1",
+                22,
+                118,
+                382,
+                50,
+                White,
+                Ink);
+            _operatorSkill1MasteryLabel =
+                _operatorSkill1MasteryButton.GetComponentInChildren<Text>();
+            if (_operatorSkill1MasteryLabel != null)
+                _operatorSkill1MasteryLabel.fontSize = 13;
+            _operatorSkill1MasteryButton.onClick.AddListener(
+                () => ExecuteOperatorSkillMastery(1));
+
+            _operatorSkill2MasteryButton = CreateFlatButton(
+                mastery.transform,
+                "技能 2",
+                22,
+                176,
+                382,
+                50,
+                White,
+                Ink);
+            _operatorSkill2MasteryLabel =
+                _operatorSkill2MasteryButton.GetComponentInChildren<Text>();
+            if (_operatorSkill2MasteryLabel != null)
+                _operatorSkill2MasteryLabel.fontSize = 13;
+            _operatorSkill2MasteryButton.onClick.AddListener(
+                () => ExecuteOperatorSkillMastery(2));
+
+            CreateText(
+                mastery.transform,
+                "0级 = 原版技能等级7 · 专精数据来自本地官方表",
+                11,
+                FontStyle.Normal,
+                Muted,
+                22,
+                234,
+                378,
+                22);
+
+            _operatorNotice = CreateText(
+                detail.transform,
+                string.Empty,
+                15,
+                FontStyle.Normal,
+                Muted,
+                42,
+                786,
+                760,
+                44);
+
+            _operatorUpgradeButton = CreateFlatButton(
+                detail.transform,
+                "选择干员",
+                888,
+                794,
+                408,
+                82,
+                Orange,
+                Ink);
+            _operatorUpgradeLabel = _operatorUpgradeButton.GetComponentInChildren<Text>();
+            _operatorUpgradeButton.onClick.AddListener(ExecuteOperatorUpgrade);
+
+            return root;
+        }
+
+        private void RefreshOperatorDevelopment()
+        {
+            if (_flow == null || _operatorList == null)
+                return;
+
+            for (var i = 0; i < _operatorDynamicCards.Count; i++)
+                if (_operatorDynamicCards[i] != null)
+                    Destroy(_operatorDynamicCards[i]);
+            _operatorDynamicCards.Clear();
+
+            var controllers = GetUniqueOperatorProgressions();
+            if (controllers.Count == 0)
+            {
+                _selectedOperatorId = null;
+                SetText(_operatorName, "暂无可养成干员");
+                SetText(_operatorLevel, string.Empty);
+                SetText(_operatorStats, string.Empty);
+                SetText(_operatorNextStats, string.Empty);
+                SetText(_operatorCost, "当前角色尚未配置精二成长曲线。");
+                SetText(_operatorMastery, string.Empty);
+                SetText(_operatorNotice, string.Empty);
+                if (_operatorAvatar != null)
+                    _operatorAvatar.enabled = false;
+                if (_operatorUpgradeButton != null)
+                    _operatorUpgradeButton.interactable = false;
+                if (_operatorSkill1MasteryButton != null)
+                    _operatorSkill1MasteryButton.interactable = false;
+                if (_operatorSkill2MasteryButton != null)
+                    _operatorSkill2MasteryButton.interactable = false;
+                SetText(_operatorSkill1MasteryLabel, "技能 1 · 未配置");
+                SetText(_operatorSkill2MasteryLabel, "技能 2 · 未配置");
+                SetText(_operatorUpgradeLabel, "暂无升级");
+                return;
+            }
+
+            var selectedExists = false;
+            for (var i = 0; i < controllers.Count; i++)
+            {
+                var identity = controllers[i].GetComponent<PlayableOperatorIdentity>();
+                if (identity != null &&
+                    string.Equals(identity.OperatorId, _selectedOperatorId, StringComparison.OrdinalIgnoreCase))
+                {
+                    selectedExists = true;
+                    break;
+                }
+            }
+            if (!selectedExists)
+            {
+                var firstIdentity = controllers[0].GetComponent<PlayableOperatorIdentity>();
+                _selectedOperatorId = firstIdentity != null ? firstIdentity.OperatorId : null;
+                _operatorLastNotice = string.Empty;
+            }
+
+            for (var i = 0; i < controllers.Count; i++)
+            {
+                var controller = controllers[i];
+                var identity = controller.GetComponent<PlayableOperatorIdentity>();
+                if (identity == null)
+                    continue;
+
+                var selected = string.Equals(
+                    identity.OperatorId,
+                    _selectedOperatorId,
+                    StringComparison.OrdinalIgnoreCase);
+                var card = CreatePanel(
+                    _operatorList,
+                    "Operator_" + identity.OperatorId,
+                    0,
+                    i * 132f,
+                    452,
+                    116,
+                    selected ? White : new Color(0.78f, 0.795f, 0.805f, 1f),
+                    selected ? Orange : Line);
+
+                var avatar = CreateImage(card.transform, "Avatar", 12, 10, 92, 92, Color.white);
+                avatar.preserveAspect = true;
+                var avatarSprite = LoadOperatorAvatar(identity);
+                avatar.sprite = avatarSprite;
+                avatar.enabled = avatarSprite != null;
+
+                CreateText(card.transform, identity.DisplayName, 22, FontStyle.Bold, Ink, 120, 18, 210, 34);
+                var level = _flow.MetaState?.GetOperatorEliteLevel(identity.OperatorId) ?? 1;
+                CreateText(
+                    card.transform,
+                    $"精二 Lv.{level}",
+                    16,
+                    FontStyle.Bold,
+                    selected ? Orange : InkSoft,
+                    120,
+                    58,
+                    160,
+                    28);
+                CreateText(
+                    card.transform,
+                    controller.E2Progression != null ? controller.E2Progression.RangeId : string.Empty,
+                    12,
+                    FontStyle.Normal,
+                    Muted,
+                    342,
+                    58,
+                    82,
+                    24,
+                    TextAnchor.MiddleRight);
+
+                var button = card.AddComponent<Button>();
+                button.targetGraphic = card.GetComponent<Image>();
+                button.colors = ButtonColors(
+                    card.GetComponent<Image>().color,
+                    new Color(0.86f, 0.92f, 0.95f, 1f),
+                    new Color(0.82f, 0.88f, 0.91f, 1f));
+                var capturedId = identity.OperatorId;
+                button.onClick.AddListener(() =>
+                {
+                    _selectedOperatorId = capturedId;
+                    _operatorLastNotice = string.Empty;
+                    RefreshOperatorDevelopment();
+                });
+                _operatorDynamicCards.Add(card);
+            }
+
+            var selectedController = FindOperatorProgression(_selectedOperatorId);
+            if (selectedController == null)
+                return;
+
+            var selectedIdentity = selectedController.GetComponent<PlayableOperatorIdentity>();
+            var operatorId = selectedIdentity != null
+                ? selectedIdentity.OperatorId
+                : _selectedOperatorId;
+            var levelNow = _flow.MetaState?.GetOperatorEliteLevel(operatorId) ?? 1;
+            var currentStats = selectedController.E2Progression.Evaluate(levelNow);
+            var nextStep = selectedController.MetaProgressionPlan.GetNextStep(levelNow);
+
+            SetText(_operatorName, selectedIdentity != null ? selectedIdentity.DisplayName : operatorId);
+            SetText(_operatorLevel, $"精英阶段 2  ·  Lv.{levelNow}");
+            SetText(_operatorStats, FormatOperatorStats(currentStats));
+
+            var avatarForDetail = LoadOperatorAvatar(selectedIdentity);
+            if (_operatorAvatar != null)
+            {
+                _operatorAvatar.sprite = avatarForDetail;
+                _operatorAvatar.enabled = avatarForDetail != null;
+            }
+
+            RefreshOperatorSkillMastery(operatorId);
+
+            if (nextStep == null)
+            {
+                SetText(_operatorNextStats, "已达到当前等级上限\n\n精二 Lv.90");
+                SetText(_operatorCost, "无需继续升级。");
+                SetText(_operatorUpgradeLabel, "已满级");
+                _operatorUpgradeButton.interactable = false;
+                SetText(
+                    _operatorNotice,
+                    string.IsNullOrWhiteSpace(_operatorLastNotice)
+                        ? "等级成长已完成。技能专精仍可继续提升。"
+                        : _operatorLastNotice);
+                return;
+            }
+
+            var nextStats = selectedController.E2Progression.Evaluate(nextStep.TargetLevel);
+            SetText(
+                _operatorNextStats,
+                $"精二 Lv.{nextStep.TargetLevel}\n\n" +
+                FormatOperatorStatDelta(currentStats, nextStats));
+            SetText(_operatorCost, FormatOperatorUpgradeCost(nextStep));
+
+            var affordabilityReason = "养成状态尚未初始化。";
+            var affordable =
+                _flow.MetaState != null &&
+                _flow.MetaState.CanAffordOperatorUpgrade(nextStep, out affordabilityReason);
+            _operatorUpgradeButton.interactable = affordable;
+            SetText(
+                _operatorUpgradeLabel,
+                $"升级至 Lv.{nextStep.TargetLevel}");
+
+            if (!string.IsNullOrWhiteSpace(_operatorLastNotice))
+                SetText(_operatorNotice, _operatorLastNotice);
+            else
+                SetText(
+                    _operatorNotice,
+                    affordable
+                        ? "材料已满足。升级会消耗物资与龙门币，并同步所有皮肤。"
+                        : affordabilityReason);
+        }
+
+        private void RefreshOperatorSkillMastery(string operatorId)
+        {
+            var controller = FindOperatorSkillMastery(operatorId);
+            if (controller == null || !controller.HasData)
+            {
+                SetText(_operatorMastery, "官方技能专精数据尚未导入。");
+                ConfigureMasteryButton(1, null, 0, null);
+                ConfigureMasteryButton(2, null, 0, null);
+                return;
+            }
+
+            var mastery1 = _flow.MetaState?.GetOperatorSkillMastery(operatorId, 1) ?? 0;
+            var mastery2 = _flow.MetaState?.GetOperatorSkillMastery(operatorId, 2) ?? 0;
+            var profile1 = controller.MasterySet.FindSlot(1);
+            var profile2 = controller.MasterySet.FindSlot(2);
+            var snapshot1 = profile1?.GetSnapshot(mastery1);
+            var snapshot2 = profile2?.GetSnapshot(mastery2);
+
+            SetText(
+                _operatorMastery,
+                FormatSkillMasterySnapshot("S1", mastery1, snapshot1) + "\n" +
+                FormatSkillMasterySnapshot("S2", mastery2, snapshot2));
+
+            ConfigureMasteryButton(1, controller, mastery1, snapshot1);
+            ConfigureMasteryButton(2, controller, mastery2, snapshot2);
+        }
+
+        private void ConfigureMasteryButton(
+            int slot,
+            OperatorSkillMasteryController controller,
+            int currentMastery,
+            OperatorSkillMasterySnapshot currentSnapshot)
+        {
+            var button = slot == 1
+                ? _operatorSkill1MasteryButton
+                : _operatorSkill2MasteryButton;
+            var label = slot == 1
+                ? _operatorSkill1MasteryLabel
+                : _operatorSkill2MasteryLabel;
+            if (button == null)
+                return;
+
+            var profile = controller?.MasterySet?.FindSlot(slot);
+            if (profile == null || currentSnapshot == null)
+            {
+                button.interactable = false;
+                SetText(label, $"技能 {slot} · 未导入");
+                return;
+            }
+
+            if (!HasMasteryRuntimeTarget(controller.gameObject, slot))
+            {
+                button.interactable = false;
+                SetText(label, $"技能 {slot} · 数据已导入 / 技能实现待接入");
+                return;
+            }
+
+            var step = controller.MasteryCosts.GetNextStep(currentMastery);
+            if (step == null || currentMastery >= 3)
+            {
+                button.interactable = false;
+                SetText(label, $"技能 {slot} · 已专三");
+                return;
+            }
+
+            var nextSnapshot = profile.GetSnapshot(step.TargetMastery);
+            if (nextSnapshot == null)
+            {
+                button.interactable = false;
+                SetText(label, $"技能 {slot} · 缺少专精 {step.TargetMastery} 数据");
+                return;
+            }
+
+            var canAfford =
+                _flow.MetaState != null &&
+                _flow.MetaState.CanAffordSkillMastery(step, out _);
+            button.interactable = canAfford;
+            SetText(
+                label,
+                $"技能 {slot}  专精 {currentMastery} → {step.TargetMastery}" +
+                $"   {FormatMasteryCostCompact(step)}");
+        }
+
+        private string FormatMasteryCostCompact(OperatorSkillMasteryCostStep step)
+        {
+            if (step == null)
+                return string.Empty;
+
+            var result = $"{step.LmdCost:N0} 龙门币";
+            var materials = step.Materials;
+            for (var i = 0; i < materials.Count; i++)
+            {
+                var material = materials[i];
+                if (material == null || string.IsNullOrWhiteSpace(material.ItemId))
+                    continue;
+                var definition = FindCommodity(material.ItemId);
+                var name = definition != null ? definition.DisplayName : material.ItemId;
+                var owned = _flow.MetaState?.GetCount(material.ItemId) ?? 0;
+                result += $" + {name} {owned}/{material.Amount}";
+            }
+            return result;
+        }
+
+        private static string FormatSkillMasterySnapshot(
+            string prefix,
+            int mastery,
+            OperatorSkillMasterySnapshot snapshot)
+        {
+            if (snapshot == null)
+                return $"{prefix} · 未导入";
+
+            var duration = snapshot.Duration > 0f
+                ? $"{snapshot.Duration:0.##}s"
+                : "—";
+            var name = string.IsNullOrWhiteSpace(snapshot.DisplayName)
+                ? snapshot.SourceSkillId
+                : snapshot.DisplayName;
+            var recoveryLabel = snapshot.SkillPointRecoveryType switch
+            {
+                OperatorSkillPointRecoveryType.Attack => "攻击回复",
+                OperatorSkillPointRecoveryType.Defensive => "受击回复",
+                OperatorSkillPointRecoveryType.None => "不回复",
+                _ => "自然回复"
+            };
+            return
+                $"{prefix} {name} · 专精 {mastery}/3 · {recoveryLabel} · " +
+                $"SP {snapshot.SkillPointCost:0.#} / 初始 {snapshot.InitialSkillPoints:0.#} / 持续 {duration}";
+        }
+
+        private static bool HasMasteryRuntimeTarget(GameObject owner, int slot)
+        {
+            if (owner == null)
+                return false;
+            var behaviours = owner.GetComponents<MonoBehaviour>();
+            for (var i = 0; i < behaviours.Length; i++)
+                if (behaviours[i] is IOperatorSkillMasteryTarget target &&
+                    target.MasterySlot == slot)
+                    return true;
+            return false;
+        }
+
+        private OperatorSkillMasteryController FindOperatorSkillMastery(string operatorId)
+        {
+            if (string.IsNullOrWhiteSpace(operatorId))
+                return null;
+
+            var all = FindObjectsByType<OperatorSkillMasteryController>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
+            for (var i = 0; i < all.Length; i++)
+            {
+                var controller = all[i];
+                if (controller == null)
+                    continue;
+                var identity = controller.GetComponent<PlayableOperatorIdentity>();
+                if (identity != null &&
+                    string.Equals(
+                        identity.OperatorId,
+                        operatorId,
+                        StringComparison.OrdinalIgnoreCase))
+                    return controller;
+            }
+            return null;
+        }
+
+        private void ExecuteOperatorSkillMastery(int slot)
+        {
+            if (_flow?.MetaState == null ||
+                string.IsNullOrWhiteSpace(_selectedOperatorId) ||
+                (slot != 1 && slot != 2))
+                return;
+
+            var controller = FindOperatorSkillMastery(_selectedOperatorId);
+            if (controller == null || !controller.HasData)
+            {
+                _operatorLastNotice = "当前干员尚未导入技能专精数据。";
+                RefreshOperatorDevelopment();
+                return;
+            }
+
+            if (!HasMasteryRuntimeTarget(controller.gameObject, slot))
+            {
+                _operatorLastNotice = $"技能 {slot} 的官方数据已导入，但运行时技能尚未接入。";
+                RefreshOperatorDevelopment();
+                return;
+            }
+
+            var current = _flow.MetaState.GetOperatorSkillMastery(
+                _selectedOperatorId,
+                slot);
+            var step = controller.MasteryCosts.GetNextStep(current);
+            if (step == null)
+            {
+                _operatorLastNotice = $"技能 {slot} 已达到专三。";
+                RefreshOperatorDevelopment();
+                return;
+            }
+
+            var profile = controller.MasterySet.FindSlot(slot);
+            if (profile?.GetSnapshot(step.TargetMastery) == null)
+            {
+                _operatorLastNotice =
+                    $"技能 {slot} 缺少专精 {step.TargetMastery} 的官方数据。";
+                RefreshOperatorDevelopment();
+                return;
+            }
+
+            if (!_flow.MetaState.TryUpgradeOperatorSkillMastery(
+                    _selectedOperatorId,
+                    slot,
+                    step,
+                    out var reason))
+            {
+                _operatorLastNotice = string.IsNullOrWhiteSpace(reason)
+                    ? "专精失败。"
+                    : reason;
+                RefreshOperatorDevelopment();
+                return;
+            }
+
+            var all = FindObjectsByType<OperatorSkillMasteryController>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
+            for (var i = 0; i < all.Length; i++)
+            {
+                var target = all[i];
+                var identity = target != null
+                    ? target.GetComponent<PlayableOperatorIdentity>()
+                    : null;
+                if (identity == null ||
+                    !string.Equals(
+                        identity.OperatorId,
+                        _selectedOperatorId,
+                        StringComparison.OrdinalIgnoreCase))
+                    continue;
+                target.ApplySlot(slot, step.TargetMastery);
+            }
+
+            _operatorLastNotice =
+                $"技能 {slot} 专精完成：专精 {step.TargetMastery}/3";
+            RefreshOperatorDevelopment();
+        }
+
+        private List<OperatorProgressionController> GetUniqueOperatorProgressions()
+        {
+            var result = new List<OperatorProgressionController>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var all = FindObjectsByType<OperatorProgressionController>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
+
+            var active = PlayerRuntimeContext.Instance?.ActivePlayer;
+            if (active != null)
+            {
+                var activeController = active.GetComponent<OperatorProgressionController>();
+                var activeIdentity = active.GetComponent<PlayableOperatorIdentity>();
+                if (activeController != null &&
+                    activeController.HasProgression &&
+                    activeIdentity != null &&
+                    seen.Add(activeIdentity.OperatorId))
+                    result.Add(activeController);
+            }
+
+            for (var i = 0; i < all.Length; i++)
+            {
+                var controller = all[i];
+                if (controller == null || !controller.HasProgression)
+                    continue;
+                var identity = controller.GetComponent<PlayableOperatorIdentity>();
+                if (identity == null || string.IsNullOrWhiteSpace(identity.OperatorId))
+                    continue;
+                if (seen.Add(identity.OperatorId))
+                    result.Add(controller);
+            }
+
+            result.Sort((a, b) =>
+            {
+                var aIdentity = a != null ? a.GetComponent<PlayableOperatorIdentity>() : null;
+                var bIdentity = b != null ? b.GetComponent<PlayableOperatorIdentity>() : null;
+                return string.Compare(
+                    aIdentity != null ? aIdentity.DisplayName : string.Empty,
+                    bIdentity != null ? bIdentity.DisplayName : string.Empty,
+                    StringComparison.OrdinalIgnoreCase);
+            });
+            return result;
+        }
+
+        private OperatorProgressionController FindOperatorProgression(string operatorId)
+        {
+            if (string.IsNullOrWhiteSpace(operatorId))
+                return null;
+
+            var all = FindObjectsByType<OperatorProgressionController>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
+            for (var i = 0; i < all.Length; i++)
+            {
+                var controller = all[i];
+                if (controller == null || !controller.HasProgression)
+                    continue;
+                var identity = controller.GetComponent<PlayableOperatorIdentity>();
+                if (identity != null &&
+                    string.Equals(identity.OperatorId, operatorId, StringComparison.OrdinalIgnoreCase))
+                    return controller;
+            }
+            return null;
+        }
+
+        private Sprite LoadOperatorAvatar(PlayableOperatorIdentity identity)
+        {
+            if (identity == null || string.IsNullOrWhiteSpace(identity.AvatarResourceKey))
+                return null;
+            return Resources.Load<Sprite>(identity.AvatarResourceKey);
+        }
+
+        private CollectibleDefinition FindCommodity(string itemId)
+        {
+            if (string.IsNullOrWhiteSpace(itemId) || _flow?.MarketCatalog == null)
+                return null;
+            var catalog = _flow.MarketCatalog;
+            for (var i = 0; i < catalog.Count; i++)
+            {
+                var item = catalog[i];
+                if (item != null &&
+                    string.Equals(item.Id, itemId, StringComparison.OrdinalIgnoreCase))
+                    return item;
+            }
+            return null;
+        }
+
+        private string FormatOperatorUpgradeCost(OperatorLevelUpgradeStep step)
+        {
+            if (step == null)
+                return string.Empty;
+
+            var text = $"龙门币      {(_flow.MetaState?.Lmd ?? 0):N0} / {step.LmdCost:N0}";
+            var materials = step.Materials;
+            for (var i = 0; i < materials.Count; i++)
+            {
+                var material = materials[i];
+                if (material == null || string.IsNullOrWhiteSpace(material.ItemId))
+                    continue;
+                var definition = FindCommodity(material.ItemId);
+                var name = definition != null ? definition.DisplayName : material.ItemId;
+                var owned = _flow.MetaState?.GetCount(material.ItemId) ?? 0;
+                text += $"\n{name}      {owned} / {material.Amount}";
+            }
+            return text;
+        }
+
+        private static string FormatOperatorStats(OperatorBaseStats stats)
+        {
+            return
+                $"生命      {stats.MaxHealth:N0}\n" +
+                $"攻击      {stats.Attack:N0}\n" +
+                $"防御      {stats.PhysicalDefense:N0}\n" +
+                $"法抗      {stats.ArtsResistance:0.#}\n" +
+                $"攻击间隔  {stats.AttackInterval:0.##}s";
+        }
+
+        private static string FormatOperatorStatDelta(OperatorBaseStats current, OperatorBaseStats next)
+        {
+            return
+                $"生命  {current.MaxHealth:N0}  →  {next.MaxHealth:N0}\n" +
+                $"攻击  {current.Attack:N0}  →  {next.Attack:N0}\n" +
+                $"防御  {current.PhysicalDefense:N0}  →  {next.PhysicalDefense:N0}\n" +
+                $"法抗  {current.ArtsResistance:0.#}  →  {next.ArtsResistance:0.#}\n" +
+                $"攻击间隔  {current.AttackInterval:0.##}s";
+        }
+
+        private void ExecuteOperatorUpgrade()
+        {
+            if (_flow?.MetaState == null || string.IsNullOrWhiteSpace(_selectedOperatorId))
+                return;
+
+            var controller = FindOperatorProgression(_selectedOperatorId);
+            if (controller == null)
+                return;
+
+            var currentLevel = _flow.MetaState.GetOperatorEliteLevel(_selectedOperatorId);
+            var step = controller.MetaProgressionPlan.GetNextStep(currentLevel);
+            if (step == null)
+            {
+                _operatorLastNotice = "已达到当前等级上限。";
+                RefreshOperatorDevelopment();
+                return;
+            }
+
+            if (!_flow.MetaState.TryUpgradeOperator(
+                    _selectedOperatorId,
+                    step,
+                    out var reason))
+            {
+                _operatorLastNotice = string.IsNullOrWhiteSpace(reason)
+                    ? "升级失败。"
+                    : reason;
+                RefreshOperatorDevelopment();
+                return;
+            }
+
+            var all = FindObjectsByType<OperatorProgressionController>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
+            for (var i = 0; i < all.Length; i++)
+            {
+                var target = all[i];
+                var identity = target != null
+                    ? target.GetComponent<PlayableOperatorIdentity>()
+                    : null;
+                if (identity == null ||
+                    !string.Equals(
+                        identity.OperatorId,
+                        _selectedOperatorId,
+                        StringComparison.OrdinalIgnoreCase))
+                    continue;
+                target.SetEliteLevel(step.TargetLevel, applyStats: true);
+            }
+
+            _operatorLastNotice = $"升级完成：精二 Lv.{step.TargetLevel}";
+            RefreshOperatorDevelopment();
+        }
+
         private GameObject BuildWarehouse(Transform parent)
         {
             // Deliberately opaque: no scene background on warehouse/trade.
@@ -580,6 +1440,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             _extraction.SetActive(_flow.State == RogueliteShellState.ExtractionDecision);
             _settlement.SetActive(_flow.State == RogueliteShellState.Settlement);
             _warehouse.SetActive(_flow.State == RogueliteShellState.WarehouseTrade);
+            _operatorDevelopment.SetActive(_flow.State == RogueliteShellState.OperatorDevelopment);
             _canvas.gameObject.SetActive(_flow.State != RogueliteShellState.Running);
 
             var lmd = _flow.MetaState?.Lmd ?? 0;
@@ -592,6 +1453,8 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
             SetText(_settlementIngots, $"{ingots:N0}");
             SetText(_warehouseLmd, $"{lmd:N0}");
             SetText(_warehouseIngots, $"{ingots:N0}");
+            SetText(_operatorLmd, $"{lmd:N0}");
+            SetText(_operatorIngots, $"{ingots:N0}");
             SetText(_homeCommander, $"Lv.{_flow.MetaState?.CommanderLevel ?? 1}");
 
             if (_flow.State == RogueliteShellState.OperationPreparation)
@@ -602,6 +1465,8 @@ namespace ArknightsACT.Gameplay.Roguelite.Routing
                 RefreshSettlement();
             else if (_flow.State == RogueliteShellState.WarehouseTrade)
                 RefreshWarehouse();
+            else if (_flow.State == RogueliteShellState.OperatorDevelopment)
+                RefreshOperatorDevelopment();
         }
 
         private void RefreshOperationPreparation()

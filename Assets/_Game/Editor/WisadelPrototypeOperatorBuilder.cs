@@ -14,7 +14,7 @@ namespace ArknightsACT.Editor
         public void EnsureDefinitionAsset()
         {
             const string defaultAvatar = "UI/HUD/Operators/wisadel_default";
-            PrototypeOperatorDefinitionAssetUtility.Ensure(
+            var definition = PrototypeOperatorDefinitionAssetUtility.Ensure(
                 "Operator_Wisadel",
                 OperatorId,
                 "维什戴尔",
@@ -33,6 +33,8 @@ namespace ArknightsACT.Editor
                     "UI/HUD/Operators/wisadel_game_9",
                     "UI/Skills/Wisadel/s2",
                     "UI/Skills/Wisadel/s3"));
+            PrtsOperatorProgressionImporter.TryRefreshDefinition(definition, "char_1035_wisdel");
+            PrtsOperatorSkillMasteryImporter.TryRefreshDefinition(definition, "char_1035_wisdel", 2, 3);
         }
 
         public GameObject Build(
@@ -40,12 +42,16 @@ namespace ArknightsACT.Editor
             PlayableOperatorDefinition definition,
             PlayableOperatorSkinDefinition skin)
         {
+            if (definition == null || !definition.HasE2Progression)
+                throw new System.InvalidOperationException("Wisadel is missing official E2 progression data.");
+
             var skinId = skin != null ? skin.SkinId : "default";
             WisadelLocalAssetBootstrap.PrepareForBuild(skinId);
             return WisadelPrototypePlayerFactory.Create25D(
                 WisadelPrototypeSceneBuilder.BuildAttackDefinitions(),
                 camera,
-                skinId);
+                skinId,
+                definition.E2Progression.Evaluate(1));
         }
 
         public void RefreshAssets(
@@ -70,6 +76,16 @@ namespace ArknightsACT.Editor
                 player,
                 skin != null ? skin.SkinId : "default");
             SyncPresentationLayout(player);
+
+            if (definition != null && definition.HasE2Progression)
+            {
+                var progression = player.GetComponent<OperatorProgressionController>();
+                var level = progression != null ? progression.EliteLevel : 1;
+                PlayableOperatorPrototypeComposer.ApplyFormalCombatProfile(
+                    player,
+                    definition.E2Progression.Evaluate(level));
+            }
+
             EditorUtility.SetDirty(player);
         }
         private static void SyncPresentationLayout(GameObject player)

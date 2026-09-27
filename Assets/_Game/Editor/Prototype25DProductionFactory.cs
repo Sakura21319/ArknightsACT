@@ -50,7 +50,7 @@ namespace ArknightsACT.Editor
             templates[0] = CreateEnemyTemplate(enemies.Length > 1 ? enemies[1] : null, PrototypeEnemyArchetype.Melee, camera, "Soldier");
             templates[1] = CreateEnemyTemplate(enemies.Length > 3 ? enemies[3] : null, PrototypeEnemyArchetype.FastMelee, camera, "Hound");
             templates[2] = CreateEnemyTemplate(enemies.Length > 2 ? enemies[2] : null, PrototypeEnemyArchetype.Ranged, camera, "Crossbowman");
-            templates[3] = CreateEnemyTemplate(enemies.Length > 5 ? enemies[5] : null, PrototypeEnemyArchetype.Melee, camera, "HeavyDefender", 180f);
+            templates[3] = CreateEnemyTemplate(enemies.Length > 5 ? enemies[5] : null, PrototypeEnemyArchetype.Melee, camera, "HeavyDefender");
 
             for (var i = 0; i < templates.Length; i++)
             {
@@ -106,8 +106,7 @@ namespace ArknightsACT.Editor
             PrtsAssetDescriptor descriptor,
             PrototypeEnemyArchetype archetype,
             Camera camera,
-            string fallbackName,
-            float? healthOverride = null)
+            string fallbackName)
         {
             var displayName = descriptor != null ? descriptor.DisplayName : fallbackName;
             var go = new GameObject("EnemyTemplate25D_" + displayName);
@@ -122,7 +121,7 @@ namespace ArknightsACT.Editor
             controller.slopeLimit = 45f;
 
             var health = go.GetComponent<Health>() ?? go.AddComponent<Health>();
-            health.SetMaxHealth(healthOverride ?? ResolveHealth(archetype));
+            health.SetMaxHealth(1f);
             if (go.GetComponent<StatusController>() == null)
                 go.AddComponent<StatusController>();
 
@@ -130,30 +129,18 @@ namespace ArknightsACT.Editor
             entity.SetTeam(Team.Enemy);
 
             var stats = go.GetComponent<CombatStats>() ?? go.AddComponent<CombatStats>();
-            stats.SetBasePhysicalDefense(healthOverride.HasValue ? 4f : ResolveDefense(archetype));
-            stats.SetBaseArtsResistance(healthOverride.HasValue ? 10f : ResolveResistance(archetype));
-
-            if (healthOverride.HasValue)
-            {
-                var resistance = go.GetComponent<StatusResistanceProfile>() ??
-                                 go.AddComponent<StatusResistanceProfile>();
-                resistance.ClearRules();
-                resistance.ConfigureTagRule(
-                    CombatStatusTags.HardCrowdControl,
-                    immune: false,
-                    durationMultiplier: 0.35f);
-                resistance.ConfigureTagRule(
-                    CombatStatusTags.MovementImpair,
-                    immune: false,
-                    durationMultiplier: 0.65f);
-                resistance.ConfigureIdRule(CombatStatusIds.Disarm, immune: true);
-            }
+            stats.SetBasePhysicalDefense(0f);
+            stats.SetBaseArtsResistance(0f);
 
             var experience = go.AddComponent<EnemyExperienceReward>();
-            experience.Configure(healthOverride.HasValue ? 120 : ResolveExperience(archetype));
+            experience.Configure(ResolveExperience(archetype));
 
             var brain = go.AddComponent<PrototypeEnemyCombatBrain25D>();
             brain.Configure(archetype, Vector3.back);
+
+            var sourceId = descriptor != null ? descriptor.BaseName : ResolveFallbackEnemySourceId(fallbackName);
+            go.AddComponent<EnemyOfficialStats25D>().Configure(sourceId, 0);
+            go.AddComponent<EnemyThreatProfile25D>().Configure(EnemyRank.Normal);
             go.AddComponent<EnemyVisionCone25D>();
             go.AddComponent<EnemyDeathCleanup25D>();
 
@@ -185,24 +172,13 @@ namespace ArknightsACT.Editor
             return go;
         }
 
-        private static float ResolveHealth(PrototypeEnemyArchetype archetype) => archetype switch
+        private static string ResolveFallbackEnemySourceId(string fallbackName) => fallbackName switch
         {
-            PrototypeEnemyArchetype.FastMelee => 45f,
-            PrototypeEnemyArchetype.Ranged => 50f,
-            _ => 60f
-        };
-
-        private static float ResolveDefense(PrototypeEnemyArchetype archetype) => archetype switch
-        {
-            PrototypeEnemyArchetype.FastMelee => 0.5f,
-            PrototypeEnemyArchetype.Ranged => 0.75f,
-            _ => 1.0f
-        };
-
-        private static float ResolveResistance(PrototypeEnemyArchetype archetype) => archetype switch
-        {
-            PrototypeEnemyArchetype.Ranged => 5f,
-            _ => 0f
+            "Soldier" => "enemy_1002_nsabr",
+            "Hound" => "enemy_1000_gopro",
+            "Crossbowman" => "enemy_1003_ncbow",
+            "HeavyDefender" => "enemy_1006_shield",
+            _ => string.Empty
         };
 
         private static int ResolveExperience(PrototypeEnemyArchetype archetype) => archetype switch

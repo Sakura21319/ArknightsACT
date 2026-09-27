@@ -27,6 +27,7 @@ namespace ArknightsACT.Gameplay.Characters.Wisadel
         private CombatEntity _pendingAimTarget;
         private bool _hasPendingAimSnapshot;
         private bool _pendingWasSkill3;
+        private float _pendingSkill3AttackBonusMultiplier = 1f;
         private float _nextSkill3AttackAllowedAt = -999f;
 
         /// <summary>
@@ -74,6 +75,9 @@ namespace ArknightsACT.Gameplay.Characters.Wisadel
             _pendingAimTarget = target;
             _hasPendingAimSnapshot = true;
             _pendingWasSkill3 = IsSkill3Active();
+            _pendingSkill3AttackBonusMultiplier = _pendingWasSkill3
+                ? ResolveSkill3AttackBonusMultiplier()
+                : 1f;
 
             if (_pendingWasSkill3)
             {
@@ -127,6 +131,16 @@ namespace ArknightsACT.Gameplay.Characters.Wisadel
 
         private float ResolveSkill3AttackInterval()
         {
+            var skills = GetComponents<WisadelSkill>();
+            for (var i = 0; i < skills.Length; i++)
+            {
+                var skill = skills[i];
+                if (skill != null &&
+                    skill.Slot == 2 &&
+                    skill.Skill3AttackIntervalSeconds > 0f)
+                    return skill.Skill3AttackIntervalSeconds;
+            }
+
             if (_presentation == null)
                 _presentation = GetComponentInChildren<SpineCharacterPresentation2D>(true);
 
@@ -134,8 +148,10 @@ namespace ArknightsACT.Gameplay.Characters.Wisadel
                 _presentation.TryGetAnimationDuration("Skill_3_Loop", out var duration))
                 return Mathf.Max(0.05f, duration);
 
-            // Raw Skill_3_Loop is 5.0s; imported character animations run at the project-wide 2x.
-            return 2.5f;
+            var runtimeStats = GetComponent<OperatorRuntimeStats>();
+            return runtimeStats != null
+                ? runtimeStats.AttackInterval
+                : float.PositiveInfinity;
         }
 
         public bool TryResolveBasicAttack(
@@ -147,6 +163,7 @@ namespace ArknightsACT.Gameplay.Characters.Wisadel
             out CombatEntity hitTarget)
         {
             var wasSkill3 = _pendingWasSkill3;
+            var skill3AttackBonusSnapshot = _pendingSkill3AttackBonusMultiplier;
             if (_hasPendingAimSnapshot)
             {
                 hitTarget = IsStillValidPendingTarget(
@@ -158,11 +175,15 @@ namespace ArknightsACT.Gameplay.Characters.Wisadel
                 _pendingAimTarget = null;
                 _hasPendingAimSnapshot = false;
                 _pendingWasSkill3 = false;
+                _pendingSkill3AttackBonusMultiplier = 1f;
             }
             else
             {
                 hitTarget = FindTarget(attacker, rangeMultiplier);
                 wasSkill3 = IsSkill3Active();
+                skill3AttackBonusSnapshot = wasSkill3
+                    ? ResolveSkill3AttackBonusMultiplier()
+                    : 1f;
             }
 
             if (wasSkill3)
@@ -178,11 +199,17 @@ namespace ArknightsACT.Gameplay.Characters.Wisadel
 
             FaceTarget(hitTarget);
 
+            var finalAmmoCompensation = wasSkill3 && !IsSkill3StatBuffActive()
+                ? Mathf.Max(0f, skill3AttackBonusSnapshot)
+                : 1f;
+            var resolvedDamage = Mathf.Max(0f, finalDamage) *
+                                 finalAmmoCompensation *
+                                 (wasSkill3 ? ResolveSkill3DamageMultiplier() : 1f);
             var result = DamageSystem.Apply(new DamageContext(
                 attacker,
                 attacker,
                 hitTarget,
-                Mathf.Max(0f, finalDamage),
+                resolvedDamage,
                 DamageType.Physical,
                 Vector2.zero,
                 sourceId: definition != null ? definition.name : "Wisadel_BasicAttack",
@@ -226,7 +253,15 @@ namespace ArknightsACT.Gameplay.Characters.Wisadel
             delta.y = 0f;
             var distance = delta.magnitude;
             var maxRange = range * Mathf.Max(0.1f, rangeMultiplier);
-            return distance >= 0.001f && distance <= maxRange;
+            var forward = ResolveForward(_locomotion);
+            return distance >= 0.001f &&
+                   distance <= maxRange &&
+                   OperatorRangeUtility.ContainsBasic(
+                       this,
+                       transform.position,
+                       forward,
+                       target.transform.position,
+                       maxRange);
         }
 
         private CombatEntity FindTarget(
@@ -234,18 +269,60 @@ namespace ArknightsACT.Gameplay.Characters.Wisadel
             float rangeMultiplier)
         {
             var maxRange = range * Mathf.Max(0.1f, rangeMultiplier);
+            var forward = ResolveForward(_locomotion);
             return RangedBasicAttackTargeting.TryFindBestTarget(
                 attacker,
                 transform.position,
                 maxRange,
                 maximumHeightDifference,
-                ResolveForward(_locomotion),
+                forward,
                 minimumForwardDot: -1f,
                 forwardPenaltyWeight: 0f,
-                extraFilter: null,
+                extraFilter: candidate => OperatorRangeUtility.ContainsBasic(
+                    this,
+                    transform.position,
+                    forward,
+                    candidate.transform.position,
+                    maxRange),
                 out var target)
                 ? target
                 : null;
+        }
+
+        private float ResolveSkill3AttackBonusMultiplier()
+        {
+            var skills = GetComponents<WisadelSkill>();
+            for (var i = 0; i < skills.Length; i++)
+            {
+                var skill = skills[i];
+                if (skill != null && skill.Slot == 2)
+                    return Mathf.Max(0f, skill.Skill3AttackBonusMultiplier);
+            }
+            return 1f;
+        }
+
+        private bool IsSkill3StatBuffActive()
+        {
+            var skills = GetComponents<WisadelSkill>();
+            for (var i = 0; i < skills.Length; i++)
+            {
+                var skill = skills[i];
+                if (skill != null && skill.Slot == 2)
+                    return skill.IsActive;
+            }
+            return false;
+        }
+
+        private float ResolveSkill3DamageMultiplier()
+        {
+            var skills = GetComponents<WisadelSkill>();
+            for (var i = 0; i < skills.Length; i++)
+            {
+                var skill = skills[i];
+                if (skill != null && skill.Slot == 2)
+                    return Mathf.Max(0f, skill.Skill3BasicAttackDamageMultiplier);
+            }
+            return 1f;
         }
 
         private bool IsSkill3Active()

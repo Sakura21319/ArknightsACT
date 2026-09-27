@@ -13,16 +13,17 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
     [DisallowMultipleComponent]
     public sealed class SchwarzArmorBreakTalent : MonoBehaviour, IDamageModifier
     {
-        [SerializeField, Range(0f, 1f)] private float baseProcChance = 0.20f;
-        [SerializeField, Range(0f, 1f)] private float skill2ProcChance = 0.50f;
-        [SerializeField, Range(0f, 1f)] private float skill3ProcChance = 1.00f;
-        [SerializeField, Min(1f)] private float procAttackMultiplier = 1.60f;
-        [SerializeField, Range(0f, 1f)] private float defenseDownPercent = 0.20f;
-        [SerializeField, Min(0.1f)] private float defenseDownDuration = 5f;
+        [SerializeField, Range(0f, 1f)] private float baseProcChance;
+        [SerializeField, Range(0f, 1f)] private float skill2ProcChance;
+        [SerializeField, Range(0f, 1f)] private float skill3ProcChance;
+        [SerializeField, Min(0f)] private float procAttackMultiplier;
+        [SerializeField, Range(0f, 1f)] private float defenseDownPercent;
+        [SerializeField, Min(0f)] private float defenseDownDuration;
 
         private CombatEntity _entity;
         private SchwarzSkill1 _skill2;
         private SchwarzSkill2 _skill3;
+        private bool _officialBaseTalentApplied;
 
         public float CurrentProcChance
         {
@@ -39,6 +40,25 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
 
         public event Action<CombatEntity> ProcTriggered;
 
+        public void ConfigureOfficialBaseTalent(
+            float procChance,
+            float attackMultiplier,
+            float defenseDownMagnitude,
+            float defenseDownSeconds)
+        {
+            baseProcChance = Mathf.Clamp01(procChance);
+            procAttackMultiplier = Mathf.Max(1f, attackMultiplier);
+            defenseDownPercent = Mathf.Clamp01(Mathf.Abs(defenseDownMagnitude));
+            defenseDownDuration = Mathf.Max(0f, defenseDownSeconds);
+            _officialBaseTalentApplied = true;
+        }
+
+        public void SetSkill2ProcChance(float value) =>
+            skill2ProcChance = Mathf.Clamp01(value);
+
+        public void SetSkill3ProcChance(float value) =>
+            skill3ProcChance = Mathf.Clamp01(value);
+
         private void Awake() => EnsureReferences();
 
         private void EnsureReferences()
@@ -54,7 +74,8 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
         public float ModifyOutgoingDamage(in DamageContext context, float currentDamage)
         {
             EnsureReferences();
-            if (_entity == null ||
+            if (!_officialBaseTalentApplied ||
+                _entity == null ||
                 context.Source != _entity ||
                 context.DamageType != DamageType.Physical ||
                 (context.Tags & DamageTags.BasicAttack) == 0 ||

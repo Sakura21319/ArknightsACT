@@ -136,8 +136,48 @@ namespace ArknightsACT.Editor
                 GetOrCreateUpgrade("level_damage_training", "战斗校准", "所有伤害 +7%。最多强化 3 次。", CombatFeature.None, LevelUpgradeEffectType.AllDamagePercent, 0.07f, 3, 1.0f),
                 GetOrCreateUpgrade("level_physical_training", "物理攻击强化", "物理伤害 +12%。最多强化 3 次。", CombatFeature.PhysicalDamage, LevelUpgradeEffectType.PhysicalDamagePercent, 0.12f, 3, 1.15f),
                 GetOrCreateUpgrade("level_arts_training", "法术攻击强化", "Arts 伤害 +12%。最多强化 3 次。", CombatFeature.ArtsDamage, LevelUpgradeEffectType.ArtsDamagePercent, 0.12f, 3, 1.15f),
+                GetOrCreateUpgrade("level_armor_training", "装甲强化", "物理防御 +12%。最多强化 3 次。", CombatFeature.None, LevelUpgradeEffectType.PhysicalDefensePercent, 0.12f, 3, 1.00f),
+                GetOrCreateUpgrade("level_arts_guard", "术式防护", "法术抗性 +5。最多强化 3 次。", CombatFeature.None, LevelUpgradeEffectType.ArtsResistanceFlat, 5f, 3, 0.95f),
+                GetOrCreateUpgrade("level_mobility_training", "机动训练", "移动速度 +6%。最多强化 3 次。", CombatFeature.None, LevelUpgradeEffectType.MoveSpeedPercent, 0.06f, 3, 0.90f),
+                GetOrCreateUpgrade("level_attack_speed_training", "快速整备", "攻击速度 +8%。最多强化 3 次。", CombatFeature.BasicAttack, LevelUpgradeEffectType.AttackSpeedPercent, 0.08f, 3, 0.95f),
                 GetOrCreateUpgrade("level_burn_module", "灼烧模块", "直接伤害有概率点燃目标，造成 3 次 Arts 灼烧伤害；升级会提高触发率和每跳伤害。", CombatFeature.None, LevelUpgradeEffectType.BurnOnHit, 0.08f, 3, 0.78f),
-                GetOrCreateUpgrade("level_chain_module", "连锁导体", "连续命中会向附近另一名敌人释放 Arts 电弧；升级后触发更频繁、伤害更高。", CombatFeature.None, LevelUpgradeEffectType.ChainLightning, 0.35f, 3, 0.78f)
+                GetOrCreateUpgrade("level_chain_module", "连锁导体", "连续命中会向附近另一名敌人释放 Arts 电弧；升级后触发更频繁、伤害更高。", CombatFeature.None, LevelUpgradeEffectType.ChainLightning, 0.35f, 3, 0.78f),
+                GetOrCreateUpgrade(
+                    "level_overload_reaction",
+                    "过载反应",
+                    "【联动】需要“灼烧 + 连锁”。电弧命中后引爆 2.8m 范围，造成相当于本次基础伤害 40% 的 Arts 伤害。",
+                    CombatFeature.None,
+                    LevelUpgradeEffectType.OverloadExplosion,
+                    0.40f,
+                    1,
+                    1.10f,
+                    LevelUpgradeArchetype.Synergy,
+                    RunBuildTag.Burn | RunBuildTag.Chain,
+                    RunBuildTag.Overload),
+                GetOrCreateUpgrade(
+                    "level_originium_overclock",
+                    "源石超频协议",
+                    "【危险协议】所有伤害 +25%，技力恢复 +35%；每次成功释放技能损失 4% 最大生命值（不会因此直接死亡）。",
+                    CombatFeature.ActiveSkills,
+                    LevelUpgradeEffectType.OriginiumOverclock,
+                    0.25f,
+                    1,
+                    0.34f,
+                    LevelUpgradeArchetype.DangerousProtocol,
+                    RunBuildTag.None,
+                    RunBuildTag.Risk | RunBuildTag.Skill),
+                GetOrCreateUpgrade(
+                    "level_blood_debt",
+                    "血债协议",
+                    "【危险协议】生命低于 35% 时伤害与攻击速度 +45%；但本局受到的伤害 +20%。",
+                    CombatFeature.BasicAttack,
+                    LevelUpgradeEffectType.BloodDebt,
+                    0.45f,
+                    1,
+                    0.30f,
+                    LevelUpgradeArchetype.DangerousProtocol,
+                    RunBuildTag.None,
+                    RunBuildTag.Risk | RunBuildTag.Hunt)
             };
         }
 
@@ -178,7 +218,23 @@ namespace ArknightsACT.Editor
                 GetOrCreateSkillUpgrade("chen_s1_cycle", ChenSkillUpgradeApplier.Skill1Cooldown, "拔刀·迅捷", "赤霄·拔刀基础冷却 -15%。", 0.15f, 2),
                 GetOrCreateSkillUpgrade("chen_s2_strikes", ChenSkillUpgradeApplier.Skill2ExtraStrikes, "绝影·九闪", "赤霄·绝影额外增加 2 次斩击。", 2f, 3),
                 GetOrCreateSkillUpgrade("chen_s2_finisher", ChenSkillUpgradeApplier.Skill2FinalDamage, "绝影·收刀", "赤霄·绝影终结斩伤害 +35%。", 0.35f, 3),
-                GetOrCreateSkillUpgrade("chen_s2_hunt", ChenSkillUpgradeApplier.Skill2Radius, "绝影·逐猎", "赤霄·绝影索敌半径 +20%。", 0.20f, 2)
+                GetOrCreateSkillUpgrade("chen_s2_hunt", ChenSkillUpgradeApplier.Skill2Radius, "绝影·逐猎", "赤霄·绝影索敌半径 +20%。", 0.20f, 2),
+                GetOrCreateSkillUpgrade(
+                    "chen_s1_echo_mutation",
+                    ChenSkillUpgradeApplier.Skill1EchoSlash,
+                    "拔刀·回响",
+                    "【技能异变】赤霄·拔刀命中后 0.18 秒再次斩击，回响造成原伤害的 65%。",
+                    0.65f,
+                    1,
+                    CharacterSkillUpgradeKind.Mutation),
+                GetOrCreateSkillUpgrade(
+                    "chen_s2_kill_refresh_mutation",
+                    ChenSkillUpgradeApplier.Skill2KillRefresh,
+                    "绝影·无尽追猎",
+                    "【技能异变】绝影斩击击杀目标时追加 1 次斩击，本次释放最多额外追加 4 次。",
+                    4f,
+                    1,
+                    CharacterSkillUpgradeKind.Mutation)
             };
         }
 
@@ -210,7 +266,18 @@ namespace ArknightsACT.Editor
             return asset;
         }
 
-        private static LevelUpgradeDefinition GetOrCreateUpgrade(string id, string displayName, string description, CombatFeature requirements, LevelUpgradeEffectType effectType, float value, int maxStacks, float rewardWeight)
+        private static LevelUpgradeDefinition GetOrCreateUpgrade(
+            string id,
+            string displayName,
+            string description,
+            CombatFeature requirements,
+            LevelUpgradeEffectType effectType,
+            float value,
+            int maxStacks,
+            float rewardWeight,
+            LevelUpgradeArchetype archetype = LevelUpgradeArchetype.Foundation,
+            RunBuildTag requiredTags = RunBuildTag.None,
+            RunBuildTag grantedTags = RunBuildTag.None)
         {
             var path = $"{UpgradeDir}/{id}.asset";
             var asset = AssetDatabase.LoadAssetAtPath<LevelUpgradeDefinition>(path);
@@ -219,13 +286,31 @@ namespace ArknightsACT.Editor
                 asset = ScriptableObject.CreateInstance<LevelUpgradeDefinition>();
                 AssetDatabase.CreateAsset(asset, path);
             }
-            asset.Configure(id, displayName, description, requirements, effectType, value, maxStacks, rewardWeight);
+            asset.Configure(
+                id,
+                displayName,
+                description,
+                requirements,
+                effectType,
+                value,
+                maxStacks,
+                rewardWeight,
+                archetype,
+                requiredTags,
+                grantedTags);
             asset.name = id;
             EditorUtility.SetDirty(asset);
             return asset;
         }
 
-        private static CharacterSkillUpgradeDefinition GetOrCreateSkillUpgrade(string id, string effectId, string displayName, string description, float value, int maxStacks)
+        private static CharacterSkillUpgradeDefinition GetOrCreateSkillUpgrade(
+            string id,
+            string effectId,
+            string displayName,
+            string description,
+            float value,
+            int maxStacks,
+            CharacterSkillUpgradeKind kind = CharacterSkillUpgradeKind.Tuning)
         {
             var path = $"{SkillUpgradeDir}/{id}.asset";
             var asset = AssetDatabase.LoadAssetAtPath<CharacterSkillUpgradeDefinition>(path);
@@ -234,7 +319,16 @@ namespace ArknightsACT.Editor
                 asset = ScriptableObject.CreateInstance<CharacterSkillUpgradeDefinition>();
                 AssetDatabase.CreateAsset(asset, path);
             }
-            asset.Configure(id, ChenSkillUpgradeApplier.CharacterKey, effectId, displayName, description, value, maxStacks, 1f);
+            asset.Configure(
+                id,
+                ChenSkillUpgradeApplier.CharacterKey,
+                effectId,
+                displayName,
+                description,
+                value,
+                maxStacks,
+                1f,
+                kind);
             asset.name = id;
             EditorUtility.SetDirty(asset);
             return asset;

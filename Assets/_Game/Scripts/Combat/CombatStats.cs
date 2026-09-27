@@ -24,17 +24,45 @@ namespace ArknightsACT.Combat
 
         public float Resolve(CombatStatType stat, float baseValue)
         {
-            var flat = 0f;
-            var additivePercent = 0f;
             _componentBuffer.Clear();
             GetComponents(_componentBuffer);
+
+            var value = baseValue;
+            value = ResolveLayer(stat, value, CombatStatModifierLayer.MetaProgression);
+            value = ResolveLayer(stat, value, CombatStatModifierLayer.RunPermanent);
+            value = ResolveLayer(stat, value, CombatStatModifierLayer.CollectibleEquipment);
+            value = ResolveLayer(stat, value, CombatStatModifierLayer.Temporary);
+            return value;
+        }
+
+        private float ResolveLayer(
+            CombatStatType stat,
+            float currentValue,
+            CombatStatModifierLayer layer)
+        {
+            var flat = 0f;
+            var additivePercent = 0f;
+
             for (var i = 0; i < _componentBuffer.Count; i++)
             {
-                if (_componentBuffer[i] is ICombatStatModifier modifier)
-                    modifier.AccumulateStatModifiers(stat, ref flat, ref additivePercent);
+                if (_componentBuffer[i] is not ICombatStatModifier modifier)
+                    continue;
+
+                if (modifier is ILayeredCombatStatModifier layered)
+                {
+                    if (layered.ModifierLayer != layer)
+                        continue;
+                }
+                else if (layer != CombatStatModifierLayer.Temporary)
+                {
+                    // Compatibility: pre-P6 modifiers preserve behavior at the final temporary stage.
+                    continue;
+                }
+
+                modifier.AccumulateStatModifiers(stat, ref flat, ref additivePercent);
             }
 
-            return (baseValue + flat) * Mathf.Max(0f, 1f + additivePercent);
+            return (currentValue + flat) * Mathf.Max(0f, 1f + additivePercent);
         }
     }
 }

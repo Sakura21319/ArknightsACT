@@ -120,6 +120,8 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         {
             PrepareStreetMaterials();
             PrepareBuildingMaterials();
+            _varietyPlan = CityDistrictVarietyPlan.Create(stageMap);
+            _builtLots = new System.Collections.Generic.Dictionary<int, Transform>();
             var old = stage.Find("[Chernobog_CityStreets]");
             if (old != null)
                 Destroy(old.gameObject);
@@ -128,6 +130,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             root.SetParent(stage, false);
             var facilities = root.gameObject.AddComponent<CityFacilityController>();
             facilities.Configure(stageMap, GetComponent<RogueliteStageRuntimeController>());
+            _activeFacilityController = facilities;
 
             for (var i = 0; i < stageMap.Blocks.Count; i++)
             {
@@ -160,6 +163,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 BuildDistrictArchitecture(cell, data, district, i, data.Coordinate);
                 BuildDistrictFurniture(cell, district, i);
             }
+            if (stageMap.UsesCityLots) BuildPlannedDistrictSpaces(root);
             if (stageMap.UsesCityLots && stageMap.StageIndex == 2) BuildCentralTower(root, facilities);
             if (stageMap.UsesCityLots && stageMap.StageIndex == 1) BuildCivicCore(root);
         }
@@ -179,9 +183,14 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 if (block.Theme == RogueliteChunkTheme.Facility && lot == 3) continue;
                 if ((block.Type == RogueliteBlockType.Start || block.Type == RogueliteBlockType.Boss) && lot < 2) continue;
                 if (HasFacilityCourt(block) && lot == (IsTowerReservation(block, -10.5f, -9.4f) ? 1 : 0)) continue;
+                var lotPlan = default(CityPlannedLot);
+                var hasPlan = _varietyPlan != null && _varietyPlan.TryGetLot(block.Index, lot, out lotPlan);
                 // One optional utility court breaks up repeated four-building cells.
-                if (lot == 0 && random.NextDouble() < 0.30) continue;
-                var profile = ChernobogSearchBuildingProfiles.Select(district, random);
+                if (hasPlan && !lotPlan.Generate) continue;
+                if (lot == 0 && !hasPlan && random.NextDouble() < 0.30) continue;
+                var profile = hasPlan && lotPlan.BuildingOverride.HasValue
+                    ? ChernobogSearchBuildingProfiles.Get(lotPlan.BuildingOverride.Value)
+                    : ChernobogSearchBuildingProfiles.Select(district, random);
                 var detailRandom = new System.Random(unchecked(stageMap.GenerationSeed + block.Index * 7919 + lot * 104729));
                 var lotWall = LotFacade(profile.Kind, detailRandom);
                 var building = new GameObject($"{profile.Kind}_{block.Index:00}_{lot}_Seed{stageMap.GenerationSeed}").transform;
@@ -191,12 +200,15 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 var width = (profile.Kind == ChernobogSearchBuildingKind.Warehouse ? 7.2f : 5.4f) + (float)random.NextDouble() * 1.2f;
                 if (stageMap.StageIndex == 2 && profile.Kind == ChernobogSearchBuildingKind.Warehouse) width += .8f;
                 var depth = 4.0f + (float)random.NextDouble() * 1.0f;
-                var height = (profile.Kind == ChernobogSearchBuildingKind.Apartment ? 5.4f : profile.Kind == ChernobogSearchBuildingKind.Warehouse ? 4.4f : 3.5f) + (float)detailRandom.NextDouble() * .5f;
+                var height = hasPlan && lotPlan.RooftopAccess ? 4.4f :
+                    (profile.Kind == ChernobogSearchBuildingKind.Apartment ? 5.4f : profile.Kind == ChernobogSearchBuildingKind.Warehouse ? 4.4f : 3.5f) + (float)detailRandom.NextDouble() * .5f;
                 RogueliteStagePlayableArchitectureController.BuildInteriorShell(building, width, depth, height,
-                    lotWall, steel, inset, 2.2f, false);
-                building.GetComponent<EnterableBuilding25D>().SetIdentity($"{profile.Label} {block.Index + 1:00}-{lot + 1}");
+                    lotWall, steel, inset, 2.2f, false, hasPlan && lotPlan.ReturnShortcut);
+                var room = building.GetComponent<EnterableBuilding25D>();
+                room.SetIdentity($"{profile.Label} {block.Index + 1:00}-{lot + 1}");
+                _builtLots[CityDistrictVarietyPlan.Key(block.Index, lot)] = building;
                 CreateBox(building, "Roof", new Vector3(0f, height + 0.1f, 0f),
-                    new Vector3(width + 0.2f, 0.18f, depth + 0.2f), 0.04f, steel, false);
+                    new Vector3(width + 0.2f, 0.18f, depth + 0.2f), 0.04f, steel, hasPlan && lotPlan.RooftopAccess);
                 CreateBox(building, "RoofVent", new Vector3(width * 0.25f, height + 0.35f, 0.5f),
                     new Vector3(1.1f, 0.5f, 0.9f), 0.04f, inset, false);
                 for (var panel = -1; panel <= 1; panel++)
@@ -228,6 +240,22 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                     building.TransformPoint(new Vector3(0f, 0.18f, -depth * 0.5f)),
                     building.TransformPoint(new Vector3(0f, 0.18f, 0f))
                 });
+                if (hasPlan)
+                {
+                    BuildLotInteriorVariation(building, profile.Kind, lotPlan.Interior, width, depth, steel, inset);
+                    if (lotPlan.RooftopAccess) AddRooftopAccess(building, width, depth, height, lotPlan.RooftopConnectionSide);
+                    if (lotPlan.LandmarkBeacon) BuildDistrictBeacon(building, width, depth, height, lotPlan.ThemeSign);
+                    if (!string.IsNullOrEmpty(lotPlan.ThemeSign) && !lotPlan.LandmarkBeacon)
+                        SectorLabel(building, "DistrictServiceSign", lotPlan.ThemeSign, new Vector3(0f, height - 0.48f, -depth * .5f - .20f), false);
+                    if (lotPlan.ReturnShortcut)
+                    {
+                        var panel = CreateBox(building, "ReturnShortcutPanel", new Vector3(0f, height * .5f, depth * .5f),
+                            new Vector3(1.78f, height - .08f, .16f), .015f, steel, true);
+                        var door = panel.AddComponent<CityReturnShortcut25D>();
+                        door.Configure("内巷返程门");
+                        _activeFacilityController?.RegisterShortcut(door);
+                    }
+                }
                 CreateBox(building, "BuildingApproach", new Vector3(0f, 0.125f, -depth * .5f - 1.4f),
                     new Vector3(2.4f, 0.018f, 2.8f), 0.01f, _paving, false);
                 var loot = ChernobogSearchBuildingProfiles.RollContainers(profile, random, block.Zone == CityZone.Core);
@@ -246,7 +274,8 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 for (var slot = 0; slot < loot.Length; slot++)
                     SearchableContainer25D.Create(building, slots[slot], steel, inset, stageMap.GenerationSeed, loot[slot]);
                 BuildLotDetail(building, profile.Kind, width, depth, height, lotWall, steel, detailRandom);
-                BuildBuildingIdentity(building, profile.Kind, width, depth, height, wall, steel, inset);
+                BuildBuildingIdentity(building, profile.Kind, width, depth, height, wall, steel, inset,
+                    hasPlan && lotPlan.ReturnShortcut);
                 var sign = building.Find("BuildingStencil").GetComponent<TextMesh>();
                 sign.text = $"{profile.Stencil} / {block.Index + 1:00}-{lot + 1}";
                 sign.gameObject.SetActive(false); // The depth-tested EntranceAddress replaces the legacy overlay stencil.
@@ -271,7 +300,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         }
 
         private void BuildBuildingIdentity(Transform building, ChernobogSearchBuildingKind kind,
-            float width, float depth, float height, Material wall, Material steel, Material inset)
+            float width, float depth, float height, Material wall, Material steel, Material inset, bool backShortcut = false)
         {
             // Distinct facade and furniture motifs; every collider stays away from the door aisle.
             var medical = kind == ChernobogSearchBuildingKind.Clinic || kind == ChernobogSearchBuildingKind.Pharmacy;
@@ -301,7 +330,9 @@ namespace ArknightsACT.Gameplay.Roguelite.World
             var bed = kind == ChernobogSearchBuildingKind.Apartment || kind == ChernobogSearchBuildingKind.Clinic;
             var furnitureSize = bed ? new Vector3(.8f, .42f, 1.35f) :
                 kind == ChernobogSearchBuildingKind.Warehouse ? new Vector3(.75f, .22f, .8f) : new Vector3(.75f, .85f, .65f);
-            CreateBox(building, furnishing, new Vector3(0f, .18f + furnitureSize.y * .5f, depth * .5f - furnitureSize.z * .5f - .16f), furnitureSize, .025f, inset, true);
+            var furnitureX = backShortcut ? width * .5f - furnitureSize.x * .5f - .55f : 0f;
+            var furnitureZ = backShortcut ? 0f : depth * .5f - furnitureSize.z * .5f - .16f;
+            CreateBox(building, furnishing, new Vector3(furnitureX, .18f + furnitureSize.y * .5f, furnitureZ), furnitureSize, .025f, inset, true);
             if (bed)
                 CreateBox(building, "Mattress", new Vector3(0f, .66f, depth * .5f - .84f), new Vector3(.72f, .15f, 1.22f), .04f, wall, false);
         }

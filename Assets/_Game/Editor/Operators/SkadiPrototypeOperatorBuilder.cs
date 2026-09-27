@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using ArknightsACT.Gameplay.Characters;
+using ArknightsACT.Gameplay.Characters.Skadi;
 using UnityEditor;
 using UnityEngine;
 
@@ -11,7 +12,7 @@ namespace ArknightsACT.Editor
 
         public void EnsureDefinitionAsset()
         {
-            PrototypeOperatorDefinitionAssetUtility.Ensure(
+            var definition = PrototypeOperatorDefinitionAssetUtility.Ensure(
                 "Operator_Skadi",
                 OperatorId,
                 "斯卡蒂",
@@ -36,6 +37,8 @@ namespace ArknightsACT.Editor
                     "UI/HUD/Operators/skadi_summer_3",
                     "UI/Skills/Skadi/s2",
                     "UI/Skills/Skadi/s3"));
+            PrtsOperatorProgressionImporter.TryRefreshDefinition(definition, "char_263_skadi");
+            PrtsOperatorSkillMasteryImporter.TryRefreshDefinition(definition, "char_263_skadi", 2, 3);
         }
 
         public GameObject Build(
@@ -43,12 +46,16 @@ namespace ArknightsACT.Editor
             PlayableOperatorDefinition definition,
             PlayableOperatorSkinDefinition skin)
         {
+            if (definition == null || !definition.HasE2Progression)
+                throw new System.InvalidOperationException("Skadi is missing official E2 progression data.");
+
             var skinId = skin != null ? skin.SkinId : "default";
             SkadiLocalAssetBootstrap.RefreshSkin(skinId, false);
             return SkadiPrototypePlayerFactory.Create25D(
                 SkadiPrototypeSceneBuilder.BuildAttackDefinitions(),
                 camera,
-                skinId);
+                skinId,
+                definition.E2Progression.Evaluate(1));
         }
 
         public void RefreshAssets(
@@ -69,11 +76,30 @@ namespace ArknightsACT.Editor
             if (player == null)
                 return;
 
-            PlayableOperatorPrototypeComposer.ApplyFormalCombatProfile(
+            if (player.GetComponent<SkadiSkill1>() == null)
+                player.AddComponent<SkadiSkill1>();
+            if (player.GetComponent<SkadiSkill2>() == null)
+                player.AddComponent<SkadiSkill2>();
+            if (player.GetComponent<SkadiSkillAudioCue>() == null)
+                player.AddComponent<SkadiSkillAudioCue>();
+            PlayableOperatorPrototypeComposer.CompleteGameplay(player);
+            var combatProfile = player.GetComponent<ArknightsACT.Gameplay.Roguelite.PlayerCombatProfile>();
+            if (combatProfile != null)
+                combatProfile.Configure(
+                    combatProfile.Features |
+                    ArknightsACT.Gameplay.Roguelite.CombatFeature.ActiveSkills);
+
+            SkadiLocalAssetBootstrap.ConfigurePlayer(
                 player,
-                maxHealth: 120f,
-                physicalDefense: 2.0f,
-                artsResistance: 0f);
+                skin != null ? skin.SkinId : "default");
+            if (definition != null && definition.HasE2Progression)
+            {
+                var progression = player.GetComponent<OperatorProgressionController>();
+                var level = progression != null ? progression.EliteLevel : 1;
+                PlayableOperatorPrototypeComposer.ApplyFormalCombatProfile(
+                    player,
+                    definition.E2Progression.Evaluate(level));
+            }
             EditorUtility.SetDirty(player);
         }
     }

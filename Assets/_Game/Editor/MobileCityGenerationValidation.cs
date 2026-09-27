@@ -17,6 +17,9 @@ namespace ArknightsACT.Editor
     // Does not load or save PrototypeRun, change PlayerPrefs or start a gameplay run.
     public static class MobileCityGenerationValidation
     {
+        private static bool HasGeneratedHouseShell(EnterableBuilding25D room) => room != null &&
+            (room.transform.Find("ShellBack") != null || room.transform.Find("ShellBackWing") != null);
+
         private static object Call(object target, string method, params object[] args) =>
             target.GetType().GetMethod(method, BindingFlags.NonPublic | BindingFlags.Instance).Invoke(target, args);
 
@@ -88,7 +91,9 @@ namespace ArknightsACT.Editor
                             while (ticks++ < 1200)
                             {
                                 var delta = target - actor.transform.position; delta.y = 0f;
-                                if (delta.magnitude < .09f && Mathf.Abs(target.y - actor.transform.position.y) < .3f) break;
+                                // A waypoint within the actor's footprint is reached; insisting on
+                                // its exact centre can wedge the controller at a ramp/deck seam.
+                                if (delta.magnitude < .2f && Mathf.Abs(target.y - actor.transform.position.y) < .3f) break;
                                 fall = controller.isGrounded ? -2f : Mathf.Max(-30f, fall - 24f / 60f);
                                 controller.Move(Vector3.ClampMagnitude(delta, 4.5f / 60f) + Vector3.up * (fall / 60f));
                             }
@@ -100,6 +105,99 @@ namespace ArknightsACT.Editor
             }
             if (root.GetComponentsInChildren<CityVerticalRoute>().Length > 0)
                 report.Add("PASS: CharacterController walked every vertical route up and down without jumping; upper-floor / summit navigation connected.");
+        }
+
+        private static string VarietyPlanSignature(CityDistrictVarietyPlan plan)
+        {
+            var lots = plan.Lots.OrderBy(x => x.Key).Select(x =>
+                $"{x.Key}:{x.Value.Generate}:{x.Value.Interior}:{x.Value.BuildingOverride}:{x.Value.ReturnShortcut}:{x.Value.LandmarkBeacon}:{x.Value.RooftopAccess}:{x.Value.RooftopConnectionSide}:{x.Value.ThemeSign}");
+            var battles = plan.Battles.OrderBy(x => x.Key).Select(x => $"{x.Key}:{x.Value}");
+            var venues = plan.Venues.OrderBy(x => x.Purpose).ThenBy(x => x.A).ThenBy(x => x.B).ThenBy(x => x.LotA)
+                .Select(x => $"{x.Purpose}:{x.A}:{x.LotA}:{x.B}:{x.LotB}:{x.Label}");
+            return string.Join("|", string.Join(",", lots), string.Join(",", battles), string.Join(",", venues));
+        }
+
+        private static void ValidateDistrictVarietyPlan(RogueliteStageMapController map)
+        {
+            var plan = CityDistrictVarietyPlan.Create(map);
+            var clinics = plan.Lots.Where(x => x.Value.BuildingOverride == ChernobogSearchBuildingKind.Clinic).ToArray();
+            var pharmacies = plan.Lots.Where(x => x.Value.BuildingOverride == ChernobogSearchBuildingKind.Pharmacy).ToArray();
+            Require(clinics.Length == 1 && pharmacies.Length == 1, "Neighborhood service pair missing / duplicated");
+            var clinicBlock = map.Blocks[clinics[0].Key / 4]; var pharmacyBlock = map.Blocks[pharmacies[0].Key / 4];
+            Require(clinicBlock.Zone == pharmacyBlock.Zone &&
+                Mathf.Abs(clinicBlock.Coordinate.x - pharmacyBlock.Coordinate.x) + Mathf.Abs(clinicBlock.Coordinate.y - pharmacyBlock.Coordinate.y) == 1,
+                "Clinic and pharmacy are not a neighboring district pair");
+            Require(clinics[0].Value.Generate && pharmacies[0].Value.Generate, "Planned theme lot was randomly omitted");
+            Require(plan.Venues.Count(x => x.Purpose == CityBlockPairPurpose.FreightTransfer) == 1, "Cross-block freight venue missing / duplicated");
+            Require(plan.Venues.Count(x => x.Purpose == CityBlockPairPurpose.RooftopRoute) == 1, "Cross-block roof route missing / duplicated");
+            Require(plan.Lots.Any(x => x.Value.Generate && x.Value.LandmarkBeacon), "Visible landmark destination missing");
+            Require(plan.Lots.Any(x => x.Value.Generate && x.Value.ReturnShortcut), "Interior return shortcut missing");
+            foreach (var block in map.Blocks)
+                if (plan.TryGetBattle(block.Index, out var battle))
+                {
+                    var expected = block.Zone switch
+                    {
+                        CityZone.Outskirts => CityBattleLayout.BrokenCover,
+                        CityZone.Ruins => CityBattleLayout.RubbleCorridor,
+                        CityZone.Industrial => CityBattleLayout.DepotFunnel,
+                        _ => CityBattleLayout.OffsetLanes
+                    };
+                    Require(battle == expected, $"Zone battle layout mismatch: {block.Zone}");
+                }
+            var repeated = CityDistrictVarietyPlan.Create(map);
+            Require(VarietyPlanSignature(plan) == VarietyPlanSignature(repeated), "District plan failed fixed-seed replay");
+        }
+
+        private static void ValidateReturnShortcut(GameObject root, ArknightsACT.Gameplay.Navigation.PrototypeNavigationGraph25D graph,
+            List<string> report)
+        {
+            var controller = root.GetComponentInChildren<CityFacilityController>();
+            var doors = root.GetComponentsInChildren<CityReturnShortcut25D>();
+            Require(controller != null && doors.Length == 1 && controller.Shortcuts.Count == 1, "Return shortcut registration count");
+            var door = doors[0]; var room = door.GetComponentInParent<EnterableBuilding25D>();
+            Require(room != null && !door.Opened && door.GetComponent<Collider>() != null && door.GetComponent<Collider>().enabled,
+                "Return door must spawn closed with a blocking collider");
+            var actor = new GameObject("ReturnShortcutProbe");
+            var health = actor.AddComponent<ArknightsACT.Combat.Health>(); health.SetMaxHealth(100f);
+            try
+            {
+                var localDoor = room.transform.InverseTransformPoint(door.transform.position);
+                actor.transform.position = room.transform.TransformPoint(new Vector3(0f, .9f, localDoor.z + 1f));
+                Require(!door.IsActorOnInteriorSide(actor.transform.position), "Outside of return door was classified as interior");
+                controller.Tick(actor.transform, true, 1.1f);
+                Require(!door.Opened, "Return door opened from the alley side");
+                actor.transform.position = room.transform.TransformPoint(new Vector3(0f, .9f, 0f));
+                Require(door.IsActorOnInteriorSide(actor.transform.position), "Room side was classified as outside");
+                controller.Tick(actor.transform, true, 1.1f);
+                Require(door.Opened && !door.GetComponent<Collider>().enabled, "Interior interaction did not open the return door");
+                var exit = room.transform.TransformPoint(new Vector3(0f, .18f, room.Interior.size.z * .5f + 1.7f));
+                Require(graph.TryBuildPath(room.transform.position + Vector3.up * .18f, exit, new List<Vector3>()),
+                    "Opened return shortcut did not connect interior to rear alley");
+                report.Add("PASS: generated rear door begins collidable; alley-side interaction is rejected; a room-side hold opens it and connects the return route. Every geometry rebuild starts closed.");
+            }
+            finally { UnityEngine.Object.DestroyImmediate(actor); }
+        }
+
+        private static void ValidateDistrictVarietyGeometry(GameObject root, RogueliteStageMapController map,
+            List<string> report)
+        {
+            var transforms = root.GetComponentsInChildren<Transform>();
+            Require(transforms.Count(x => x.name.StartsWith("CrossBlockVenue_")) == 1,
+                "Planned cross-block venue was not built");
+            Require(transforms.Count(x => x.name.StartsWith("RooftopServiceBridge_")) == 1,
+                "Planned roof bridge was not built");
+            Require(transforms.Count(x => x.name == "RooftopAccessRoute") == 2,
+                "Both roof bridge ends need a walkable ascent");
+            Require(transforms.Count(x => x.name == "QuietRecoveryAlcove") == 1,
+                "Start block quiet alcove missing");
+            var plan = CityDistrictVarietyPlan.Create(map);
+            foreach (var battle in plan.Battles)
+            {
+                var cell = transforms.FirstOrDefault(x => x.name.StartsWith($"Block_{battle.Key:00}_CityStreet_"));
+                Require(cell != null && cell.Find("CombatSpaceStencil") != null,
+                    $"Zone combat space missing in block {battle.Key}");
+            }
+            report.Add("PASS: cross-block venue, roof bridge, both ascent routes, quiet alcove and zone combat spaces match the deterministic plan.");
         }
 
         public static void Run()
@@ -125,9 +223,12 @@ namespace ArknightsACT.Editor
                 {
                     map.GenerateStageWithSeed(stage, seed);
                     var signature = Signature(map);
+                    var varietySignature = VarietyPlanSignature(CityDistrictVarietyPlan.Create(map));
                     signatures.Add(signature);
                     map.GenerateStageWithSeed(stage, seed);
                     Require(Signature(map) == signature, "Seed failed to reproduce layout");
+                    Require(VarietyPlanSignature(CityDistrictVarietyPlan.Create(map)) == varietySignature, "Seed failed to reproduce district variation plan");
+                    ValidateDistrictVarietyPlan(map);
                     Require(map.Blocks.Count == (stage == 1 ? 12 : stage == 2 ? 16 : 20), "Wrong dimensions");
                     Require(map.Blocks.Count(x => x.Type == RogueliteBlockType.Start) == 1, "Start count");
                     Require(map.Blocks.Count(x => x.Type == RogueliteBlockType.Boss) == 1, "Boss count");
@@ -172,11 +273,12 @@ namespace ArknightsACT.Editor
                         Call(runtime, "BuildNavigationGraph");
                         var graph = root.GetComponentInChildren<ArknightsACT.Gameplay.Navigation.PrototypeNavigationGraph25D>();
                         Physics.SyncTransforms();
+                        ValidateDistrictVarietyGeometry(root, map, report);
                         var rooms = root.GetComponentsInChildren<EnterableBuilding25D>();
                         var containers = root.GetComponentsInChildren<SearchableContainer25D>();
                         Require(rooms.Length >= map.Blocks.Count * 2, "Too few rooms");
                         Require(containers.Length >= map.Blocks.Count * 2, "Too few search containers");
-                        var emptyRooms = rooms.Count(x => x.transform.Find("ShellBack") != null && x.GetComponentsInChildren<SearchableContainer25D>().Length == 0);
+                        var emptyRooms = rooms.Count(x => HasGeneratedHouseShell(x) && x.GetComponentsInChildren<SearchableContainer25D>().Length == 0);
                         Require(emptyRooms > 0, "No empty buildings in sample");
                         Require(containers.Select(x => x.Kind).Distinct().Count() >= 10, "Insufficient container variety");
                         var allContainers = root.GetComponentsInChildren<SearchableContainer25D>(true);
@@ -189,10 +291,11 @@ namespace ArknightsACT.Editor
                             var route = (Vector3[])typeof(EnterableBuilding25D).GetField("_route", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(room);
                             if (route != null) graph.AppendRoomRoute(route);
                         }
+                        ValidateReturnShortcut(root, graph, report);
                         ValidateVerticalRoutes(root, graph, report);
                         foreach (var room in rooms)
                         {
-                            if (room.transform.Find("ShellBack") == null) continue;
+                            if (!HasGeneratedHouseShell(room)) continue;
                             foreach (var wall in room.GetComponentsInChildren<BoxCollider>())
                             {
                                 if (!wall.name.StartsWith("Shell")) continue;
@@ -372,7 +475,7 @@ namespace ArknightsACT.Editor
             Require((tower != null) == (map.StageIndex == 2), "Tower appears on wrong stage");
             foreach (var room in root.GetComponentsInChildren<EnterableBuilding25D>())
             {
-                if (room.transform.Find("ShellBack") == null || !room.name.Contains("_Seed")) continue;
+                if (!HasGeneratedHouseShell(room) || !room.name.Contains("_Seed")) continue;
                 var p = room.transform.localPosition;
                 Require(Mathf.Abs(Mathf.Abs(p.x) - 11.2f) < .01f && Mathf.Abs(Mathf.Abs(p.z) - 10.2f) < .01f, "Housing alignment changed");
                 Require(Mathf.Abs(Mathf.DeltaAngle(room.transform.localEulerAngles.y, 0f)) < .01f || Mathf.Abs(Mathf.DeltaAngle(room.transform.localEulerAngles.y, 180f)) < .01f, "Housing rotated off grid");

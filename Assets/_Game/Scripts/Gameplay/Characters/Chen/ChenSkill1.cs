@@ -10,30 +10,35 @@ using UnityEngine;
 namespace ArknightsACT.Gameplay.Characters.Chen
 {
     [RequireComponent(typeof(CombatEntity))]
-    public sealed class ChenSkill1 : MonoBehaviour, IPlayerSkill, IPlayerSkillInterruptible
+    public sealed class ChenSkill1 : MonoBehaviour, IPlayerSkill, IPlayerSkillInterruptible, IOperatorSkillMasteryTarget
     {
         [Header("Skill points")]
-        [SerializeField, Min(1f)] private float skillPointCost = 20f;
-        [SerializeField, Min(0f)] private float initialSkillPoints = 10f;
+        [SerializeField, Min(0f)] private float skillPointCost;
+        [SerializeField, Min(0f)] private float initialSkillPoints;
         [SerializeField, Min(0f)] private float naturalSkillPointPerSecond = 1f;
         [Tooltip("横向刀光在起手第 1 帧出现，因此伤害与起手特效同帧结算。")]
         [SerializeField, Min(0f)] private float impactDelay = 0f;
         [SerializeField, Min(0.1f)] private float castLockSeconds = 1.15f;
-        [SerializeField, Min(0f)] private float physicalDamage = 28f;
-        [SerializeField, Min(0f)] private float artsDamage = 28f;
+        [SerializeField, Min(0f)] private float masteryAttackScale;
+        [SerializeField] private string masteryRangeId = string.Empty;
+        [SerializeField, Min(1)] private int masteryMaxTargets = 1;
         [SerializeField] private Vector2 hitboxOffset = new(1.25f, 0.08f);
         [SerializeField] private Vector2 hitboxSize = new(3.4f, 1.8f);
         [SerializeField, Min(0.1f)] private float max25DHeightDifference = 1.20f;
 
         private CombatEntity _entity;
+        private OperatorRuntimeStats _operatorStats;
         private IPlayerLocomotion _motor;
         private PlayerMotor25D _motor25D;
         private float _skillPoints;
         private float _runtimeRangeMultiplier = 1f;
         private float _runtimeDamageMultiplier = 1f;
         private float _runtimeSkillPointCostMultiplier = 1f;
+        private float _echoSlashDamageMultiplier;
+        private bool _officialSkillDataApplied;
 
         public int Slot => 1;
+        public int MasterySlot => 1;
         public string DisplayName => "赤霄·拔刀";
         public float SkillPointCost => Mathf.Max(1f, skillPointCost * _runtimeSkillPointCostMultiplier);
         public float SkillPoints => Mathf.Clamp(_skillPoints, 0f, SkillPointCost);
@@ -60,6 +65,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
         private void Awake()
         {
             _entity = GetComponent<CombatEntity>();
+            _operatorStats = GetComponent<OperatorRuntimeStats>();
             _motor = FindLocomotion();
             _motor25D = GetComponent<PlayerMotor25D>();
             _skillPoints = Mathf.Clamp(initialSkillPoints, 0f, SkillPointCost);
@@ -67,7 +73,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
 
         public bool TryCast()
         {
-            if (IsCasting || SkillPoints + 0.0001f < SkillPointCost || _entity?.Health == null || _entity.Health.IsDead)
+            if (!_officialSkillDataApplied || IsCasting || SkillPoints + 0.0001f < SkillPointCost || _entity?.Health == null || _entity.Health.IsDead)
                 return false;
 
             _skillPoints = Mathf.Max(0f, SkillPoints - SkillPointCost);
@@ -99,6 +105,34 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                 GainSkillPoints(seconds * Mathf.Max(0.01f, NaturalSkillPointPerSecond));
         }
 
+        public void ApplyMasterySnapshot(OperatorSkillMasterySnapshot snapshot)
+        {
+            if (snapshot == null)
+            {
+                _officialSkillDataApplied = false;
+                return;
+            }
+
+            skillPointCost = snapshot.SkillPointCost;
+            initialSkillPoints = Mathf.Clamp(
+                snapshot.InitialSkillPoints,
+                0f,
+                Mathf.Max(1f, skillPointCost));
+            masteryRangeId = snapshot.RangeId ?? string.Empty;
+
+            var hasAttackScale = snapshot.TryGetBlackboard("atk_scale", out var attackScale);
+            var hasMaxTargets = snapshot.TryGetBlackboard("max_target", out var maxTargets);
+            masteryAttackScale = hasAttackScale ? Mathf.Max(0f, attackScale) : 0f;
+            masteryMaxTargets = hasMaxTargets ? Mathf.Max(1, Mathf.RoundToInt(maxTargets)) : 1;
+
+            _officialSkillDataApplied =
+                skillPointCost > 0f &&
+                masteryAttackScale > 0f &&
+                hasMaxTargets &&
+                !string.IsNullOrWhiteSpace(masteryRangeId);
+            _skillPoints = Mathf.Clamp(initialSkillPoints, 0f, SkillPointCost);
+        }
+
         public void AddRangePercent(float value) =>
             _runtimeRangeMultiplier = Mathf.Clamp(_runtimeRangeMultiplier + Mathf.Max(0f, value), 1f, 2.5f);
 
@@ -109,6 +143,13 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             _runtimeSkillPointCostMultiplier = Mathf.Clamp(
                 _runtimeSkillPointCostMultiplier * (1f - Mathf.Max(0f, value)), 0.45f, 1f);
 
+        public void EnableEchoSlash(float damageFraction)
+        {
+            _echoSlashDamageMultiplier = Mathf.Max(
+                _echoSlashDamageMultiplier,
+                Mathf.Clamp(damageFraction, 0.10f, 1.50f));
+        }
+
         public void ResetRunModifiers()
         {
             StopAllCoroutines();
@@ -116,6 +157,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             _runtimeRangeMultiplier = 1f;
             _runtimeDamageMultiplier = 1f;
             _runtimeSkillPointCostMultiplier = 1f;
+            _echoSlashDamageMultiplier = 0f;
             _skillPoints = Mathf.Clamp(initialSkillPoints, 0f, SkillPointCost);
         }
 
@@ -137,32 +179,42 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             if (impactDelay > 0f)
                 yield return new WaitForSeconds(impactDelay);
 
-            ResolveHit();
+            ResolveHit(1f);
 
-            var remaining = Mathf.Max(0f, castLockSeconds - impactDelay);
+            var elapsed = impactDelay;
+            if (_echoSlashDamageMultiplier > 0f)
+            {
+                const float echoDelay = 0.18f;
+                yield return new WaitForSeconds(echoDelay);
+                elapsed += echoDelay;
+                ResolveHit(_echoSlashDamageMultiplier);
+            }
+
+            var remaining = Mathf.Max(0f, castLockSeconds - elapsed);
             if (remaining > 0f)
                 yield return new WaitForSeconds(remaining);
             IsCasting = false;
         }
 
-        private void ResolveHit()
+        private void ResolveHit(float damageScale)
         {
             if (_entity?.Health == null || _entity.Health.IsDead)
                 return;
 
             if (_motor25D != null)
-                ResolveHit25D();
+                ResolveHit25D(damageScale);
             else
-                ResolveHit2D();
+                ResolveHit2D(damageScale);
         }
 
-        private void ResolveHit2D()
+        private void ResolveHit2D(float damageScale)
         {
             var facing = _motor != null ? _motor.FacingSign : 1;
             var offset = hitboxOffset;
-            offset.x *= facing * _runtimeRangeMultiplier;
+            var rangeMultiplier = ResolveSkillRangeMultiplier();
+            offset.x *= facing * rangeMultiplier;
             var size = hitboxSize;
-            size.x *= _runtimeRangeMultiplier;
+            size.x *= rangeMultiplier;
             var center = (Vector2)transform.position + offset;
             var colliders = Physics2D.OverlapBoxAll(center, size, 0f);
             var seen = new HashSet<CombatEntity>();
@@ -175,8 +227,9 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                 var target = collider.GetComponentInParent<CombatEntity>();
                 if (!CanHit(target, seen))
                     continue;
+                seen.Add(target);
 
-                if (ApplyDamagePair(target, new Vector2(4.2f * facing, 0.9f)))
+                if (ApplyDamagePair(target, new Vector2(4.2f * facing, 0.9f), damageScale))
                     hitAny = true;
                 // Presentation FX should still play when a valid target is found but the
                 // damage is blocked by invulnerability/other combat rules.
@@ -186,7 +239,7 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             ApplyFeedback(hitAny);
         }
 
-        private void ResolveHit25D()
+        private void ResolveHit25D(float damageScale)
         {
             var forward = _motor != null ? _motor.PlanarForward : Vector3.forward;
             forward.y = 0f;
@@ -194,13 +247,19 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                 forward = Vector3.forward;
             forward.Normalize();
 
+            var rangeMultiplier = ResolveSkillRangeMultiplier();
+            var forwardCenterDistance =
+                Mathf.Max(0.95f, Mathf.Abs(hitboxOffset.x) * 1.08f * rangeMultiplier);
+            var forwardHalfExtent =
+                Mathf.Max(1.25f, hitboxSize.x * 0.50f * rangeMultiplier);
             var center = transform.position +
-                         forward * Mathf.Max(0.95f, Mathf.Abs(hitboxOffset.x) * 1.08f * _runtimeRangeMultiplier) +
+                         forward * forwardCenterDistance +
                          Vector3.up * 0.78f;
             var halfExtents = new Vector3(
                 Mathf.Max(0.66f, hitboxSize.y * 0.40f),
                 0.72f,
-                Mathf.Max(1.25f, hitboxSize.x * 0.50f * _runtimeRangeMultiplier));
+                forwardHalfExtent);
+            var officialForwardReach = forwardCenterDistance + forwardHalfExtent;
             var rotation = Quaternion.LookRotation(forward, Vector3.up);
             var colliders = Physics.OverlapBox(center, halfExtents, rotation, ~0, QueryTriggerInteraction.Ignore);
             var seen = new HashSet<CombatEntity>();
@@ -213,12 +272,20 @@ namespace ArknightsACT.Gameplay.Characters.Chen
                 var target = collider.GetComponentInParent<CombatEntity>();
                 if (!CanHit(target, seen))
                     continue;
+                if (!OperatorRangeUtility.Contains(
+                        masteryRangeId,
+                        transform.position,
+                        forward,
+                        target.transform.position,
+                        officialForwardReach))
+                    continue;
                 if (Mathf.Abs(target.transform.position.y - transform.position.y) > max25DHeightDifference)
                     continue;
                 if (!HasClear25DLine(target))
                     continue;
+                seen.Add(target);
 
-                if (ApplyDamagePair(target, Vector2.zero))
+                if (ApplyDamagePair(target, Vector2.zero, damageScale))
                     hitAny = true;
                 HitResolved?.Invoke(target.transform);
             }
@@ -226,14 +293,23 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             ApplyFeedback(hitAny);
         }
 
+        private float ResolveSkillRangeMultiplier()
+        {
+            var pipeline = _operatorStats != null
+                ? _operatorStats.GetSkillRangeMultiplier(MasterySlot)
+                : 1f;
+            return Mathf.Clamp(pipeline * _runtimeRangeMultiplier, 0.25f, 4f);
+        }
+
         private bool CanHit(CombatEntity target, HashSet<CombatEntity> seen)
         {
-            return target != null &&
+            return seen.Count < Mathf.Max(1, masteryMaxTargets) &&
+                   target != null &&
                    target != _entity &&
                    target.Team != _entity.Team &&
                    target.Health != null &&
                    !target.Health.IsDead &&
-                   seen.Add(target);
+                   !seen.Contains(target);
         }
 
         private bool HasClear25DLine(CombatEntity target)
@@ -264,20 +340,25 @@ namespace ArknightsACT.Gameplay.Characters.Chen
             return true;
         }
 
-        private bool ApplyDamagePair(CombatEntity target, Vector2 knockback)
+        private bool ApplyDamagePair(CombatEntity target, Vector2 knockback, float damageScale)
         {
+            if (!_officialSkillDataApplied || masteryAttackScale <= 0f || _operatorStats == null)
+                return false;
+
             var hitAny = false;
+            var officialDamage = _operatorStats.Attack * masteryAttackScale;
             var physical = new DamageContext(
-                _entity, _entity, target, physicalDamage * _runtimeDamageMultiplier, DamageType.Physical, knockback,
+                _entity, _entity, target, officialDamage * _runtimeDamageMultiplier * damageScale, DamageType.Physical, knockback,
                 sourceId: "Chen_Skill1_Physical", tags: DamageTags.Skill);
             var physicalResult = DamageSystem.Apply(physical);
             if (physicalResult.Applied)
                 hitAny = true;
 
-            if (!target.Health.IsDead && artsDamage > 0f)
+            var artsBaseDamage = officialDamage;
+            if (!target.Health.IsDead && artsBaseDamage > 0f)
             {
                 var arts = new DamageContext(
-                    _entity, _entity, target, artsDamage * _runtimeDamageMultiplier, DamageType.Arts, Vector2.zero,
+                    _entity, _entity, target, artsBaseDamage * _runtimeDamageMultiplier * damageScale, DamageType.Arts, Vector2.zero,
                     sourceId: "Chen_Skill1_Arts", tags: DamageTags.Skill);
                 if (DamageSystem.Apply(arts).Applied)
                     hitAny = true;

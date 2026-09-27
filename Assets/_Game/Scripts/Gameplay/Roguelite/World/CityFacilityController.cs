@@ -14,11 +14,13 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         private const float WheelchairMountSeconds = .6f;
         private readonly List<CityFacility25D> _facilities = new();
         private readonly List<Wheelchair25D> _wheelchairs = new();
+        private readonly List<CityReturnShortcut25D> _shortcuts = new();
         private readonly HashSet<int> _surveyed = new();
         private RogueliteStageMapController _map;
         private RogueliteStageRuntimeController _runtime;
         private CityFacility25D _candidate;
         private Wheelchair25D _candidateChair;
+        private CityReturnShortcut25D _candidateShortcut;
         private Wheelchair25D _mountedChair;
         private PlayerMotor25D _seatedMotor;
         private Transform _actor;
@@ -32,6 +34,7 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         private Font _font;
         public IReadOnlyList<CityFacility25D> Facilities => _facilities;
         public IReadOnlyList<Wheelchair25D> Wheelchairs => _wheelchairs;
+        public IReadOnlyList<CityReturnShortcut25D> Shortcuts => _shortcuts;
         public bool IsSeated => _mountedChair != null;
         public float Progress => _progress;
         public Transform CurrentActor => _actor;
@@ -47,6 +50,10 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         public void RegisterWheelchair(Wheelchair25D chair)
         {
             if (chair != null && !_wheelchairs.Contains(chair)) _wheelchairs.Add(chair);
+        }
+        public void RegisterShortcut(CityReturnShortcut25D shortcut)
+        {
+            if (shortcut != null && !_shortcuts.Contains(shortcut)) _shortcuts.Add(shortcut);
         }
         public void Register(CityFacility25D facility)
         {
@@ -93,6 +100,8 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 held = false;
             CityFacility25D nearest = null;
             var distance = 2.8f * 2.8f;
+            CityReturnShortcut25D nearestShortcut = null;
+            var shortcutDistance = 2.8f * 2.8f;
             Wheelchair25D nearestChair = null;
             var chairDistance = 2.8f * 2.8f;
             if (health != null && !health.IsDead)
@@ -106,6 +115,16 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                         out var hit, ~0, QueryTriggerInteraction.Ignore) && !hit.transform.IsChildOf(facility.transform) && !hit.transform.IsChildOf(actor)) continue;
                     nearest = facility; distance = delta.sqrMagnitude;
                 }
+                foreach (var shortcut in _shortcuts)
+                {
+                    if (shortcut == null || !shortcut.isActiveAndEnabled || shortcut.Opened || !shortcut.IsActorOnInteriorSide(actor.position)) continue;
+                    var delta = shortcut.transform.position - actor.position; delta.y = 0f;
+                    if (delta.sqrMagnitude >= shortcutDistance) continue;
+                    if (Physics.Linecast(actor.position + Vector3.up * 1.4f, shortcut.transform.position + Vector3.up * .15f,
+                        out var hit, ~0, QueryTriggerInteraction.Ignore) &&
+                        !hit.transform.IsChildOf(shortcut.transform.parent) && !hit.transform.IsChildOf(actor)) continue;
+                    nearestShortcut = shortcut; shortcutDistance = delta.sqrMagnitude;
+                }
                 foreach (var chair in _wheelchairs)
                 {
                     if (chair == null || !chair.isActiveAndEnabled || (chair.Occupied && chair != _mountedChair)) continue;
@@ -115,9 +134,26 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                 }
             }
             // Facilities take priority; the wheelchair is the candidate only when no facility is in range.
-            var selectedChair = nearest == null ? (_mountedChair != null ? _mountedChair : nearestChair) : null;
-            if (nearest != _candidate || selectedChair != _candidateChair || actor != _actor) _progress = 0f;
-            _candidate = nearest; _candidateChair = selectedChair; _actor = actor;
+            var selectedShortcut = nearest == null ? nearestShortcut : null;
+            var selectedChair = nearest == null && selectedShortcut == null ? (_mountedChair != null ? _mountedChair : nearestChair) : null;
+            if (nearest != _candidate || selectedChair != _candidateChair || selectedShortcut != _candidateShortcut || actor != _actor) _progress = 0f;
+            _candidate = nearest; _candidateChair = selectedChair; _candidateShortcut = selectedShortcut; _actor = actor;
+            if (selectedShortcut != null)
+            {
+                if (!IsAuthority || !held || health == null || health.IsDead) { _progress = 0f; return; }
+                if (_progress > 0f && (health.CurrentHealth < _health - .01f || (actor.position - _startPosition).sqrMagnitude > .25f))
+                {
+                    _progress = 0f; _notice = "操作中断：请留在内巷门旁"; _noticeUntil = Time.unscaledTime + 2f; return;
+                }
+                if (_progress == 0f) { _startPosition = actor.position; _health = health.CurrentHealth; }
+                _health = health.CurrentHealth;
+                _progress += Mathf.Max(0f, dt);
+                if (_progress >= 1f && selectedShortcut.Open())
+                {
+                    _notice = "返程捷径已打开 · 可从后巷直接离开"; _noticeUntil = Time.unscaledTime + 3f; _progress = 0f;
+                }
+                return;
+            }
             if (selectedChair != null)
             {
                 TickWheelchair(actor, health, held, dt, selectedChair);
@@ -196,12 +232,12 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         private void OnDisable()
         {
             if (_mountedChair != null) Dismount(_mountedChair.Rider);
-            _progress = 0f; _candidate = null; _candidateChair = null; _actor = null; _visible = false;
+            _progress = 0f; _candidate = null; _candidateChair = null; _candidateShortcut = null; _actor = null; _visible = false;
         }
         private void OnDestroy() { if (_font != null) Destroy(_font); }
         private void OnGUI()
         {
-            if (!_visible || (_candidate == null && _candidateChair == null && Time.unscaledTime >= _noticeUntil)) return;
+            if (!_visible || (_candidate == null && _candidateChair == null && _candidateShortcut == null && Time.unscaledTime >= _noticeUntil)) return;
             if (_style == null)
             {
                 _font = Font.CreateDynamicFontFromOSFont(new[] { "Microsoft YaHei", "Noto Sans CJK SC", "Arial" }, 16);
@@ -215,6 +251,8 @@ namespace ArknightsACT.Gameplay.Roguelite.World
                     ? $"按住 G 离开轮椅 {_progress / WheelchairMountSeconds:P0}\n轮椅中：松手缓慢滑行，按住 Shift 漂移，不能跳跃和冲刺"
                     : $"按住 G 坐上轮椅 {_progress / WheelchairMountSeconds:P0}\n起步迟缓、松手后缓慢滑行，移动中按住 Shift 可漂移";
             }
+            else if (_candidateShortcut != null && Time.unscaledTime >= _noticeUntil)
+                text = $"按住 G 打开 {_candidateShortcut.Label}  {_progress:P0}\n从内侧解锁后可经后巷返程";
             else if (_candidate != null && Time.unscaledTime >= _noticeUntil)
             {
                 var health = _actor != null ? _actor.GetComponent<Health>() : null;

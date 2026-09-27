@@ -16,7 +16,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Collectibles
     }
     [DisallowMultipleComponent]
     [RequireComponent(typeof(CombatEntity))]
-    public sealed class CollectibleInventory : MonoBehaviour, IDamageModifier, IPlayerSwitchStateTransfer, ICombatStatModifier, ICombatTargetStatModifier
+    public sealed class CollectibleInventory : MonoBehaviour, ILayeredDamageModifier, IPlayerSwitchStateTransfer, ILayeredCombatStatModifier, ICombatTargetStatModifier
     {
         private readonly Dictionary<string, int> _stacks = new();
         private readonly Dictionary<string, CollectibleDefinition> _definitions = new();
@@ -26,7 +26,8 @@ namespace ArknightsACT.Gameplay.Roguelite.Collectibles
         private PlayerAttackController _attack;
         private PlayerSkillController _skills;
         private PlayerCombatProfile _profile;
-        private float _baseMaxHealth;
+        private OperatorRuntimeStats _runtimeStats;
+        private float _fallbackBaseMaxHealth;
         private float _runStartedAt;
         private float _nextEnemyHealthSyncAt;
 
@@ -34,6 +35,7 @@ namespace ArknightsACT.Gameplay.Roguelite.Collectibles
         public event Action<CollectibleDefinition, int> Removed;
         public event Action<int, string> SkillPointFeedback;
         public IReadOnlyDictionary<string, CollectibleDefinition> Definitions => _definitions;
+        public CombatStatModifierLayer ModifierLayer => CombatStatModifierLayer.CollectibleEquipment;
 
         public bool IsApplicable(CollectibleDefinition definition)
         {
@@ -78,7 +80,8 @@ namespace ArknightsACT.Gameplay.Roguelite.Collectibles
             _attack = GetComponent<PlayerAttackController>();
             _skills = GetComponent<PlayerSkillController>();
             _profile = GetComponent<PlayerCombatProfile>();
-            _baseMaxHealth = _entity != null && _entity.Health != null ? _entity.Health.MaxHealth : 100f;
+            _runtimeStats = GetComponent<OperatorRuntimeStats>();
+            _fallbackBaseMaxHealth = _entity?.Health != null ? _entity.Health.MaxHealth : 100f;
             _runStartedAt = Time.time;
         }
 
@@ -102,7 +105,10 @@ namespace ArknightsACT.Gameplay.Roguelite.Collectibles
         {
             if (Time.time < _nextEnemyHealthSyncAt) return;
             _nextEnemyHealthSyncAt = Time.time + 0.5f;
-            if (Mathf.Abs(SumEffect(CollectibleEffectType.EnemyMaxHealthPercent)) > 0.0001f)
+            if (HasAnyDefinitionEffect(CollectibleEffectType.MaxHealthPercent))
+                RecalculateMaxHealth();
+            if (Mathf.Abs(SumEffect(CollectibleEffectType.EnemyMaxHealthPercent)) > 0.0001f ||
+                HasAnyDefinitionEffect(CollectibleEffectType.EnemyMaxHealthPercent))
                 SyncEnemyMaxHealth();
         }
 
@@ -252,6 +258,13 @@ namespace ArknightsACT.Gameplay.Roguelite.Collectibles
         {
             switch (stat)
             {
+                case CombatStatType.MaxHealth:
+                    additivePercent += SumEffect(CollectibleEffectType.MaxHealthPercent);
+                    break;
+                case CombatStatType.Attack:
+                    flat += SumEffect(CollectibleEffectType.AttackFlat);
+                    additivePercent += SumEffect(CollectibleEffectType.AttackPercent);
+                    break;
                 case CombatStatType.PhysicalDefense:
                     flat += SumEffect(CollectibleEffectType.PhysicalDefenseFlat);
                     additivePercent += SumEffect(CollectibleEffectType.PhysicalDefensePercent);
@@ -259,6 +272,18 @@ namespace ArknightsACT.Gameplay.Roguelite.Collectibles
                 case CombatStatType.ArtsResistance:
                     flat += SumEffect(CollectibleEffectType.ArtsResistanceFlat);
                     additivePercent += SumEffect(CollectibleEffectType.ArtsResistancePercent);
+                    break;
+                case CombatStatType.AttackSpeedMultiplier:
+                    additivePercent += SumEffect(CollectibleEffectType.AttackSpeedPercent);
+                    break;
+                case CombatStatType.AttackInterval:
+                    additivePercent += SumEffect(CollectibleEffectType.AttackIntervalPercent);
+                    break;
+                case CombatStatType.BasicAttackRange:
+                    additivePercent += SumEffect(CollectibleEffectType.BasicAttackRangePercent);
+                    break;
+                case CombatStatType.SkillRange:
+                    additivePercent += SumEffect(CollectibleEffectType.SkillRangePercent);
                     break;
             }
         }
@@ -323,11 +348,20 @@ namespace ArknightsACT.Gameplay.Roguelite.Collectibles
             if (_entity?.Health == null)
                 return;
 
-            var oldMax = _entity.Health.MaxHealth;
-            var newMax = Mathf.Max(1f, _baseMaxHealth * (1f + SumEffect(CollectibleEffectType.MaxHealthPercent)));
-            if (Mathf.Approximately(oldMax, newMax))
+            if (_runtimeStats == null)
+                _runtimeStats = GetComponent<OperatorRuntimeStats>();
+            if (_runtimeStats != null)
+            {
+                _runtimeStats.RefreshResolvedMaxHealthFromModifierChange(healAddedCapacity: true);
                 return;
+            }
 
+            // Compatibility path for non-operator entities that may still carry an inventory.
+            // Player operators should always resolve MaxHealth through OperatorRuntimeStats.
+            var oldMax = _entity.Health.MaxHealth;
+            var newMax = Mathf.Max(
+                1f,
+                _fallbackBaseMaxHealth * (1f + SumEffect(CollectibleEffectType.MaxHealthPercent)));
             _entity.Health.SetMaxHealth(newMax, refill: false);
             if (newMax > oldMax)
                 _entity.Health.Heal(newMax - oldMax);
@@ -365,6 +399,14 @@ namespace ArknightsACT.Gameplay.Roguelite.Collectibles
         private bool EffectAppliesToCurrentOperator(CollectibleEffectModifier effect) =>
             effect != null && (effect.Profession == OperatorProfession.Unspecified ||
                                (_profile != null && _profile.Profession == effect.Profession));
+
+        private bool HasAnyDefinitionEffect(CollectibleEffectType type)
+        {
+            foreach (var pair in _definitions)
+                if (DefinitionHasEffect(pair.Value, type))
+                    return true;
+            return false;
+        }
 
         private bool DefinitionHasEffect(CollectibleDefinition definition, CollectibleEffectType type)
         {

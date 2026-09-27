@@ -1,3 +1,4 @@
+using ArknightsACT.Combat;
 using ArknightsACT.Gameplay.Roguelite.SkillUpgrades;
 using UnityEngine;
 
@@ -18,6 +19,7 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
 
         private SchwarzSkill1 _skill2;
         private SchwarzSkill2 _skill3;
+        private CombatStatModifierBucket _runStats;
 
         public string CharacterId => CharacterKey;
 
@@ -28,6 +30,7 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
             // SchwarzSkill2 = gameplay slot 2 = original S3
             _skill2 = GetComponent<SchwarzSkill1>();
             _skill3 = GetComponent<SchwarzSkill2>();
+            _runStats = CombatStatModifierBucket.GetOrCreate(gameObject, CombatStatModifierLayer.RunPermanent);
         }
 
         public bool Supports(string effectId) =>
@@ -55,7 +58,10 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
                     _skill3?.AddDamagePercent(value);
                     break;
                 case OriginalSkill3Range:
-                    _skill3?.AddRangePercent(value);
+                    _runStats?.Set(
+                        CombatStatType.Skill2RangeMultiplier,
+                        OriginalSkill3Range,
+                        additivePercent: Mathf.Max(0f, value) * Mathf.Max(1, newStack));
                     break;
                 case OriginalSkill3Duration:
                     _skill3?.AddDurationPercent(value);
@@ -65,6 +71,7 @@ namespace ArknightsACT.Gameplay.Characters.Schwarz
 
         public void ResetRun()
         {
+            _runStats?.ClearSource(OriginalSkill3Range);
             _skill2?.ResetRunModifiers();
             _skill3?.ResetRunModifiers();
         }

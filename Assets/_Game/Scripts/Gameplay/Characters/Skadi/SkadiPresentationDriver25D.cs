@@ -17,6 +17,8 @@ namespace ArknightsACT.Gameplay.Characters.Skadi
         private SpineCharacterPresentation2D _presentation;
         private SpineBoneMotionRetarget2D _retarget;
         private BillboardPresentation25D _billboard;
+        private SkadiSkill1 _skill1;
+        private SkadiSkill2 _skill2;
         private bool _dead;
 
         private void Awake()
@@ -28,6 +30,8 @@ namespace ArknightsACT.Gameplay.Characters.Skadi
                 .FirstOrDefault(item => item != null && item.enabled);
             _retarget = GetComponent<SpineBoneMotionRetarget2D>();
             _billboard = GetComponentInChildren<BillboardPresentation25D>(true);
+            _skill1 = GetComponent<SkadiSkill1>();
+            _skill2 = GetComponent<SkadiSkill2>();
 
             _presentation?.Configure(
                 "Idle",
@@ -44,6 +48,10 @@ namespace ArknightsACT.Gameplay.Characters.Skadi
                 _attack.AttackStarted += OnAttackStarted;
             if (_entity?.Health != null)
                 _entity.Health.Died += OnDied;
+            if (_skill1 != null)
+                _skill1.BuffStarted += OnSkill1BuffStarted;
+            if (_skill2 != null)
+                _skill2.CastStarted += OnSkill2CastStarted;
         }
 
         private void OnDisable()
@@ -52,6 +60,10 @@ namespace ArknightsACT.Gameplay.Characters.Skadi
                 _attack.AttackStarted -= OnAttackStarted;
             if (_entity?.Health != null)
                 _entity.Health.Died -= OnDied;
+            if (_skill1 != null)
+                _skill1.BuffStarted -= OnSkill1BuffStarted;
+            if (_skill2 != null)
+                _skill2.CastStarted -= OnSkill2CastStarted;
 
             _retarget?.SetMoving(false);
             _billboard?.ResetDirectionalCue();
@@ -64,6 +76,14 @@ namespace ArknightsACT.Gameplay.Characters.Skadi
 
             var facing = _motor.FacingSign;
             if (_attack != null && _attack.IsAttacking)
+            {
+                StopLocomotion();
+                _presentation.SetFacingImmediate(facing);
+                _billboard?.SetPlanarDirection(_motor.PlanarForward, facing, 1f);
+                return;
+            }
+
+            if (_skill2 != null && _skill2.IsCasting)
             {
                 StopLocomotion();
                 _presentation.SetFacingImmediate(facing);
@@ -92,6 +112,29 @@ namespace ArknightsACT.Gameplay.Characters.Skadi
             if (!_presentation.PlayNamedAnimation("Attack", facing, false))
                 _presentation.PlayAttack(comboIndex, facing);
 
+            if (_motor != null)
+                _billboard?.SetPlanarDirection(_motor.PlanarForward, facing, 1f);
+        }
+
+        private void OnSkill1BuffStarted()
+        {
+            PlaySkillAnimation("Skill_2");
+        }
+
+        private void OnSkill2CastStarted()
+        {
+            PlaySkillAnimation("Skill_3");
+        }
+
+        private void PlaySkillAnimation(string animation)
+        {
+            if (_dead || _presentation == null)
+                return;
+
+            StopLocomotion();
+            var facing = _motor != null ? _motor.FacingSign : 1;
+            _presentation.SetFacingImmediate(facing);
+            _presentation.PlayNamedAnimation(animation, facing, false);
             if (_motor != null)
                 _billboard?.SetPlanarDirection(_motor.PlanarForward, facing, 1f);
         }

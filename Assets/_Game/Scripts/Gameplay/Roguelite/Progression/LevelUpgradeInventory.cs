@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using ArknightsACT.Combat;
 using ArknightsACT.Combat.Status;
+using ArknightsACT.Gameplay.Abilities;
 using ArknightsACT.Gameplay.Characters;
 using UnityEngine;
 
@@ -9,29 +10,55 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
 {
     [DisallowMultipleComponent]
     [RequireComponent(typeof(CombatEntity))]
-    public sealed class LevelUpgradeInventory : MonoBehaviour, IDamageModifier, IPlayerSwitchStateTransfer
+    public sealed class LevelUpgradeInventory : MonoBehaviour, ILayeredDamageModifier, ILayeredCombatStatModifier, IPlayerSwitchStateTransfer
     {
         private readonly Dictionary<string, int> _stacks = new();
         private readonly Dictionary<string, LevelUpgradeDefinition> _definitions = new();
 
         private CombatEntity _entity;
+        private PlayerSkillController _skills;
         private int _chainHitCounter;
 
         public event Action<LevelUpgradeDefinition, int> Upgraded;
+        public CombatStatModifierLayer ModifierLayer => CombatStatModifierLayer.RunPermanent;
+
+        public RunBuildTag CurrentTags
+        {
+            get
+            {
+                var tags = RunBuildTag.None;
+                foreach (var pair in _definitions)
+                {
+                    if (pair.Value == null || !_stacks.TryGetValue(pair.Key, out var count) || count <= 0)
+                        continue;
+                    tags |= pair.Value.GrantedTags;
+                }
+                return tags;
+            }
+        }
+
+        public float SkillPointRecoveryPercent =>
+            SumStacks(LevelUpgradeEffectType.OriginiumOverclock) > 0 ? 0.35f : 0f;
 
         private void Awake()
         {
             _entity = GetComponent<CombatEntity>();
+            _skills = GetComponent<PlayerSkillController>();
         }
 
         private void OnEnable()
         {
             DamageSystem.DamageApplied += OnDamageApplied;
+            _skills ??= GetComponent<PlayerSkillController>();
+            if (_skills != null)
+                _skills.SkillCastSucceeded += OnSkillCastSucceeded;
         }
 
         private void OnDisable()
         {
             DamageSystem.DamageApplied -= OnDamageApplied;
+            if (_skills != null)
+                _skills.SkillCastSucceeded -= OnSkillCastSucceeded;
         }
 
         public int GetStackCount(LevelUpgradeDefinition definition)
@@ -41,10 +68,16 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
             return _stacks.TryGetValue(definition.Id, out var count) ? count : 0;
         }
 
-        public bool CanAcquire(LevelUpgradeDefinition definition) =>
-            definition != null &&
-            !string.IsNullOrWhiteSpace(definition.Id) &&
-            GetStackCount(definition) < definition.MaxStacks;
+        public bool CanAcquire(LevelUpgradeDefinition definition)
+        {
+            if (definition == null ||
+                string.IsNullOrWhiteSpace(definition.Id) ||
+                GetStackCount(definition) >= definition.MaxStacks)
+                return false;
+
+            var required = definition.RequiredTags;
+            return required == RunBuildTag.None || (CurrentTags & required) == required;
+        }
 
         public bool Acquire(LevelUpgradeDefinition definition)
         {
@@ -94,10 +127,69 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
                 DamageType.Arts => SumEffect(LevelUpgradeEffectType.ArtsDamagePercent),
                 _ => 0f
             };
+
+            if (SumStacks(LevelUpgradeEffectType.OriginiumOverclock) > 0)
+                percent += 0.25f;
+
+            if (HasBloodDebtThreshold())
+                percent += 0.45f;
+
             return currentDamage * Mathf.Max(0f, 1f + percent);
         }
 
-        public float ModifyIncomingDamage(in DamageContext context, float currentDamage) => currentDamage;
+        public float ModifyIncomingDamage(in DamageContext context, float currentDamage)
+        {
+            return SumStacks(LevelUpgradeEffectType.BloodDebt) > 0
+                ? currentDamage * 1.20f
+                : currentDamage;
+        }
+
+        public void AccumulateStatModifiers(CombatStatType stat, ref float flat, ref float additivePercent)
+        {
+            switch (stat)
+            {
+                case CombatStatType.PhysicalDefense:
+                    additivePercent += SumEffect(LevelUpgradeEffectType.PhysicalDefensePercent);
+                    break;
+
+                case CombatStatType.ArtsResistance:
+                    flat += SumEffect(LevelUpgradeEffectType.ArtsResistanceFlat);
+                    break;
+
+                case CombatStatType.MoveSpeedMultiplier:
+                    additivePercent += SumEffect(LevelUpgradeEffectType.MoveSpeedPercent);
+                    break;
+
+                case CombatStatType.AttackSpeedMultiplier:
+                    additivePercent += SumEffect(LevelUpgradeEffectType.AttackSpeedPercent);
+                    if (HasBloodDebtThreshold())
+                        additivePercent += 0.45f;
+                    break;
+            }
+        }
+
+        private bool HasBloodDebtThreshold()
+        {
+            return SumStacks(LevelUpgradeEffectType.BloodDebt) > 0 &&
+                   _entity?.Health != null &&
+                   !_entity.Health.IsDead &&
+                   _entity.Health.CurrentHealth <= _entity.Health.MaxHealth * 0.35f;
+        }
+
+        private void OnSkillCastSucceeded(int _)
+        {
+            if (SumStacks(LevelUpgradeEffectType.OriginiumOverclock) <= 0 ||
+                _entity?.Health == null ||
+                _entity.Health.IsDead)
+                return;
+
+            var health = _entity.Health;
+            var safeCost = Mathf.Min(
+                health.MaxHealth * 0.04f,
+                Mathf.Max(0f, health.CurrentHealth - 1f));
+            if (safeCost > 0f)
+                health.TakeDamage(safeCost);
+        }
 
         private void OnDamageApplied(DamageContext context, DamageResult result)
         {
@@ -164,6 +256,43 @@ namespace ArknightsACT.Gameplay.Roguelite.Progression
                 context.ProcGeneration + 1,
                 "LevelUpgrade_Chain",
                 tags: DamageTags.SecondaryProc));
+
+            TryApplyOverloadExplosion(secondary, context.BaseDamage, context.ProcGeneration);
+        }
+
+        private void TryApplyOverloadExplosion(CombatEntity center, float baseDamage, int procGeneration)
+        {
+            if (center == null || SumStacks(LevelUpgradeEffectType.OverloadExplosion) <= 0)
+                return;
+
+            var entities = FindObjectsByType<CombatEntity>(FindObjectsSortMode.None);
+            var radiusSqr = 2.8f * 2.8f;
+            for (var i = 0; i < entities.Length; i++)
+            {
+                var candidate = entities[i];
+                if (candidate == null || candidate == _entity ||
+                    candidate.Team == _entity.Team ||
+                    candidate.Health == null || candidate.Health.IsDead)
+                    continue;
+
+                var delta = candidate.transform.position - center.transform.position;
+                if (Mathf.Abs(delta.y) > 1.3f)
+                    continue;
+                delta.y = 0f;
+                if (delta.sqrMagnitude > radiusSqr)
+                    continue;
+
+                DamageSystem.Apply(new DamageContext(
+                    _entity,
+                    _entity,
+                    candidate,
+                    Mathf.Max(1f, baseDamage * 0.40f),
+                    DamageType.Arts,
+                    Vector2.zero,
+                    procGeneration + 1,
+                    "LevelUpgrade_Overload",
+                    tags: DamageTags.SecondaryProc));
+            }
         }
 
         private CombatEntity FindNearestEnemy(CombatEntity primary, float radius)

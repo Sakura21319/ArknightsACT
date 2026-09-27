@@ -408,14 +408,24 @@ namespace ArknightsACT.Gameplay.Roguelite.World
         // Street frontages delegate their physical room to this existing architecture owner.
         // Open loading bays and narrow residential doors share one collision contract.
         public static void BuildInteriorShell(Transform root, float width, float depth, float height,
-            Material wall, Material steel, Material floor, float doorWidth = 1.8f, bool spawnContainer = true)
+            Material wall, Material steel, Material floor, float doorWidth = 1.8f, bool spawnContainer = true, bool backExit = false)
         {
             doorWidth = Mathf.Min(doorWidth, width - 0.6f);
             var wing = (width - doorWidth) * 0.5f;
             CreateSolidBox(root, "InteriorFloor", new Vector3(0f, 0.08f, 0f),
                 new Vector3(width, 0.16f, depth), 0.02f, floor);
-            CreateSolidBox(root, "ShellBack", new Vector3(0f, height * 0.5f, depth * 0.5f),
-                new Vector3(width, height, 0.22f), 0.04f, wall);
+            if (backExit)
+            {
+                var backWing = (width - 1.8f) * 0.5f;
+                foreach (var side in new[] { -1f, 1f })
+                    CreateSolidBox(root, "ShellBackWing", new Vector3(side * (0.9f + backWing * 0.5f), height * 0.5f, depth * 0.5f),
+                        new Vector3(backWing, height, 0.22f), 0.04f, wall);
+                CreateVisualBox(root, "ReturnExitFrame", new Vector3(0f, 2.35f, depth * 0.5f + 0.13f),
+                    new Vector3(1.92f, 0.10f, 0.06f), 0.01f, steel);
+            }
+            else
+                CreateSolidBox(root, "ShellBack", new Vector3(0f, height * 0.5f, depth * 0.5f),
+                    new Vector3(width, height, 0.22f), 0.04f, wall);
             foreach (var side in new[] { -1f, 1f })
             {
                 CreateSolidBox(root, "ShellSide", new Vector3(side * width * 0.5f, height * 0.5f, 0f),
